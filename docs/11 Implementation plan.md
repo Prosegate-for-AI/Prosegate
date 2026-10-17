@@ -19,7 +19,7 @@ Checked against current documentation on 2026-10-17.
 | Claude Code caps consecutive stop-hook continuations at 8 (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) and resets the count on any tool call. `Stop` default timeout is 600 s; `UserPromptSubmit` is 30 s. | same | Pass cap of 2 fits inside it. Register the Stop hook with an explicit 10 s timeout so the adapter's 6 s cap is the binding one. |
 | Hooks can be `type: "mcp_tool"` as well as `command`. | same | Keep `command` hooks for v0 (one process per event, no server-lifetime issues). Note `mcp_tool` as a later latency optimisation. |
 | OpenAI's Administration API creates projects, service accounts (key returned once), project rate limits, and exposes `/v1/organization/costs`. It has no endpoint that sets a hard project spend cap, and the dashboard's monthly budget is documented as not a hard cap. | platform.openai.com admin reference (overview page); community thread 1087771, last reply 2025-08-01. **Superseded 2026-10-17 by S2:** the official OpenAPI spec defines a per-project hard spend limit (`/organization/projects/{id}/spend_limit`); see ADR-8 and docs/spikes/S2.md | ADR-3 and 07 assume "a hard spend limit". The enforceable controls are per-project rate limits plus cost polling and revoke. Spike S2 re-reads the current reference (the detailed pages returned 403/404 to automated fetch); the vending design in §6.7 is written against what the API can do. |
-| `re2js` is a pure-JavaScript RE2 port with linear-time matching; `re2` (node-re2) is a native addon. | npm | Use `re2js` so the adapter ships as one file per platform with no node-gyp. Benchmark on the pack in Phase 2 against the 50 ms budget. |
+| `re2js` is a pure-JavaScript RE2 port with linear-time matching; `re2` (node-re2) is a native addon. | npm | Use `re2js` so the adapter's JS ships as one bundle with no node-gyp (ADR-14: the keyring is the one external native dependency). Benchmark on the pack in Phase 2 against the 50 ms budget. |
 
 ## 2. Doc corrections to raise with the owner
 
@@ -55,7 +55,7 @@ eval/
 | Validation | `zod` with `.strict()`; `zod-to-json-schema` at build | One source for the 03, 04 and 07 schemas; strict mode rejects unknown fields as 06 and 07 require |
 | Regex | `re2js` | RE2 semantics as 04 requires; no native build |
 | YAML | `yaml` | Round-trips comments for `profile diff` |
-| Bundling | `tsup` (esbuild) to one file per platform; `@napi-rs/keyring` as an optional platform dependency | 05 packaging; keyring is the one native dependency and has a 0600-file fallback |
+| Bundling | `tsup` (esbuild) to one platform-independent JS bundle; `@napi-rs/keyring` external, as an `optionalDependency` (ADR-14) | 05 packaging; keyring is the one native dependency and has a file fallback |
 | MCP | `@modelcontextprotocol/sdk` stdio server | Standard |
 | Reviewer HTTP | raw `fetch` + zod, no provider SDKs | Keeps the bundle small; two endpoints only |
 | Service | Hono on Workers, D1 through bindings with a thin repository layer, `wrangler` | 06 names the stack |
@@ -188,7 +188,7 @@ Pages app behind the managed auth provider. Screens: device approval (enter `use
 ## 7. Cross-cutting work
 
 - **Security tests in CI**: key-prefix grep over outbound payload types; engine-absent-from-Worker graph check; RE2-only check at pack load; instruction-text constraints (≤ 200 chars, no URLs, no backticks).
-- **Packaging**: tsup single-file builds for Windows, macOS and Linux on x64 and arm64; npm publish with provenance; reproducible-build hash in the release notes; pinned lockfile.
+- **Packaging**: one tsup JS bundle, tested on Windows, macOS and Linux on x64 and arm64 with the platform's keyring binary (ADR-14); npm publish with provenance; reproducible-build hash in the release notes; pinned lockfile.
 - **Docs**: README per package; admin doc for `enforcement_default: required` that says plainly it costs adoption; privacy page with the 07 wording and nothing stronger.
 - **Telemetry review**: adding a field to the allowlist is one PR touching both the shared schema and 07.
 
@@ -210,7 +210,7 @@ Sequencing rules: the reviewer is not wired into `turn-end` until the rules path
 | `core.triad.001` or a `structure` rule over its false-positive budget on markdown-heavy control docs | Likely for at least one rule | The rule is pulled, not softened (10); the control set includes markdown-heavy docs on purpose |
 | Human-control corpus licensing and dating | Moderate | Licence per item; pre-2022 where possible; private corpus for team writing |
 | 6 s turn-end cap exceeded on long drafts with the reviewer | Moderate | Reviewer floor and 4 s timeout; rules-only fallback; p95 tracked through telemetry buckets |
-| Keyring native dependency breaks single-file packaging | Low after S3 | The 0600 fallback is already the CI path |
+| Keyring native dependency breaks packaging, or a D-Bus hang blocks turn-end | Resolved by S3 / ADR-14 | External optional dependency; probe once and record; child-process read with a 1 s kill on Linux and macOS; file fallback |
 | Managed auth provider undecided | Open | Service work starts with device keys only; dashboard auth is the last piece of Phase 7 |
 
 ## 10. Definition of done for v0

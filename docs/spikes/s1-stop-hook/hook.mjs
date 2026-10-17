@@ -1,5 +1,5 @@
 // S1 spike hook. Logs each hook event's stdin to events.jsonl beside this file.
-// Stop: blocks the first S1_BLOCKS calls, with decision:block JSON (S1_MODE=json), additionalContext JSON (S1_MODE=ctx) or exit 2 (S1_MODE=exit2).
+// Stop: blocks the first S1_BLOCKS calls, with decision:block JSON (S1_MODE=json), additionalContext JSON (S1_MODE=ctx; ctxq adds suppressOutput) or exit 2 (S1_MODE=exit2).
 // Contains no secrets and reads no files other than the transcript path the harness hands it.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,7 +33,9 @@ process.stdin.on('end', () => {
   const blocks = Number(process.env.S1_BLOCKS || 2);
   if (n > blocks) return;
   const reason = `[Prosegate-spike] pass ${n}: Revise your last response. Begin it with the line "NOTICE-VIA-MODEL ${n}" verbatim, then replace the word "robust" with a concrete property.`;
-  if (mode === 'ctx') {
+  if (mode === 'ctxq') {
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'Stop', additionalContext: reason }, systemMessage: `SYSMSG-SPIKE pass ${n} of 2 · 1 finding (vocab 1)`, suppressOutput: true }));
+  } else if (mode === 'ctx') {
     process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'Stop', additionalContext: reason }, systemMessage: `SYSMSG-SPIKE pass ${n} of 2 · 1 finding (vocab 1)` }));
   } else if (mode === 'json') {
     process.stdout.write(JSON.stringify({ decision: 'block', reason, systemMessage: `SYSMSG-SPIKE pass ${n} of 2 · 1 finding (vocab 1)` }));

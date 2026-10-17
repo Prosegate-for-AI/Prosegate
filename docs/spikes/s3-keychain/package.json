@@ -7,7 +7,9 @@
     "bench:win": "npm run build && node bench-windows.mjs 20",
     "pack": "npm run build && node -e \"const f=require('fs');f.mkdirSync('pkg/dist',{recursive:true});f.copyFileSync('dist/cli.js','pkg/dist/cli.js')\" && cd pkg && npm pack --pack-destination ..",
     "build:inline": "tsup --config tsup.inline.config.ts",
-    "build:inline-copy": "tsup --config tsup.inline-copy.config.ts"
+    "build:inline-copy": "tsup --config tsup.inline-copy.config.ts",
+    "build:esbuild-copy": "esbuild src/cli.ts --bundle --platform=node --format=cjs --loader:.node=copy --outfile=dist-esbuild-copy/cli.js",
+    "build:sea": "esbuild src/cli.ts --bundle --platform=node --format=cjs --target=node22 --alias:@napi-rs/keyring=./src/keyring-sea.ts --outfile=sea/cli.cjs && node --experimental-sea-config sea/sea-config.json && node -e \"require('fs').copyFileSync(process.execPath,'sea/prosegate-spike.exe')\" && postject sea/prosegate-spike.exe NODE_SEA_BLOB sea/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2"
   },
   "license": "ISC",
   "type": "commonjs",
