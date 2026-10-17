@@ -3,15 +3,17 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   ERROR_CODES,
   HARNESSES,
-  StoredEventSchema,
+  ServerStoredEventSchema,
   TELEMETRY_BATCH_MAX,
   TELEMETRY_KINDS,
+  TELEMETRY_TS_MAX,
+  TELEMETRY_TS_MIN,
   WireBatchSchema,
   WireEventSchema,
   encodeTelemetryBatch,
   isTimestampWithinBounds,
   truncateToMinute,
-  type StoredEvent,
+  type ServerStoredEvent,
   type WireEvent,
 } from './telemetry.js';
 import { CATEGORIES } from './types.js';
@@ -50,11 +52,17 @@ describe('telemetry types', () => {
     expectTypeOf<WireEvent>().toEqualTypeOf<Expected>();
   });
   it('the stored event type is the wire type plus the stamped identifiers', () => {
-    expectTypeOf<StoredEvent>().toEqualTypeOf<Stamped<Expected>>();
+    expectTypeOf<ServerStoredEvent>().toEqualTypeOf<Stamped<Expected>>();
   });
 });
 
 const TS = 1_760_000_040_000; // a multiple of 60000
+
+const CTX = {
+  syncedProfileIds: new Set(['org-default/pr-description', 'org-default/design-doc']),
+  syncedPackIds: new Set(['org-default']),
+};
+const encode = (b: unknown) => encodeTelemetryBatch(b, CTX);
 
 const VALID: Record<string, WireEvent> = {
   session_start: { ts: TS, t: 'session_start', harness: 'claude-code', adapter_version: '0.1.0', profile_count: 3, offline: false },
@@ -88,22 +96,21 @@ describe('telemetry allowlist: valid events', () => {
   it('the stored form is the wire form plus account_id and device_id; the wire form refuses them', () => {
     for (const event of Object.values(VALID)) {
       const stored = { ...event, account_id: 'acct_01HZX', device_id: 'dev_01HZY' };
-      expect(StoredEventSchema.safeParse(stored).success).toBe(true);
+      expect(ServerStoredEventSchema.safeParse(stored).success).toBe(true);
       expect(wireOk(stored)).toBe(false);
       expect(wireOk({ ...event, account_id: 'acct_01HZX' })).toBe(false);
       expect(wireOk({ ...event, device_id: 'dev_01HZY' })).toBe(false);
-      expect(StoredEventSchema.safeParse(event).success).toBe(false); // an unstamped event is not a stored event
+      expect(ServerStoredEventSchema.safeParse(event).success).toBe(false); // an unstamped event is not a stored event
     }
   });
 
-  it('stored identifiers are tokens: bounded, no whitespace', () => {
-    const e = { ...VALID['error'], account_id: 'a'.repeat(39), device_id: 'd' };
-    expect(StoredEventSchema.safeParse(e).success).toBe(true);
-    expect(StoredEventSchema.safeParse({ ...e, account_id: 'a'.repeat(40) }).success).toBe(false); // key-shape guard
-    expect(StoredEventSchema.safeParse({ ...e, account_id: 'a.'.repeat(32) }).success).toBe(true); // 64 chars
-    expect(StoredEventSchema.safeParse({ ...e, account_id: 'a.'.repeat(32) + 'b' }).success).toBe(false); // 65 chars
-    expect(StoredEventSchema.safeParse({ ...e, device_id: 'two words' }).success).toBe(false);
-    expect(StoredEventSchema.safeParse({ ...e, account_id: 5 }).success).toBe(false);
+  it('stored identifiers are bounded visible-ASCII tokens (server-stamped: the key-shape guard does not apply to them)', () => {
+    const e = { ...VALID['error'], account_id: 'a'.repeat(64), device_id: 'd' };
+    expect(ServerStoredEventSchema.safeParse(e).success).toBe(true);
+    expect(ServerStoredEventSchema.safeParse({ ...e, account_id: 'a'.repeat(65) }).success).toBe(false);
+    expect(ServerStoredEventSchema.safeParse({ ...e, device_id: 'two words' }).success).toBe(false);
+    expect(ServerStoredEventSchema.safeParse({ ...e, account_id: 5 }).success).toBe(false);
+    expect(ServerStoredEventSchema.safeParse({ ...e, account_id: '' }).success).toBe(false);
   });
 
   it('pins the exact field list of every event kind', () => {
@@ -164,7 +171,7 @@ describe('telemetry allowlist: unknown fields are rejected everywhere', () => {
     const batch = { events: [VALID['error']] };
     expect(WireBatchSchema.safeParse(inject(batch, [])).success).toBe(false);
     expect(WireBatchSchema.safeParse(inject(batch, ['events', '0'])).success).toBe(false);
-    expect(StoredEventSchema.safeParse({ ...inject(VALID['review_full'], ['by_category']), account_id: 'a', device_id: 'd' }).success).toBe(false);
+    expect(ServerStoredEventSchema.safeParse({ ...inject(VALID['review_full'], ['by_category']), account_id: 'a', device_id: 'd' }).success).toBe(false);
     // a __proto__ array element must not be a way around the by_category schema either
     expect(Object.prototype.hasOwnProperty.call({}, 'polluted')).toBe(false);
   });
@@ -229,7 +236,7 @@ describe('telemetry allowlist: per-field formats', () => {
 
   it.each([
     ['gpt-5-mini', true], ['claude-haiku-4-5-20251001', true], ['openai:gpt-5.1', true], ['org/model@v2', true], ['o3', true], ['0', true],
-    ['GPT-5', false], ['-gpt', false], ['.model', false], ['gpt 5', false], ['gpt\n5', false], ['gpt#5', false], ['', false], ['This_PR_introduces_a_robust_caching_layer', false],
+    ['GPT-5', true], ['GPT4o-Prod', true], ['ft:gpt-4o-mini-2024-07-18:acme-corp::9qTVM5AR', true], ['meta-llama/Meta-Llama-3.1-8B-Instruct', true], ['gpt+5', false], ['gpt_5 ', false], ['-gpt', false], ['.model', false], ['gpt 5', false], ['gpt\n5', false], ['gpt#5', false], ['', false], ['This_PR_introduces_a_robust_caching_layer', false],
   ])('reviewer.model %j is %s', (v, valid) => {
     expect(wireOk(set('review_full', ['reviewer', 'model'], v))).toBe(valid);
   });
@@ -278,11 +285,13 @@ describe('telemetry allowlist: per-field formats', () => {
 });
 
 describe('telemetry allowlist: timestamps', () => {
-  it('ts must be an integer epoch-ms multiple of 60000', () => {
-    for (const ok of [0, 60_000, TS]) expect(wireOk({ ...V('error'), ts: ok })).toBe(true);
-    for (const bad of [1, 59_999, TS + 1, -60_000, 1.5, Number.NaN, Number.POSITIVE_INFINITY, '1760000040000', null]) {
-      expect(wireOk({ ...V('error'), ts: bad })).toBe(false);
-    }
+  it('ts must be an integer epoch-ms multiple of 60000, between 2020-01-01 and 2100-01-01', () => {
+    for (const ok of [TELEMETRY_TS_MIN, TELEMETRY_TS_MIN + 60_000, TS, TELEMETRY_TS_MAX]) expect(wireOk({ ...V('error'), ts: ok })).toBe(true);
+    const bad = [
+      0, 60_000, TELEMETRY_TS_MIN - 60_000, TELEMETRY_TS_MAX + 60_000, 4_102_444_800_000_000,
+      1, 59_999, TS + 1, -60_000, 1.5, Number.NaN, Number.POSITIVE_INFINITY, '1760000040000', null,
+    ];
+    for (const b of bad) expect(wireOk({ ...V('error'), ts: b }), String(b)).toBe(false);
     const missing = V('error');
     delete missing.ts;
     expect(wireOk(missing)).toBe(false);
@@ -444,7 +453,7 @@ describe('telemetry batch and the send path', () => {
 
   it('encodeTelemetryBatch returns the JSON of the parsed batch and round-trips', () => {
     const batch = { events: Object.values(VALID) };
-    const wire = encodeTelemetryBatch(batch);
+    const wire = encode(batch);
     expect(typeof wire).toBe('string');
     expect(JSON.parse(wire)).toEqual(batch);
     expect(wire).toBe(JSON.stringify(WireBatchSchema.parse(batch)));
@@ -452,18 +461,18 @@ describe('telemetry batch and the send path', () => {
   });
 
   it('encodeTelemetryBatch throws on anything the schema refuses, and returns nothing', () => {
-    expect(() => encodeTelemetryBatch({ events: [{ ...VALID['error'], session_id: 's1' }] })).toThrow();
-    expect(() => encodeTelemetryBatch({ events: [{ ...VALID['error'], account_id: 'a', device_id: 'd' }] })).toThrow();
-    expect(() => encodeTelemetryBatch({ events: Array.from({ length: 51 }, () => VALID['error']) })).toThrow();
-    expect(() => encodeTelemetryBatch({ events: [{ ...VALID['review_full'], reviewer: { ...VALID['review_full'], model: 'sk-proj-abcdef' } }] })).toThrow();
-    expect(() => encodeTelemetryBatch(null)).toThrow();
-    expect(() => encodeTelemetryBatch('{"events":[]}')).toThrow();
+    expect(() => encode({ events: [{ ...VALID['error'], session_id: 's1' }] })).toThrow();
+    expect(() => encode({ events: [{ ...VALID['error'], account_id: 'a', device_id: 'd' }] })).toThrow();
+    expect(() => encode({ events: Array.from({ length: 51 }, () => VALID['error']) })).toThrow();
+    expect(() => encode({ events: [{ ...VALID['review_full'], reviewer: { ...VALID['review_full'], model: 'sk-proj-abcdef' } }] })).toThrow();
+    expect(() => encode(null)).toThrow();
+    expect(() => encode('{"events":[]}')).toThrow();
   });
 
   it('encodeTelemetryBatch refuses a model id with the shape of a key', () => {
     const e = V('review_full');
     e.reviewer.model = ['sk', 'proj', 'abcdefghijklmnop'].join('-');
-    expect(() => encodeTelemetryBatch({ events: [e] })).toThrow(/key or token/);
+    expect(() => encode({ events: [e] })).toThrow(/key or token/);
   });
 });
 
@@ -489,7 +498,7 @@ describe('telemetry property: prose cannot leak', () => {
   const slug = () => Array.from({ length: 1 + int(20) }, () => pick([...'abcdefghijklmnopqrstuvwxyz0123456789-'])).join('');
   const profile = () => (rnd() < 0.2 ? 'local' : `${slug().replace(/^local$/, 'x')}/${slug()}`);
   const ruleId = () => `${slug()}.${pick(['filler', 'hedge', 'vocab', 'triad', 'structure', 'repetition'])}.${String(int(1000)).padStart(3, '0')}`;
-  const minute = () => int(30_000_000) * 60_000;
+  const minute = () => TELEMETRY_TS_MIN + int(30_000_000) * 60_000;
 
   function gen(): WireEvent {
     switch (int(5)) {
@@ -539,7 +548,7 @@ describe('telemetry property: prose cannot leak', () => {
 
   it('an encoded batch never contains the prose sentence', () => {
     for (let i = 0; i < events.length; i += TELEMETRY_BATCH_MAX) {
-      const wire = encodeTelemetryBatch({ events: events.slice(i, i + TELEMETRY_BATCH_MAX) });
+      const wire = encode({ events: events.slice(i, i + TELEMETRY_BATCH_MAX) });
       expect(wire).not.toContain(FAKE_PROSE);
       expect(wire).not.toContain('caching layer');
     }
@@ -589,5 +598,79 @@ describe('telemetry property: prose cannot leak', () => {
       expect(wireOk({ ...e, [slug()]: FAKE_PROSE })).toBe(false);
       expect(wireOk({ ...e, [SPACELESS_PROSE]: 1 })).toBe(false);
     }
+  });
+});
+
+describe('telemetry: local names never leave the machine (encodeTelemetryBatch masking)', () => {
+  const review = (over: Record<string, unknown>) => ({ ...V('review_full'), ...over });
+  const decode = (events: unknown[]) => (JSON.parse(encode({ events })) as { events: any[] }).events;
+
+  it('maps an unsynced profile_id to local and keeps a synced one', () => {
+    const [a, b, c] = decode([
+      review({ profile_id: 'me/divorce-letter-to-sarah' }),
+      review({ profile_id: 'org-default/pr-description' }),
+      review({ profile_id: 'local' }),
+    ]);
+    expect(a.profile_id).toBe('local');
+    expect(b.profile_id).toBe('org-default/pr-description');
+    expect(c.profile_id).toBe('local');
+  });
+
+  it('maps unsynced from and to in profile_select', () => {
+    const [e] = decode([{ ts: TS, t: 'profile_select', from: 'me/secret-novel', to: 'org-default/design-doc', by: 'user' }]);
+    expect(e.from).toBe('local');
+    expect(e.to).toBe('org-default/design-doc');
+    const [f] = decode([{ ts: TS, t: 'profile_select', from: 'org-default/pr-description', to: 'me/cover-letter-for-acme', by: 'model' }]);
+    expect(f.from).toBe('org-default/pr-description');
+    expect(f.to).toBe('local');
+  });
+
+  it("drops a rule id whose pack is local, keeps core and synced packs, and leaves the category counts alone", () => {
+    const [e] = decode([
+      review({
+        rule_ids: ['core.hedge.001', 'org-default.vocab.002', 'my-private-pack.filler.001', 'sarah-letter.triad.003'],
+        by_category: { hedge: 1, vocab: 1, filler: 1, triad: 1 },
+      }),
+    ]);
+    expect(e.rule_ids).toEqual(['core.hedge.001', 'org-default.vocab.002']);
+    expect(e.by_category).toEqual({ hedge: 1, vocab: 1, filler: 1, triad: 1 });
+  });
+
+  it('the encoded bytes contain none of the local names', () => {
+    const wire = encode({
+      events: [
+        review({ profile_id: 'me/divorce-letter-to-sarah', rule_ids: ['my-private-pack.filler.001'] }),
+        { ts: TS, t: 'profile_select', from: 'me/divorce-letter-to-sarah', to: 'me/other-private', by: 'user' },
+      ],
+    });
+    for (const name of ['divorce', 'sarah', 'my-private-pack', 'other-private']) expect(wire).not.toContain(name);
+  });
+
+  it('with empty sets everything but core is masked', () => {
+    const empty = { syncedProfileIds: new Set<string>(), syncedPackIds: new Set<string>() };
+    const out = JSON.parse(encodeTelemetryBatch({ events: [review({ rule_ids: ['core.hedge.001', 'org-default.vocab.002'] })] }, empty)) as { events: any[] };
+    expect(out.events[0].profile_id).toBe('local');
+    expect(out.events[0].rule_ids).toEqual(['core.hedge.001']);
+  });
+
+  it('does not mutate its input, and masks only what it should (other events pass through)', () => {
+    const input = { events: [review({ profile_id: 'me/private-x' }), V('error')] };
+    const before = JSON.stringify(input);
+    const out = decode(input.events);
+    expect(JSON.stringify(input)).toBe(before);
+    expect(out[1]).toEqual(V('error'));
+  });
+
+  it('masking never rescues an otherwise invalid batch: wrong types and unknown fields still throw', () => {
+    expect(() => encode({ events: [review({ profile_id: 5 })] })).toThrow();
+    expect(() => encode({ events: [review({ rule_ids: [5] })] })).toThrow();
+    expect(() => encode({ events: [review({ session_id: 'x' })] })).toThrow();
+    expect(() => encode({ events: ['x'] })).toThrow();
+    expect(() => encode({ events: [null] })).toThrow();
+  });
+
+  it('a masked id that is still not valid (a synced set that contains a local-namespace id) is rejected, not sent', () => {
+    const bad = { syncedProfileIds: new Set(['local/my-profile']), syncedPackIds: new Set<string>() };
+    expect(() => encodeTelemetryBatch({ events: [review({ profile_id: 'local/my-profile' })] }, bad)).toThrow();
   });
 });

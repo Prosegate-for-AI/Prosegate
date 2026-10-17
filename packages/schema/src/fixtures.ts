@@ -2,6 +2,7 @@
 // not exported from index.ts.
 
 import { findingId } from './finding-id.js';
+import { renderFeedbackText } from './render.js';
 import { ReviewResultSchema } from './schemas.js';
 import type { Action, Category, Finding, ReviewResult, Severity } from './types.js';
 
@@ -22,10 +23,15 @@ export interface FixtureOptions {
   profileId: string;
   pass?: 1 | 2;
   findings: FixtureFinding[];
-  feedbackText?: string;
   verdict?: ReviewResult["verdict"];
   cleared?: string[];
   reviewer?: ReviewResult["stats"]["reviewer"];
+}
+
+/** Sets feedback_text to the canonical rendering (what the strict validator requires) and returns the result. */
+export function refeed<T extends ReviewResult>(r: T): T {
+  r.feedback_text = renderFeedbackText(r);
+  return r;
 }
 
 export function makeResult(opts: FixtureOptions): ReviewResult {
@@ -65,7 +71,7 @@ export function makeResult(opts: FixtureOptions): ReviewResult {
       reviewer: opts.reviewer ?? null,
       rules_latency_ms: 3,
     },
-    feedback_text: opts.feedbackText ?? '',
+    feedback_text: '',
   };
-  return ReviewResultSchema.parse(result);
+  return ReviewResultSchema.parse(refeed(result));
 }

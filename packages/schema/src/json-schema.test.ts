@@ -25,7 +25,10 @@ describe('committed JSON Schema files', () => {
   it('carries the producer-schema comment (ADR-17) and a title', () => {
     for (const g of generated) {
       const doc = JSON.parse(g.content) as { $comment: string; title: string };
-      expect(doc.$comment).toBe('Producer schema; consumers must tolerate unknown optional fields and enum values per 03 Versioning.');
+      expect(doc.$comment).toBe(
+        'Producer schema; consumers must tolerate unknown optional fields and enum values per 03 Versioning. ' +
+          'Cross-field invariants (spans, order, forks, caps, feedback_text equality) are enforced by @prosegate/schema and are not expressible here.',
+      );
       expect(['prosegate.review/1', 'prosegate.findings/1']).toContain(doc.title);
     }
   });

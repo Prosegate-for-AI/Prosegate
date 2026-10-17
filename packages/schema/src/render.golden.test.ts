@@ -48,7 +48,7 @@ const MOCK1_FINDINGS: FixtureFinding[] = [
 ];
 
 function mock1(): ReviewResult {
-  return makeResult({ text: MOCK1_TEXT, profileId: 'local/pr-description', findings: MOCK1_FINDINGS, feedbackText: MOCK1_FEEDBACK });
+  return makeResult({ text: MOCK1_TEXT, profileId: 'local/pr-description', findings: MOCK1_FINDINGS });
 }
 
 const MOCK1_NOTICE_LINE = 'Prosegate \u00b7 profile pr-description \u00b7 3 findings (hedge 1, vocab 1, triad 1) \u00b7 revising, pass 1 of 2';
@@ -279,7 +279,7 @@ describe('09 mock 3: advisory', () => {
 
   it('never adds the override line, even on a first notice', () => {
     expect(renderNotice(r, { ...advisory, render: 'summary', firstNoticeOfSession: true })).toBe(LINE);
-    expect(renderNotice(r, { ...advisory, firstNoticeOfSession: true })?.includes('Session override')).toBe(false);
+    expect(renderNotice(r, { ...advisory, firstNoticeOfSession: true })?.includes('To pause for this session')).toBe(false);
   });
 
   it('render none wins over advisory', () => {
@@ -378,7 +378,7 @@ describe('noise budget (ADR-12, ADR-16)', () => {
         '  vocab   core.vocab.003   "alpha"',
         '  vocab   core.vocab.003   "echo"',
         '  triad   core.triad.001   "bravo"',
-        '  Session override: prosegate advisory',
+        '  To pause for this session, run: prosegate advisory',
       ].join('\n'),
     );
   });
@@ -393,11 +393,11 @@ describe('noise budget (ADR-12, ADR-16)', () => {
         '  hedge   core.hedge.002   "hotel"',
         '  vocab   core.vocab.003   "alpha"',
         '  +4 more',
-        '  Session override: prosegate advisory',
+        '  To pause for this session, run: prosegate advisory',
       ].join('\n'),
     );
     expect(out?.split('\n')).toHaveLength(7);
-    expect(renderNotice(eight(6), { ...diff, firstNoticeOfSession: true })?.split('\n').slice(-2)).toEqual(['  +2 more', '  Session override: prosegate advisory']);
+    expect(renderNotice(eight(6), { ...diff, firstNoticeOfSession: true })?.split('\n').slice(-2)).toEqual(['  +2 more', '  To pause for this session, run: prosegate advisory']);
   });
 
   it('first notice with fewer findings lists them all, then the override line', () => {
@@ -406,21 +406,21 @@ describe('noise budget (ADR-12, ADR-16)', () => {
         'Prosegate \u00b7 profile chat-reply \u00b7 2 findings (vocab 1, triad 1) \u00b7 revising, pass 1 of 2',
         '  vocab   core.vocab.003  "alpha"',
         '  triad   core.triad.001  "bravo"',
-        '  Session override: prosegate advisory',
+        '  To pause for this session, run: prosegate advisory',
       ].join('\n'),
     );
   });
 
   it('first notice in summary render appends the override line to the single notice line', () => {
     expect(renderNotice(eight(2), { ...diff, render: 'summary', firstNoticeOfSession: true })).toBe(
-      ['Prosegate \u00b7 profile chat-reply \u00b7 2 findings (vocab 1, triad 1) \u00b7 revising, pass 1 of 2', '  Session override: prosegate advisory'].join('\n'),
+      ['Prosegate \u00b7 profile chat-reply \u00b7 2 findings (vocab 1, triad 1) \u00b7 revising, pass 1 of 2', '  To pause for this session, run: prosegate advisory'].join('\n'),
     );
   });
 
   it('the override line is never added to pass 2 or shipped notices', () => {
     const survivor = mock2(2, [mock2Findings[1] as FixtureFinding]);
-    expect(renderNotice(survivor, { ...diff, firstNoticeOfSession: true, phase: 'pass2', pass1BlockCount: 2 })?.includes('Session override')).toBe(false);
-    expect(renderNotice(survivor, { ...diff, firstNoticeOfSession: true, phase: 'shipped' })?.includes('Session override')).toBe(false);
+    expect(renderNotice(survivor, { ...diff, firstNoticeOfSession: true, phase: 'pass2', pass1BlockCount: 2 })?.includes('To pause for this session')).toBe(false);
+    expect(renderNotice(survivor, { ...diff, firstNoticeOfSession: true, phase: 'shipped' })?.includes('To pause for this session')).toBe(false);
   });
 
   it('shipped and advisory notices follow the same six-slot budget', () => {

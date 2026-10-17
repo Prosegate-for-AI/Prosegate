@@ -9,7 +9,9 @@
 //     source, segment kind, pass);
 //   - drops, one at a time and reporting each in `issues`, any finding that breaks a per-finding
 //     invariant (03: "consumers drop mismatches"): bad span, rule_id, fork or injection limit,
-//     unknown or non-prose segment, wrong order, or a forbidden intersection. The rest is kept.
+//     unknown or non-prose segment, wrong order, or a forbidden intersection. The rest is kept;
+//   - never returns the producer's feedback_text: it is re-rendered from the findings that survive,
+//     and effective_verdict says whether a revision is still warranted.
 
 import { z } from 'zod';
 import {
@@ -32,6 +34,7 @@ import {
   segmentIndex,
 } from './schemas.js';
 import type { PlacedFinding } from './schemas.js';
+import { renderFeedbackText } from './render.js';
 import { ACTIONS } from './types.js';
 import type { Action, Finding, ReviewResult } from './types.js';
 
@@ -103,7 +106,7 @@ export interface LenientIssue {
 }
 
 export type LenientParseResult =
-  | { ok: true; value: LenientReviewResult; issues: LenientIssue[] }
+  | { ok: true; value: LenientReviewResult; effective_verdict: LenientReviewResult['verdict']; issues: LenientIssue[] }
   | { ok: false; error: string; issues: LenientIssue[] };
 
 /**
@@ -139,7 +142,15 @@ export function parseReviewResultLenient(json: unknown): LenientParseResult {
       kept.push(f as LenientFinding);
     }
   });
-  return { ok: true, value: { ...doc, findings: kept } as LenientReviewResult, issues };
+  // feedback_text is producer text that goes to the model: never trust it. Discard the incoming
+  // string and render it from the findings that survived.
+  const result = { ...doc, findings: kept, feedback_text: '' } as LenientReviewResult;
+  result.feedback_text = renderFeedbackText(result);
+  // The producer verdict is left as sent. effective_verdict is what is consistent with what is
+  // rendered: 'revise' needs a surviving block finding, and a poison finding can make the parser
+  // drop every real one.
+  const effective_verdict = result.verdict === 'revise' && !kept.some((f) => f.severity === 'block') ? 'pass' : result.verdict;
+  return { ok: true, value: result, effective_verdict, issues };
 }
 
 export function isKnownAction(action: string): action is Action {

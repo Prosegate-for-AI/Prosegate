@@ -4,7 +4,7 @@
 //
 // Every field interpolated into either string goes through safeInline() first, so no field value
 // (a span copied from the draft, a reviewer-written instruction, a profile id from a pack) can
-// start a new line, forge a "Session override" line, move the cursor or reorder text.
+// start a new line, forge a protocol line, move the cursor or reorder text.
 
 import { CATEGORIES } from './types.js';
 import type { Category, Severity } from './types.js';
@@ -26,7 +26,8 @@ export interface RenderableResult {
   findings: readonly RenderableFinding[];
 }
 
-export const OVERRIDE_LINE = 'Session override: prosegate advisory';
+export const OVERRIDE_LINE = 'To pause for this session, run: prosegate advisory';
+export const VIA_MODEL_CAP = 300;
 export const REPLY_LINE = 'Reply with the revised response only. Do not run prosegate commands.';
 export const PAUSE_LINE = 'To pause these revisions for this session, the user can run: prosegate advisory';
 export const FEEDBACK_TRIM = 80;
@@ -45,32 +46,71 @@ const ELLIPSIS = '\u2026';
 
 const CATEGORY_INDEX = new Map<Category, number>(CATEGORIES.map((c, i) => [c, i]));
 
-/**
- * Makes a value safe to place inside one line of output:
- *  1. line breaks and tabs (CR LF VT FF NEL, U+2028, U+2029, TAB) become spaces;
- *  2. the remaining C0/C1 controls (so ESC, hence ANSI CSI/OSC, and 0x9B) are removed, as are bidi
- *     controls and zero-width characters (U+061C, U+200B-U+200F, U+202A-U+202E, U+2060,
- *     U+2066-U+2069, U+FEFF);
- *  3. runs of whitespace collapse to one space.
- * Ordinary text is returned unchanged.
- */
-export function safeInline(s: string): string {
-  return s
-    .replace(/[\t\n\v\f\r\u0085\u2028\u2029]/g, ' ')
-    // eslint-disable-next-line no-control-regex -- stripping control characters is the point
-    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g, '')
-    .replace(/\s+/g, ' ');
+// Characters removed by safeInline besides the Cc controls and the Cf format characters (see below).
+const INVISIBLE_EXTRA =
+  '[\u{e0000}-\u{e007f}\ufe00-\ufe0d\u{e0100}-\u{e01ef}\ufff9-\ufffc\u180e\u034f\u00ad\u115f\u1160\u3164\uffa0\u2800' +
+  '\u2061-\u2064\u206a-\u206f\u{1d159}\u{1bca0}-\u{1bca3}\u{13430}-\u{1343f}]';
+// The Cc class is C0/C1 (ESC, hence ANSI CSI/OSC, and 0x9B). The Cf class is every format character (bidi
+// controls, zero-width, joiners, invisible operators, tag characters) except ZWNJ and ZWJ, which
+// Persian shaping and emoji sequences need.
+// eslint-disable-next-line no-misleading-character-class -- the class lists combining and joining characters precisely in order to remove them
+const STRIP_RE = new RegExp(String.raw`\p{Cc}|(?!\u200c|\u200d)\p{Cf}|${INVISIBLE_EXTRA}`, 'gu');
+const LONE_SURROGATE_RE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
+const MAX_MARKS_PER_GRAPHEME = 2;
+
+const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/** Extended grapheme clusters (Intl.Segmenter: available in Node and in Workers). */
+function graphemes(s: string): string[] {
+  return Array.from(segmenter.segment(s), (x) => x.segment);
+}
+
+/** Keeps at most MAX_MARKS_PER_GRAPHEME combining marks per grapheme (U+FE0E/U+FE0F do not count). */
+function boundMarks(s: string): string {
+  if (!/\p{M}/u.test(s)) return s;
+  return graphemes(s)
+    .map((g) => {
+      let marks = 0;
+      let out = '';
+      for (const cp of g) {
+        if (/\p{M}/u.test(cp) && cp !== '\ufe0e' && cp !== '\ufe0f' && ++marks > MAX_MARKS_PER_GRAPHEME) continue;
+        out += cp;
+      }
+      return out;
+    })
+    .join('');
 }
 
 /**
- * ADR-12/ADR-16 trimming on already-sanitised text: counts Unicode code points; a text longer than
- * `max` keeps its first max-1 code points, cut back to the last space if one falls within the final
- * TRIM_WORD_WINDOW of them. The caller prints the ellipsis (outside any quotes) when `trimmed`.
+ * Makes a value safe to place inside one line of output:
+ *  1. line breaks and tabs (CR LF VT FF NEL, U+2028, U+2029, TAB) become spaces;
+ *  2. removed: C0/C1 controls; all Unicode format characters (Cf) except ZWNJ and ZWJ; tag
+ *     characters; variation selectors other than U+FE0E/U+FE0F; invisible fillers and operators
+ *     (U+034F, U+00AD, U+115F, U+1160, U+3164, U+FFA0, U+2800, U+2061-U+2064, U+206A-U+206F,
+ *     U+FFF9-U+FFFC, U+180E, U+1D159, U+1BCA0-U+1BCA3, U+13430-U+1343F); lone surrogates;
+ *  3. runs of whitespace (U+3000 included) collapse to one space;
+ *  4. a grapheme keeps at most two combining marks.
+ * Ordinary text, accents, CJK, Persian and emoji sequences are returned unchanged.
+ */
+export function safeInline(s: string): string {
+  const cleaned = s
+    .replace(/[\t\n\v\f\r\u0085\u2028\u2029]/g, ' ')
+    .replace(LONE_SURROGATE_RE, '')
+    .replace(STRIP_RE, '')
+    .replace(/\s+/g, ' ');
+  return boundMarks(cleaned);
+}
+
+/**
+ * Trimming on already-sanitised text, counted in grapheme clusters so a cut never leaves half a
+ * family emoji, half a flag or a base without its combining mark. A text longer than `max` keeps its
+ * first max-1 graphemes, cut back to the last space if one falls within the final TRIM_WORD_WINDOW
+ * of them. The caller prints the ellipsis (outside any quotes) when `trimmed`.
  */
 export function trimSpan(s: string, max: number): { text: string; trimmed: boolean } {
-  const points = Array.from(s);
-  if (points.length <= max) return { text: s, trimmed: false };
-  const kept = points.slice(0, max - 1);
+  const g = graphemes(s);
+  if (g.length <= max) return { text: s, trimmed: false };
+  const kept = g.slice(0, max - 1);
   const lastSpace = kept.lastIndexOf(' ');
   if (lastSpace > 0 && kept.length - lastSpace <= TRIM_WORD_WINDOW) {
     return { text: kept.slice(0, lastSpace).join('').trimEnd(), trimmed: true };
@@ -78,16 +118,26 @@ export function trimSpan(s: string, max: number): { text: string; trimmed: boole
   return { text: kept.join(''), trimmed: true };
 }
 
+/**
+ * A span in double quotes. Inside the quotes an ASCII `"` becomes `\"` (and a backslash that sits
+ * before a quote or at the end of the span becomes `\\`), so span text cannot close the quotes and
+ * continue the line as if it were ours. The ellipsis of a trimmed span goes outside the quotes.
+ */
 function quotedSpan(raw: string, max: number): string {
   const { text, trimmed } = trimSpan(safeInline(raw), max);
-  return `"${text}"${trimmed ? ELLIPSIS : ''}`;
+  const escaped = text.replace(/\\(?="|$)/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"${trimmed ? ELLIPSIS : ''}`;
 }
 
-/** Hard cap on an instruction as printed: the first 199 code points plus an ellipsis. */
+/** Caps printed text at `max` graphemes: the first max-1 plus an ellipsis. */
+function capGraphemes(s: string, max: number): string {
+  const g = graphemes(s);
+  return g.length <= max ? s : g.slice(0, max - 1).join('') + ELLIPSIS;
+}
+
+/** Hard cap on an instruction as printed (200). */
 function instructionText(raw: string): string {
-  const s = safeInline(raw);
-  const points = Array.from(s);
-  return points.length <= INSTRUCTION_CAP ? s : points.slice(0, INSTRUCTION_CAP - 1).join('') + ELLIPSIS;
+  return capGraphemes(safeInline(raw), INSTRUCTION_CAP);
 }
 
 function plural(n: number, noun: string): string {
@@ -112,11 +162,15 @@ function renderedFor(pass: 1 | 2, findings: readonly RenderableFinding[]): Rende
 }
 
 export interface FeedbackTextOptions {
-  /** ADR-12 `render_channel: via_model`: the notice the model is asked to carry verbatim. */
+  /**
+   * ADR-12 `render_channel: via_model`: the notice the model is asked to carry verbatim (one line,
+   * at most 300 characters as printed). The adapter adds this at output time; the stored
+   * ReviewResult.feedback_text is always the canonical rendering without it.
+   */
   noticeViaModel?: string;
 }
 
-/** The string the model receives. '' when there is nothing to render. */
+/** The string the model receives ('' when there is nothing to render). Without opts this is the canonical form that ReviewResult.feedback_text must equal; the adapter adds the via_model line at output time and never stores it. */
 export function renderFeedbackText(result: RenderableResult, opts: FeedbackTextOptions = {}): string {
   const shown = inDocumentOrder(renderedFor(result.pass, result.findings));
   if (shown.length === 0) return '';
@@ -137,7 +191,7 @@ export function renderFeedbackText(result: RenderableResult, opts: FeedbackTextO
     lines.push(`${i + 1}. ${categoryLabel(f.category)}${rule} ${EM_DASH} ${quotedSpan(f.span.text, FEEDBACK_TRIM)} ${ARROW} ${tail}`);
   });
   if (opts.noticeViaModel !== undefined) {
-    lines.push(`Begin your revised response with this line, verbatim: ${safeInline(opts.noticeViaModel)}`);
+    lines.push(`Begin your revised response with this line, verbatim: ${capGraphemes(safeInline(opts.noticeViaModel), VIA_MODEL_CAP)}`);
   }
   lines.push(REPLY_LINE, PAUSE_LINE);
   return lines.join('\n');

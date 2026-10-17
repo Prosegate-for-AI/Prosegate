@@ -14,7 +14,8 @@ export interface GeneratedSchemaFile {
 
 /** ADR-17: the emitted schemas are the producer form; consumers follow 03 "Versioning". */
 export const PRODUCER_SCHEMA_COMMENT =
-  'Producer schema; consumers must tolerate unknown optional fields and enum values per 03 Versioning.';
+  'Producer schema; consumers must tolerate unknown optional fields and enum values per 03 Versioning. ' +
+  'Cross-field invariants (spans, order, forks, caps, feedback_text equality) are enforced by @prosegate/schema and are not expressible here.';
 
 function emit(schema: z.ZodType, title: string): string {
   const json = z.toJSONSchema(schema, { target: 'draft-2020-12', io: 'output' });

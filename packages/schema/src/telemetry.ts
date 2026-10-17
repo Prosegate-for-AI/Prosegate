@@ -58,7 +58,7 @@ export const LATENCY_BUCKETS_MS = [500, 1000, 2000, 4000, 8000] as const;
 
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
-const MODEL_RE = /^[a-z0-9][a-z0-9._:@/-]{0,63}$/;
+const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,63}$/;
 
 /** A synced profile id (04 grammar, namespace not 'local') or the literal 'local'; never a local profile's own name. */
 const TelemetryProfileId = Token.refine(
@@ -77,30 +77,51 @@ export function isTimestampWithinBounds(ts: number, nowMs: number, windowMs: num
   return Number.isFinite(ts) && Number.isFinite(nowMs) && Math.abs(ts - nowMs) <= windowMs;
 }
 
+/** Schema-level sanity for ts: 2020-01-01 to 2100-01-01 (the server's +-1 day window check is separate). */
+export const TELEMETRY_TS_MIN = Date.UTC(2020, 0, 1);
+export const TELEMETRY_TS_MAX = Date.UTC(2100, 0, 1);
+
 const Ts = z
   .number()
   .int()
-  .nonnegative()
+  .min(TELEMETRY_TS_MIN)
+  .max(TELEMETRY_TS_MAX)
   .refine((n) => n % MINUTE_MS === 0, 'ts must be truncated to the minute (a multiple of 60000 ms)');
 
 // ---- key-shape guard (07 Key handling) --------------------------------------------------------
 
-/** Prefixes of the secrets Prosegate handles or could meet (provider keys, tokens, vended keys). */
-export const KEY_PREFIXES = ['sk-', 'sk_', 'pk_', 'xox', 'ghp_', 'AKIA', 'pgd_'] as const;
+/**
+ * Prefixes of the secrets Prosegate handles or could meet (provider keys, tokens, vended keys). A
+ * prefix only counts with at least KEY_TAIL_MIN key characters after it, anywhere in the string, so
+ * ordinary words that happen to start with "sk-" or "xox" ("sk-team/docs", "xoxo/gossip") pass.
+ */
+export const KEY_PREFIXES = ['sk-', 'sk_', 'pk_', 'xox[abprs]-', 'ghp_', 'AKIA', 'pgd_'] as const;
+export const KEY_TAIL_MIN = 16;
+const KEY_PREFIX_RE = new RegExp(`(?:${KEY_PREFIXES.join('|')})[A-Za-z0-9_-]{${KEY_TAIL_MIN},}`);
 /**
  * A run of 40 or more base64url characters. This covers any 40+ char hex run, a 43-char base64url
  * device-key shape and a 64-char hex device-key shape, because hex and those shapes are subsets.
  */
 const LONG_KEY_RUN = /[A-Za-z0-9_-]{40,}/;
 const MAX_WALK_DEPTH = 16;
+/**
+ * The one exemption from the long-run rule: semver build metadata (after the first '+') in
+ * adapter_version. Prosegate's own build metadata is at most a 12-hex short sha, so a longer run
+ * there is not ours; it is allowed so a downstream rebuild with a full git sha does not lose all
+ * telemetry. The prefix rule still applies to the whole string.
+ */
+const BUILD_METADATA_PATHS: ReadonlySet<string> = new Set(['.adapter_version']);
 
-function looksLikeKey(s: string): boolean {
-  return KEY_PREFIXES.some((p) => s.startsWith(p)) || LONG_KEY_RUN.test(s);
+function looksLikeKey(s: string, buildMetadataAllowed = false): boolean {
+  if (KEY_PREFIX_RE.test(s)) return true;
+  const plus = s.indexOf('+');
+  const runText = buildMetadataAllowed && plus !== -1 ? s.slice(0, plus) : s;
+  return LONG_KEY_RUN.test(runText);
 }
 
 /** Paths of every string (value or object key) in `value` that has the shape of a key. */
 export function findKeyShapedStrings(value: unknown, path = '', depth = 0): string[] {
-  if (typeof value === 'string') return looksLikeKey(value) ? [path || '(root)'] : [];
+  if (typeof value === 'string') return looksLikeKey(value, BUILD_METADATA_PATHS.has(path)) ? [path || '(root)'] : [];
   if (value === null || typeof value !== 'object') return [];
   if (depth >= MAX_WALK_DEPTH) return [`${path || '(root)'} (too deep)`];
   const out: string[] = [];
@@ -119,6 +140,14 @@ function rejectKeyShapes(value: unknown, ctx: z.core.$RefinementCtx): void {
   for (const p of findKeyShapedStrings(value)) {
     ctx.addIssue({ code: 'custom', message: `string at ${p} has the shape of a key or token` });
   }
+}
+
+/** As rejectKeyShapes, but the server-stamped account_id and device_id are not the client's to leak and are not checked. */
+function rejectKeyShapesInEvent(value: unknown, ctx: z.core.$RefinementCtx): void {
+  const rest: Record<string, unknown> = { ...(value as Record<string, unknown>) };
+  Reflect.deleteProperty(rest, 'account_id');
+  Reflect.deleteProperty(rest, 'device_id');
+  rejectKeyShapes(rest, ctx);
 }
 
 // ---- event shapes ----------------------------------------------------------------------------
@@ -224,12 +253,14 @@ export const WireEventSchema = z
 export type WireEvent = z.infer<typeof WireEventSchema>;
 
 /** Body of POST /telemetry (06): at most 50 events; any unknown field anywhere drops the batch. */
-export const WireBatchSchema = z
-  .strictObject({ events: z.array(WireEventSchema).max(TELEMETRY_BATCH_MAX) })
-  .superRefine(rejectKeyShapes);
+export const WireBatchSchema = z.strictObject({ events: z.array(WireEventSchema).max(TELEMETRY_BATCH_MAX) });
 export type WireBatch = z.infer<typeof WireBatchSchema>;
 
-/** Stored form: the wire event plus the identifiers the service stamps from the device key. */
+/**
+ * Stored form: the wire event plus the identifiers the service stamps from the device key. FOR THE
+ * CONFIG SERVICE ONLY (the adapter never builds one). The key-shape guard covers the event's own
+ * fields but deliberately not the stamped account_id and device_id, which the service generated.
+ */
 const STORED_KINDS = {
   session_start: z.strictObject({ ...stamp, ...wire, ...sessionStartShape }),
   review: z.strictObject({ ...stamp, ...wire, ...reviewShape }).superRefine(reviewChecks),
@@ -238,22 +269,65 @@ const STORED_KINDS = {
   error: z.strictObject({ ...stamp, ...wire, ...errorShape }),
 } as const;
 
-export const StoredEventSchema = z
-  .discriminatedUnion("t", [
+export const ServerStoredEventSchema = z
+  .discriminatedUnion('t', [
     STORED_KINDS.session_start,
     STORED_KINDS.review,
     STORED_KINDS.enforcement,
     STORED_KINDS.profile_select,
     STORED_KINDS.error,
   ])
-  .superRefine(rejectKeyShapes);
-export type StoredEvent = z.infer<typeof StoredEventSchema>;
+  .superRefine(rejectKeyShapesInEvent);
+export type ServerStoredEvent = z.infer<typeof ServerStoredEventSchema>;
+
+/** What the adapter knows about which names exist on the server (07: local names never leave the machine). */
+export interface TelemetryMaskContext {
+  /** Profile ids that are synced from the config service (e.g. 'org-default/pr-description'). */
+  syncedProfileIds: ReadonlySet<string>;
+  /** Pack ids that are synced from the config service. 'core' is always allowed. */
+  syncedPackIds: ReadonlySet<string>;
+}
+
+function maskProfileId(id: unknown, ctx: TelemetryMaskContext): unknown {
+  return typeof id === 'string' && id !== 'local' && !ctx.syncedProfileIds.has(id) ? 'local' : id;
+}
+
+function maskEvent(e: unknown, ctx: TelemetryMaskContext): unknown {
+  if (e === null || typeof e !== 'object' || Array.isArray(e)) return e;
+  const event = { ...(e as Record<string, unknown>) };
+  if (event['t'] === 'review') {
+    event['profile_id'] = maskProfileId(event['profile_id'], ctx);
+    const ids = event['rule_ids'];
+    if (Array.isArray(ids)) {
+      event['rule_ids'] = ids.filter((id) => {
+        if (typeof id !== 'string') return true; // not ours to hide: the schema rejects it
+        const pack = id.split('.')[0] ?? '';
+        return pack === 'core' || ctx.syncedPackIds.has(pack);
+      });
+    }
+  } else if (event['t'] === 'profile_select') {
+    event['from'] = maskProfileId(event['from'], ctx);
+    event['to'] = maskProfileId(event['to'], ctx);
+  }
+  return event;
+}
 
 /**
- * The only way to produce the bytes the adapter POSTs: validates against the wire schema (strict,
- * formats, bounds, key-shape guard) and serialises the parsed value, never the caller's object, so
- * nothing the schema does not name can be sent. Throws a ZodError on any violation.
+ * THE ONLY WAY to produce the bytes the adapter POSTs. It (1) masks local names, because the schema
+ * cannot know which profile and pack ids exist only on this machine and a user's own profile name is
+ * private: any profile_id/from/to not in ctx.syncedProfileIds becomes 'local', and any rule id whose
+ * pack is neither 'core' nor in ctx.syncedPackIds is dropped (category counts stay); (2) validates
+ * the masked batch against the wire schema (strict, formats, bounds, key-shape guard); and (3)
+ * serialises the parsed value, never the caller's object, so nothing the schema does not name can be
+ * sent. Throws a ZodError on any violation.
+ *
+ * 07 obligation: the config service cannot tell a local id from a synced one, so this masking is
+ * the only control on that leak and must be stated in 07 as an adapter duty.
  */
-export function encodeTelemetryBatch(batch: unknown): string {
-  return JSON.stringify(WireBatchSchema.parse(batch));
+export function encodeTelemetryBatch(batch: unknown, ctx: TelemetryMaskContext): string {
+  const masked =
+    batch !== null && typeof batch === 'object' && Array.isArray((batch as { events?: unknown }).events)
+      ? { ...(batch as Record<string, unknown>), events: (batch as { events: unknown[] }).events.map((e) => maskEvent(e, ctx)) }
+      : batch;
+  return JSON.stringify(WireBatchSchema.parse(masked));
 }

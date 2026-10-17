@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { ACTIONS, CATEGORIES, FORK_TEXT, REVIEWER_CATEGORIES, RULE_CATEGORIES, SKIPPED_REASONS } from './types.js';
 import type { Category, Severity } from './types.js';
+import { renderFeedbackText } from './render.js';
 
 // ---- shared leaf schemas ------------------------------------------------------------------
 
@@ -65,6 +66,8 @@ export interface Problem {
 /** 07 threat 3/4: instruction text is bounded; register (free reviewer text) is bounded harder. */
 export const MAX_INSTRUCTION_CODEPOINTS = 200;
 export const MAX_REGISTER_INSTRUCTION_CODEPOINTS = 160;
+/** The filled-in part of the vague_claim fork, between the parentheses. */
+export const MAX_VAGUE_PARENTHETICAL_CODEPOINTS = 60;
 
 const codePointLength = (s: string): number => Array.from(s).length;
 
@@ -119,6 +122,7 @@ export function findingProblems(f: FindingShape): Problem[] {
 
   // Injection limits on text that reaches the model (07 threat 3 and 4) and the 03 forks.
   const { action, text } = f.instruction;
+  // TODO(W1.4): injectedTextViolation(text) - the ADR-19 allowlist/denylist moves here from @prosegate/profiles.
   if (codePointLength(text) > MAX_INSTRUCTION_CODEPOINTS) {
     add(['instruction', 'text'], `instruction text must be at most ${MAX_INSTRUCTION_CODEPOINTS} code points`);
   }
@@ -132,8 +136,11 @@ export function findingProblems(f: FindingShape): Problem[] {
       text.startsWith(VAGUE_CLAIM_PREFIX) &&
       text.endsWith(VAGUE_CLAIM_SUFFIX) &&
       text.length > VAGUE_CLAIM_PREFIX.length + VAGUE_CLAIM_SUFFIX.length &&
-      !/[()\r\n]/.test(middle);
-    if (!shaped) add(['instruction', 'text'], 'vague_claim requires the fork template with the parenthetical filled in');
+      codePointLength(middle) <= MAX_VAGUE_PARENTHETICAL_CODEPOINTS &&
+      // Any bracket (ASCII, fullwidth, superscript, small, ornate...) or line break would let the
+      // parenthetical close early or start a new line; the full ADR-19 filter arrives with W1.4.
+      !/[\p{Ps}\p{Pe}\r\n]/u.test(middle);
+    if (!shaped) add(['instruction', 'text'], 'vague_claim requires the fork template with a short parenthetical (no brackets) filled in');
   } else if (f.category === 'register') {
     if (f.severity === 'block') add(['severity'], 'register findings are capped at warn');
     if (codePointLength(text) > MAX_REGISTER_INSTRUCTION_CODEPOINTS) {
@@ -297,6 +304,12 @@ export const ReviewResultSchema = z
     r.findings.forEach((f, i) => {
       emit(ctx, placementProblems(r.findings.slice(0, i), f, segs), ['findings', i]);
     });
+    // feedback_text is what the model reads, so it is never free producer text: it must be exactly
+    // the canonical rendering of this result. The via_model variant is assembled by the adapter at
+    // output time from the result plus the notice and is never stored here.
+    if (r.feedback_text !== renderFeedbackText(r)) {
+      ctx.addIssue({ code: 'custom', path: ['feedback_text'], message: 'feedback_text must equal the canonical rendering of the findings (renderFeedbackText)' });
+    }
   });
 
 export const ReviewRequestSchema = z
