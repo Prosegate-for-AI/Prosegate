@@ -28,7 +28,8 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,31}\\/[a-z0-9-]{1,31}$"
         },
         "version": {
           "type": "string"
@@ -36,7 +37,8 @@
         "resolved_from": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,31}\\/[a-z0-9-]{1,31}$"
           }
         }
       },
@@ -209,7 +211,8 @@
             ]
           },
           "profile_origin": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,31}\\/[a-z0-9-]{1,31}$"
           }
         },
         "required": [
@@ -249,25 +252,54 @@
         },
         "findings_by_category": {
           "type": "object",
-          "propertyNames": {
-            "type": "string",
-            "enum": [
-              "filler",
-              "hedge",
-              "vocab",
-              "triad",
-              "structure",
-              "repetition",
-              "vague_claim",
-              "unsupported_claim",
-              "register"
-            ]
+          "properties": {
+            "filler": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "hedge": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "vocab": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "triad": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "structure": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "repetition": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "vague_claim": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "unsupported_claim": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "register": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
           },
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 9007199254740991
-          }
+          "additionalProperties": false
         },
         "rule_packs": {
           "type": "array",
@@ -275,7 +307,8 @@
             "type": "object",
             "properties": {
               "id": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[a-z0-9-]{1,31}$"
               },
               "version": {
                 "type": "string"
@@ -355,5 +388,6 @@
     "feedback_text"
   ],
   "additionalProperties": false,
+  "$comment": "Producer schema; consumers must tolerate unknown optional fields and enum values per 03 Versioning.",
   "title": "prosegate.findings/1"
 }

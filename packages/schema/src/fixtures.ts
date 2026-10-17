@@ -23,6 +23,9 @@ export interface FixtureOptions {
   pass?: 1 | 2;
   findings: FixtureFinding[];
   feedbackText?: string;
+  verdict?: ReviewResult["verdict"];
+  cleared?: string[];
+  reviewer?: ReviewResult["stats"]["reviewer"];
 }
 
 export function makeResult(opts: FixtureOptions): ReviewResult {
@@ -43,23 +46,23 @@ export function makeResult(opts: FixtureOptions): ReviewResult {
       profile_origin: opts.profileId,
     };
   });
-  findings.sort((a, b) => a.span.start - b.span.start);
+  findings.sort((a, b) => a.span.start - b.span.start || b.span.end - a.span.end);
   const byCategory: Partial<Record<Category, number>> = {};
   for (const f of findings) byCategory[f.category] = (byCategory[f.category] ?? 0) + 1;
   const result: ReviewResult = {
     schema: 'prosegate.findings/1',
-    verdict: findings.some((f) => f.severity === 'block') ? 'revise' : 'pass',
+    verdict: opts.verdict ?? (findings.some((f) => f.severity === 'block') ? 'revise' : 'pass'),
     profile: { id: opts.profileId, version: '1', resolved_from: [opts.profileId] },
     pass: opts.pass ?? 1,
     segments: [{ id: 's1', kind: 'prose', start: 0, end: opts.text.length }],
     findings,
-    cleared: [],
+    cleared: opts.cleared ?? [],
     stats: {
       prose_chars: opts.text.length,
       sentence_count: 2,
       findings_by_category: byCategory,
       rule_packs: [{ id: 'core', version: '1.0.0' }],
-      reviewer: null,
+      reviewer: opts.reviewer ?? null,
       rules_latency_ms: 3,
     },
     feedback_text: opts.feedbackText ?? '',

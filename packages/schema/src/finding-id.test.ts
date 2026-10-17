@@ -13,11 +13,15 @@ const VECTORS: Array<{ name: string; args: Parameters<typeof findingId>; hex: st
   { name: 'null rule id, other segment', args: ['vague_claim', null, 'the industry standard approach', 's2'], hex: '86bc8068ed' },
   {
     name: 'non-ASCII span (em dash, accent, astral, CJK)',
-    args: ['vocab', 'core.vocab.003', 'a robust — café \u{1d4b3} 漢字', 's1'],
+    args: ['vocab', 'core.vocab.003', 'a robust \u2014 caf\u00e9 \u{1d4b3} \u6f22\u5b57', 's1'],
     hex: 'ac5eba8c9e',
   },
   { name: 'empty span, null rule id, two-digit segment', args: ['register', null, '', 's10'], hex: '66e20bd290' },
   { name: 'org pack rule id', args: ['filler', 'org-default.filler.012', 'Great question!', 's3'], hex: '2953e31a10' },
+  { name: 'leading/trailing whitespace and a newline are hashed verbatim', args: ['filler', 'core.filler.001', '  Great question!\n', 's1'], hex: '7d32bb0e71' },
+  { name: 'same span without the whitespace', args: ['filler', 'core.filler.001', 'Great question!', 's1'], hex: 'fdb46845c1' },
+  { name: 'span containing a pipe', args: ['vocab', 'core.vocab.003', 'a|b', 's1'], hex: '16981c3029' },
+  { name: 'CRLF inside a span', args: ['hedge', 'core.hedge.001', 'line one\r\nline two', 's2'], hex: '671b982c24' },
 ];
 
 describe('findingId', () => {
@@ -41,6 +45,12 @@ describe('findingId', () => {
     expect(findingId('vocab', 'core.vocab.004', 'robust', 's1')).not.toBe(base);
     expect(findingId('vocab', 'core.vocab.003', 'Robust', 's1')).not.toBe(base);
     expect(findingId('vocab', 'core.vocab.003', 'robust', 's2')).not.toBe(base);
+  });
+
+  it('documented limitation: fields are joined with an unescaped pipe, so a pipe in a field can collide', () => {
+    // sha256("vocab|core.vocab.003|x|y|s1") for both. 03 defines the preimage this way; see finding-id.ts.
+    expect(findingId('vocab', 'core.vocab.003', 'x|y', 's1')).toBe('0033310874');
+    expect(findingId('vocab', 'core.vocab.003|x', 'y', 's1')).toBe('0033310874');
   });
 
   it('is deterministic', () => {

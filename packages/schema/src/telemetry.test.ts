@@ -2,60 +2,65 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   ERROR_CODES,
+  HARNESSES,
+  StoredEventSchema,
   TELEMETRY_BATCH_MAX,
-  TelemetryBatchSchema,
-  TelemetryEventSchema,
-  type TelemetryEvent,
+  TELEMETRY_KINDS,
+  WireBatchSchema,
+  WireEventSchema,
+  encodeTelemetryBatch,
+  isTimestampWithinBounds,
+  truncateToMinute,
+  type StoredEvent,
+  type WireEvent,
 } from './telemetry.js';
 import { CATEGORIES } from './types.js';
-import type { Category } from './types.js';
+import type { Category, SkippedReason } from './types.js';
 
-// ---- compile-time: nothing the schema emits falls outside the 07 `Event` type ---------------
-type Envelope = { account_id: string; device_id: string; ts: number };
-type Event07 = Envelope &
-  (
-    | { t: 'session_start'; harness: string; adapter_version: string; profile_count: number; offline: boolean }
-    | {
-        t: 'review';
-        profile_id: string;
-        pass: 1 | 2;
-        verdict: 'pass' | 'revise' | 'skipped';
-        skipped_reason?: string;
-        prose_words_bucket: number;
-        by_category: Partial<Record<Category, number>>;
-        rule_ids: string[];
-        reviewer?: { model: string; latency_bucket_ms: 500 | 1000 | 2000 | 4000 | 8000; findings: number; span_misses: number };
-        cleared: number;
-        cleared_categories: Category[];
-      }
-    | { t: 'enforcement'; decision: 'allow' | 'continue'; enforcement_unavailable: boolean; override_used: boolean; notice_via_model: boolean }
-    | { t: 'profile_select'; from: string; to: string; by: 'model' | 'heuristic' | 'user' }
-    | { t: 'error'; code: string }
-  );
+// ---- compile-time: the schema's output type is exactly this, no wider (toEqualTypeOf) -------
+
+type ErrorCodeLiteral =
+  | 'adapter_error' | 'reviewer_timeout' | 'reviewer_http_error' | 'reviewer_schema_invalid' | 'reviewer_key_missing'
+  | 'profile_resolution_failed' | 'pack_rejected' | 'signature_invalid' | 'snapshot_missing' | 'turn_budget_exceeded'
+  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped';
+type Expected =
+  | { ts: number; t: 'session_start'; harness: 'claude-code'; adapter_version: string; profile_count: number; offline: boolean }
+  | {
+      ts: number;
+      t: 'review';
+      profile_id: string;
+      pass: 1 | 2;
+      verdict: 'pass' | 'revise' | 'skipped';
+      skipped_reason?: SkippedReason;
+      prose_words_bucket: number;
+      by_category: Partial<Record<Category, number>>;
+      rule_ids: string[];
+      reviewer?: { model: string; latency_bucket_ms: 500 | 1000 | 2000 | 4000 | 8000; findings: number; span_misses: number };
+      cleared: number;
+      cleared_categories: Category[];
+    }
+  | { ts: number; t: 'enforcement'; decision: 'allow' | 'continue'; enforcement_unavailable: boolean; override_used: boolean; notice_via_model: boolean }
+  | { ts: number; t: 'profile_select'; from: string; to: string; by: 'model' | 'heuristic' | 'user' }
+  | { ts: number; t: 'error'; code: ErrorCodeLiteral };
+
+type Stamped<T> = T extends unknown ? { [K in keyof (T & { account_id: string; device_id: string })]: (T & { account_id: string; device_id: string })[K] } : never;
+
 describe('telemetry types', () => {
-  it('every event the schema accepts is a 07 Event', () => {
-    expectTypeOf<TelemetryEvent>().toExtend<Event07>();
+  it('the wire event type is exactly the 07 allowlist (no account_id, no device_id)', () => {
+    expectTypeOf<WireEvent>().toEqualTypeOf<Expected>();
+  });
+  it('the stored event type is the wire type plus the stamped identifiers', () => {
+    expectTypeOf<StoredEvent>().toEqualTypeOf<Stamped<Expected>>();
   });
 });
 
-const ENV = { account_id: 'acct_01HZX', device_id: 'dev_01HZY', ts: 1_760_000_000_000 };
+const TS = 1_760_000_040_000; // a multiple of 60000
 
-const VALID: Record<string, TelemetryEvent> = {
-  session_start: { ...ENV, t: 'session_start', harness: 'claude-code', adapter_version: '0.1.0', profile_count: 3, offline: false },
-  review_minimal: {
-    ...ENV,
-    t: 'review',
-    profile_id: 'local',
-    pass: 1,
-    verdict: 'pass',
-    prose_words_bucket: 0,
-    by_category: {},
-    rule_ids: [],
-    cleared: 0,
-    cleared_categories: [],
-  },
+const VALID: Record<string, WireEvent> = {
+  session_start: { ts: TS, t: 'session_start', harness: 'claude-code', adapter_version: '0.1.0', profile_count: 3, offline: false },
+  review_minimal: { ts: TS, t: 'review', profile_id: 'local', pass: 1, verdict: 'pass', prose_words_bucket: 0, by_category: {}, rule_ids: [], cleared: 0, cleared_categories: [] },
   review_full: {
-    ...ENV,
+    ts: TS,
     t: 'review',
     profile_id: 'org-default/pr-description',
     pass: 2,
@@ -68,179 +73,401 @@ const VALID: Record<string, TelemetryEvent> = {
     cleared: 2,
     cleared_categories: ['filler', 'triad'],
   },
-  enforcement: { ...ENV, t: 'enforcement', decision: 'continue', enforcement_unavailable: false, override_used: false, notice_via_model: true },
-  profile_select: { ...ENV, t: 'profile_select', from: 'local/chat-reply', to: 'org-default/design-doc', by: 'heuristic' },
-  error: { ...ENV, t: 'error', code: 'reviewer_timeout' },
+  enforcement: { ts: TS, t: 'enforcement', decision: 'continue', enforcement_unavailable: false, override_used: false, notice_via_model: true },
+  profile_select: { ts: TS, t: 'profile_select', from: 'local', to: 'org-default/design-doc', by: 'heuristic' },
+  error: { ts: TS, t: 'error', code: 'reviewer_timeout' },
 };
-
-function sets(e: unknown) {
-  return TelemetryEventSchema.safeParse(e).success;
-}
+const V = (name: string): any => structuredClone(VALID[name]);
+const wireOk = (e: unknown) => WireEventSchema.safeParse(e).success;
 
 describe('telemetry allowlist: valid events', () => {
   it.each(Object.entries(VALID))('validates %s', (_name, event) => {
-    expect(sets(event)).toBe(true);
+    expect(wireOk(event)).toBe(true);
   });
 
-  it('validates every error code and every latency bucket and every profile_select source', () => {
-    for (const code of ERROR_CODES) expect(sets({ ...ENV, t: 'error', code })).toBe(true);
-    for (const b of [500, 1000, 2000, 4000, 8000]) {
-      const e = structuredClone(VALID['review_full']) as Record<string, any>;
-      e['reviewer'].latency_bucket_ms = b;
-      expect(sets(e)).toBe(true);
+  it('the stored form is the wire form plus account_id and device_id; the wire form refuses them', () => {
+    for (const event of Object.values(VALID)) {
+      const stored = { ...event, account_id: 'acct_01HZX', device_id: 'dev_01HZY' };
+      expect(StoredEventSchema.safeParse(stored).success).toBe(true);
+      expect(wireOk(stored)).toBe(false);
+      expect(wireOk({ ...event, account_id: 'acct_01HZX' })).toBe(false);
+      expect(wireOk({ ...event, device_id: 'dev_01HZY' })).toBe(false);
+      expect(StoredEventSchema.safeParse(event).success).toBe(false); // an unstamped event is not a stored event
     }
-    for (const by of ['model', 'heuristic', 'user']) expect(sets({ ...VALID['profile_select'], by })).toBe(true);
   });
 
-  it('starts ERROR_CODES with the agreed list', () => {
-    expect([...ERROR_CODES]).toEqual([
-      'adapter_error',
-      'reviewer_timeout',
-      'reviewer_http_error',
-      'reviewer_schema_invalid',
-      'profile_resolution_failed',
-      'pack_rejected',
-      'snapshot_missing',
-      'turn_budget_exceeded',
-      'keychain_unavailable',
-      'telemetry_dropped',
+  it('stored identifiers are tokens: bounded, no whitespace', () => {
+    const e = { ...VALID['error'], account_id: 'a'.repeat(39), device_id: 'd' };
+    expect(StoredEventSchema.safeParse(e).success).toBe(true);
+    expect(StoredEventSchema.safeParse({ ...e, account_id: 'a'.repeat(40) }).success).toBe(false); // key-shape guard
+    expect(StoredEventSchema.safeParse({ ...e, account_id: 'a.'.repeat(32) }).success).toBe(true); // 64 chars
+    expect(StoredEventSchema.safeParse({ ...e, account_id: 'a.'.repeat(32) + 'b' }).success).toBe(false); // 65 chars
+    expect(StoredEventSchema.safeParse({ ...e, device_id: 'two words' }).success).toBe(false);
+    expect(StoredEventSchema.safeParse({ ...e, account_id: 5 }).success).toBe(false);
+  });
+
+  it('pins the exact field list of every event kind', () => {
+    const keys = (k: keyof typeof TELEMETRY_KINDS) => Object.keys(TELEMETRY_KINDS[k].shape).sort();
+    expect(keys('session_start')).toEqual(['adapter_version', 'harness', 'offline', 'profile_count', 't', 'ts']);
+    expect(keys('review')).toEqual([
+      'by_category', 'cleared', 'cleared_categories', 'pass', 'profile_id', 'prose_words_bucket', 'reviewer', 'rule_ids',
+      'skipped_reason', 't', 'ts', 'verdict',
     ]);
+    expect(keys('enforcement')).toEqual(['decision', 'enforcement_unavailable', 'notice_via_model', 'override_used', 't', 'ts']);
+    expect(keys('profile_select')).toEqual(['by', 'from', 't', 'to', 'ts']);
+    expect(keys('error')).toEqual(['code', 't', 'ts']);
+    expect(Object.keys(TELEMETRY_KINDS).sort()).toEqual(['enforcement', 'error', 'profile_select', 'review', 'session_start']);
+    const reviewer = (TELEMETRY_KINDS.review.shape.reviewer as any).unwrap().shape;
+    expect(Object.keys(reviewer).sort()).toEqual(['findings', 'latency_bucket_ms', 'model', 'span_misses']);
+  });
+
+  it('ERROR_CODES is exactly the 07 ErrorCode list, in order', () => {
+    expect([...ERROR_CODES]).toEqual([
+      'adapter_error', 'reviewer_timeout', 'reviewer_http_error', 'reviewer_schema_invalid', 'reviewer_key_missing',
+      'profile_resolution_failed', 'pack_rejected', 'signature_invalid', 'snapshot_missing', 'turn_budget_exceeded',
+      'keychain_unavailable', 'keychain_timeout', 'transcript_unreadable', 'telemetry_dropped',
+    ]);
+    for (const code of ERROR_CODES) expect(wireOk({ ts: TS, t: 'error', code })).toBe(true);
   });
 });
 
 describe('telemetry allowlist: unknown fields are rejected everywhere', () => {
   it.each(Object.entries(VALID))('top-level extra field on %s', (_name, event) => {
-    expect(sets({ ...event, extra: 1 })).toBe(false);
+    expect(wireOk({ ...event, extra: 1 })).toBe(false);
   });
 
   it('nested extra field in reviewer', () => {
-    const e = structuredClone(VALID['review_full']) as Record<string, any>;
-    e['reviewer'].extra = 1;
-    expect(sets(e)).toBe(false);
+    const e = V('review_full');
+    e.reviewer.extra = 1;
+    expect(wireOk(e)).toBe(false);
   });
 
-  it('unknown category keys in by_category', () => {
-    const e = structuredClone(VALID['review_full']) as Record<string, any>;
-    e['by_category'].tone = 1;
-    expect(sets(e)).toBe(false);
+  it('unknown category keys in by_category, and in cleared_categories', () => {
+    const e = V('review_full');
+    e.by_category.tone = 1;
+    expect(wireOk(e)).toBe(false);
+    expect(wireOk({ ...V('review_full'), cleared_categories: ['tone'] })).toBe(false);
   });
 
-  it('unknown category in cleared_categories', () => {
-    expect(sets({ ...VALID['review_full'], cleared_categories: ['tone'] })).toBe(false);
+  it('an own __proto__ key, as JSON.parse creates it, is rejected in every object and record', () => {
+    const inject = (doc: any, path: string[]) => {
+      const copy = JSON.parse(JSON.stringify(doc));
+      let t = copy;
+      for (const p of path) t = t[p];
+      Object.defineProperty(t, '__proto__', { value: { polluted: true }, enumerable: true, configurable: true, writable: true });
+      return copy;
+    };
+    for (const event of Object.values(VALID)) expect(wireOk(inject(event, []))).toBe(false);
+    expect(wireOk(inject(VALID['review_full'], ['by_category']))).toBe(false);
+    expect(wireOk(inject(VALID['review_full'], ['reviewer']))).toBe(false);
+    expect(wireOk(inject(VALID['review_minimal'], ['by_category']))).toBe(false);
+    const batch = { events: [VALID['error']] };
+    expect(WireBatchSchema.safeParse(inject(batch, [])).success).toBe(false);
+    expect(WireBatchSchema.safeParse(inject(batch, ['events', '0'])).success).toBe(false);
+    expect(StoredEventSchema.safeParse({ ...inject(VALID['review_full'], ['by_category']), account_id: 'a', device_id: 'd' }).success).toBe(false);
+    // a __proto__ array element must not be a way around the by_category schema either
+    expect(Object.prototype.hasOwnProperty.call({}, 'polluted')).toBe(false);
   });
 
   it('extra field on the batch envelope and on an event inside a batch', () => {
-    expect(TelemetryBatchSchema.safeParse({ events: [VALID['error']], extra: 1 }).success).toBe(false);
-    expect(TelemetryBatchSchema.safeParse({ events: [{ ...VALID['error'], extra: 1 }] }).success).toBe(false);
+    expect(WireBatchSchema.safeParse({ events: [VALID['error']], extra: 1 }).success).toBe(false);
+    expect(WireBatchSchema.safeParse({ events: [{ ...VALID['error'], extra: 1 }] }).success).toBe(false);
   });
 
   it('an unknown event kind', () => {
-    expect(sets({ ...ENV, t: 'prose_sample', text: 'x' })).toBe(false);
+    expect(wireOk({ ts: TS, t: 'prose_sample', text: 'x' })).toBe(false);
+    expect(wireOk({ ts: TS, t: 'review' })).toBe(false);
   });
 
-  it.each(['session_id', 'turn_id', 'text', 'span_text', 'start', 'end', 'offsets', 'message', 'prose', 'user_message'])(
+  it.each(['session_id', 'turn_id', 'text', 'span_text', 'start', 'end', 'offsets', 'message', 'prose', 'user_message', 'finding_ids', 'ids'])(
     'a %s field is rejected on every event kind',
     (field) => {
       for (const event of Object.values(VALID)) {
-        expect(sets({ ...event, [field]: 'abc' })).toBe(false);
-        expect(sets({ ...event, [field]: 5 })).toBe(false);
+        expect(wireOk({ ...event, [field]: 'abc' })).toBe(false);
+        expect(wireOk({ ...event, [field]: 5 })).toBe(false);
       }
     },
   );
-
-  it('a missing envelope field', () => {
-    for (const k of ['account_id', 'device_id', 'ts'] as const) {
-      const e: Record<string, unknown> = { ...VALID['error'] };
-      Reflect.deleteProperty(e, k);
-      expect(sets(e)).toBe(false);
-    }
-  });
 });
 
-describe('telemetry allowlist: string and number limits', () => {
-  const STRING_PATHS: Array<[string, TelemetryEvent, (e: any, v: string) => void]> = [
-    ['account_id', VALID['error'] as TelemetryEvent, (e, v) => (e.account_id = v)],
-    ['device_id', VALID['error'] as TelemetryEvent, (e, v) => (e.device_id = v)],
-    ['harness', VALID['session_start'] as TelemetryEvent, (e, v) => (e.harness = v)],
-    ['adapter_version', VALID['session_start'] as TelemetryEvent, (e, v) => (e.adapter_version = v)],
-    ['profile_id', VALID['review_full'] as TelemetryEvent, (e, v) => (e.profile_id = v)],
-    ['skipped_reason', VALID['review_full'] as TelemetryEvent, (e, v) => (e.skipped_reason = v)],
-    ['reviewer.model', VALID['review_full'] as TelemetryEvent, (e, v) => (e.reviewer.model = v)],
-    ['from', VALID['profile_select'] as TelemetryEvent, (e, v) => (e.from = v)],
-    ['to', VALID['profile_select'] as TelemetryEvent, (e, v) => (e.to = v)],
-  ];
+describe('telemetry allowlist: per-field formats', () => {
+  const set = (name: string, path: string[], value: unknown) => {
+    const e = V(name);
+    let t = e;
+    for (const p of path.slice(0, -1)) t = t[p];
+    t[path[path.length - 1] as string] = value;
+    return e;
+  };
 
-  it.each(STRING_PATHS)('accepts a 64-char and rejects a 65-char %s', (_name, base, set) => {
-    const ok = structuredClone(base);
-    set(ok, 'a'.repeat(64));
-    expect(sets(ok)).toBe(true);
-    const bad = structuredClone(base);
-    set(bad, 'a'.repeat(65));
-    expect(sets(bad)).toBe(false);
+  it('accepts a 64-char and rejects a 65-char value in every string field that has room for one', () => {
+    // fields whose format permits 64 characters: the model id
+    expect(wireOk(set('review_full', ['reviewer', 'model'], `${'a'.repeat(30)}.${'a'.repeat(33)}`))).toBe(true); // 64 chars, no 40-char run
+    expect(wireOk(set('review_full', ['reviewer', 'model'], `${'a'.repeat(30)}.${'a'.repeat(34)}`))).toBe(false); // 65 chars
+    // every other string field is bounded by its own, tighter format; 65 chars never passes
+    expect(wireOk(set('session_start', ['adapter_version'], `1.0.0-${'a'.repeat(28)}.${'a'.repeat(29)}`))).toBe(true);
+    expect(wireOk(set('session_start', ['adapter_version'], `1.0.0-${'a'.repeat(28)}.${'a'.repeat(30)}`))).toBe(false);
+    expect(wireOk(set('session_start', ['harness'], 'a'.repeat(65)))).toBe(false);
+    expect(wireOk(set('profile_select', ['from'], `${'a'.repeat(31)}/${'b'.repeat(31)}`))).toBe(true);
+    expect(wireOk(set('profile_select', ['to'], `${'a'.repeat(31)}/${'b'.repeat(32)}`))).toBe(false);
+    expect(wireOk(set('review_full', ['profile_id'], 'a'.repeat(65)))).toBe(false);
+    expect(wireOk(set('review_full', ['skipped_reason'], 'a'.repeat(65)))).toBe(false);
+    expect(wireOk(set('review_full', ['rule_ids'], [`${'a'.repeat(55)}.hedge.001`]))).toBe(false);
   });
 
-  it('rejects a 65-char rule id even when it has the right shape', () => {
-    const id = `${'a'.repeat(55)}.hedge.001`;
-    expect(id.length).toBeGreaterThan(64);
-    expect(sets({ ...VALID['review_full'], rule_ids: [id] })).toBe(false);
+  it('harness is an enum', () => {
+    expect([...HARNESSES]).toEqual(['claude-code']);
+    for (const bad of ['claude code', 'Claude-Code', 'cursor', '', 5]) expect(wireOk(set('session_start', ['harness'], bad))).toBe(false);
   });
 
-  it('rejects strings with whitespace (a sentence cannot ride in a string field)', () => {
-    expect(sets({ ...VALID['session_start'], harness: 'claude code' })).toBe(false);
-    expect(sets({ ...VALID['session_start'], harness: 'a\nb' })).toBe(false);
-    expect(sets({ ...VALID['session_start'], harness: '' })).toBe(false);
+  it.each([
+    ['0.1.0', true], ['1.2.3', true], ['10.20.30', true], ['1.0.0-beta.1', true], ['1.0.0-rc.1+build.5', true], ['1.0.0+20260101', true],
+    ['1.0', false], ['v1.0.0', false], ['01.0.0', false], ['1.0.0 ', false], ['1.0.0-', false], ['1.0.0.0', false], ['latest', false], ['', false],
+    ['1.0.0-beta..1', false], ['1.0.0 beta', false],
+  ])('adapter_version %j is %s', (v, valid) => {
+    expect(wireOk(set('session_start', ['adapter_version'], v))).toBe(valid);
+  });
+
+  it.each([
+    ['gpt-5-mini', true], ['claude-haiku-4-5-20251001', true], ['openai:gpt-5.1', true], ['org/model@v2', true], ['o3', true], ['0', true],
+    ['GPT-5', false], ['-gpt', false], ['.model', false], ['gpt 5', false], ['gpt\n5', false], ['gpt#5', false], ['', false], ['This_PR_introduces_a_robust_caching_layer', false],
+  ])('reviewer.model %j is %s', (v, valid) => {
+    expect(wireOk(set('review_full', ['reviewer', 'model'], v))).toBe(valid);
+  });
+
+  it('skipped_reason is the SkippedReason enum', () => {
+    for (const ok of ['below_floor', 'no_prose', 'advisory_mode', 'reviewer_unavailable']) {
+      expect(wireOk({ ...V('review_full'), skipped_reason: ok })).toBe(true);
+    }
+    for (const bad of ['rate_limited', 'Below_Floor', 'free text here', '', 5]) expect(wireOk({ ...V('review_full'), skipped_reason: bad })).toBe(false);
+  });
+
+  it.each([
+    ['local', true], ['org-default/pr-description', true], ['acme/design-doc', true], ['0/0', true],
+    ['local/my-private-profile', false], ['Local', false], ['local/', false], ['a', false], ['a/b/c', false], ['A/b', false],
+    [`${'a'.repeat(32)}/b`, false], ['a b/c', false], ['', false], ['/b', false], ['a/b ', false], ['x_y/z', false],
+  ])('profile id %j in profile_id, from and to is %s', (v, valid) => {
+    expect(wireOk(set('review_full', ['profile_id'], v))).toBe(valid);
+    expect(wireOk(set('profile_select', ['from'], v))).toBe(valid);
+    expect(wireOk(set('profile_select', ['to'], v))).toBe(valid);
+  });
+
+  it('error.code accepts only the 07 list', () => {
+    for (const bad of ['something went wrong', 'unknown_code', 'ADAPTER_ERROR', '', 5, null, 'adapter_error ']) {
+      expect(wireOk({ ts: TS, t: 'error', code: bad })).toBe(false);
+    }
   });
 
   it('rule_ids must look like rule ids and be deduplicated', () => {
-    expect(sets({ ...VALID['review_full'], rule_ids: ['Great question!'] })).toBe(false);
-    expect(sets({ ...VALID['review_full'], rule_ids: ['core.hedge.001', 'core.hedge.001'] })).toBe(false);
-  });
-
-  it('prose_words_bucket is a non-negative multiple of 100', () => {
-    for (const ok of [0, 100, 900, 12_300]) expect(sets({ ...VALID['review_full'], prose_words_bucket: ok })).toBe(true);
-    for (const bad of [-100, 50, 101, 1.5, Number.NaN, 99.9, '100']) {
-      expect(sets({ ...VALID['review_full'], prose_words_bucket: bad })).toBe(false);
+    for (const bad of ['Great question!', 'core.hedge', 'core.hedge.1', 'Core.hedge.001', 'core.tone.001', '']) {
+      expect(wireOk({ ...V('review_full'), rule_ids: [bad] })).toBe(false);
     }
+    expect(wireOk({ ...V('review_full'), rule_ids: ['core.hedge.001', 'core.hedge.001'] })).toBe(false);
   });
 
-  it('latency_bucket_ms must be one of the 07 buckets', () => {
-    for (const bad of [0, 250, 499, 501, 3000, 16000, '500']) {
-      const e = structuredClone(VALID['review_full']) as Record<string, any>;
-      e['reviewer'].latency_bucket_ms = bad;
-      expect(sets(e)).toBe(false);
-    }
+  it('latency_bucket_ms is one of the 07 buckets', () => {
+    for (const b of [500, 1000, 2000, 4000, 8000]) expect(wireOk(set('review_full', ['reviewer', 'latency_bucket_ms'], b))).toBe(true);
+    for (const bad of [0, 250, 499, 501, 3000, 16000, '500', null]) expect(wireOk(set('review_full', ['reviewer', 'latency_bucket_ms'], bad))).toBe(false);
   });
 
-  it('error.code must come from ERROR_CODES (no free messages)', () => {
-    expect(sets({ ...ENV, t: 'error', code: 'something went wrong' })).toBe(false);
-    expect(sets({ ...ENV, t: 'error', code: 'unknown_code' })).toBe(false);
-  });
-
-  it('counts must be non-negative integers', () => {
-    expect(sets({ ...VALID['review_full'], cleared: -1 })).toBe(false);
-    expect(sets({ ...VALID['review_full'], by_category: { hedge: 1.5 } })).toBe(false);
-    expect(sets({ ...VALID['review_full'], by_category: { hedge: -1 } })).toBe(false);
-    expect(sets({ ...VALID['session_start'], profile_count: -1 })).toBe(false);
+  it('enums: pass, verdict, decision, by', () => {
+    for (const bad of [0, 3, '1', null]) expect(wireOk(set('review_full', ['pass'], bad))).toBe(false);
+    for (const bad of ['maybe', 'PASS', 5]) expect(wireOk(set('review_full', ['verdict'], bad))).toBe(false);
+    for (const bad of ['block', '', 1]) expect(wireOk(set('enforcement', ['decision'], bad))).toBe(false);
+    for (const bad of ['admin', '', 1]) expect(wireOk(set('profile_select', ['by'], bad))).toBe(false);
   });
 });
 
-describe('telemetry batch', () => {
+describe('telemetry allowlist: timestamps', () => {
+  it('ts must be an integer epoch-ms multiple of 60000', () => {
+    for (const ok of [0, 60_000, TS]) expect(wireOk({ ...V('error'), ts: ok })).toBe(true);
+    for (const bad of [1, 59_999, TS + 1, -60_000, 1.5, Number.NaN, Number.POSITIVE_INFINITY, '1760000040000', null]) {
+      expect(wireOk({ ...V('error'), ts: bad })).toBe(false);
+    }
+    const missing = V('error');
+    delete missing.ts;
+    expect(wireOk(missing)).toBe(false);
+  });
+
+  it('truncateToMinute floors to the minute', () => {
+    expect(truncateToMinute(1_760_000_059_999)).toBe(1_760_000_040_000);
+    expect(truncateToMinute(1_760_000_040_000)).toBe(1_760_000_040_000);
+    expect(truncateToMinute(59_999)).toBe(0);
+    expect(truncateToMinute(TS + 12_345) % 60_000).toBe(0);
+  });
+
+  it('isTimestampWithinBounds accepts +-1 day of the server clock and nothing further', () => {
+    const now = 1_760_000_000_000;
+    const day = 86_400_000;
+    expect(isTimestampWithinBounds(now, now)).toBe(true);
+    expect(isTimestampWithinBounds(now + day, now)).toBe(true);
+    expect(isTimestampWithinBounds(now - day, now)).toBe(true);
+    expect(isTimestampWithinBounds(now + day + 1, now)).toBe(false);
+    expect(isTimestampWithinBounds(now - day - 1, now)).toBe(false);
+    expect(isTimestampWithinBounds(Number.NaN, now)).toBe(false);
+    expect(isTimestampWithinBounds(now, Number.NaN)).toBe(false);
+    expect(isTimestampWithinBounds(now + 10, now, 5)).toBe(false);
+  });
+});
+
+describe('telemetry allowlist: bounds', () => {
+  const rev = (over: Record<string, unknown>) => ({ ...V('review_full'), ...over });
+
+  it('prose_words_bucket is a non-negative multiple of 100, at most 1e6', () => {
+    for (const ok of [0, 100, 900, 12_300, 1_000_000]) expect(wireOk(rev({ prose_words_bucket: ok }))).toBe(true);
+    for (const bad of [-100, 50, 101, 1.5, Number.NaN, 99.9, '100', 1_000_100, 10_000_000]) expect(wireOk(rev({ prose_words_bucket: bad }))).toBe(false);
+  });
+
+  it('every count is an integer in [0, 1000]', () => {
+    const at = (path: string[], value: unknown) => {
+      const e = V('review_full');
+      let t = e;
+      for (const p of path.slice(0, -1)) t = t[p];
+      t[path[path.length - 1] as string] = value;
+      return e;
+    };
+    const fields: string[][] = [['cleared'], ['reviewer', 'findings'], ['reviewer', 'span_misses'], ['by_category', 'hedge']];
+    for (const f of fields) {
+      expect(wireOk(at(f, 0))).toBe(true);
+      expect(wireOk(at(f, 1000))).toBe(true);
+      for (const bad of [-1, 1001, 1.5, '1', Number.NaN]) expect(wireOk(at(f, bad))).toBe(false);
+    }
+    const s = V('session_start');
+    expect(wireOk({ ...s, profile_count: 1000 })).toBe(true);
+    for (const bad of [-1, 1001, 0.5]) expect(wireOk({ ...s, profile_count: bad })).toBe(false);
+  });
+
+  it('rule_ids has at most 64 entries', () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => `core.hedge.${String(i).padStart(3, '0')}`);
+    expect(wireOk(rev({ rule_ids: ids(64) }))).toBe(true);
+    expect(wireOk(rev({ rule_ids: ids(65) }))).toBe(false);
+  });
+
+  it('cleared_categories is deduplicated and has at most 9 entries', () => {
+    expect(wireOk(rev({ cleared_categories: [...CATEGORIES] }))).toBe(true);
+    expect(wireOk(rev({ cleared_categories: ['hedge', 'hedge'] }))).toBe(false);
+    expect(wireOk(rev({ cleared_categories: [...CATEGORIES, 'hedge'] }))).toBe(false);
+  });
+
+  it('on pass 1, cleared is 0 and cleared_categories is empty', () => {
+    const p1 = (over: Record<string, unknown>) => {
+      const e = rev({ pass: 1, verdict: 'revise', ...over });
+      delete e.skipped_reason;
+      return e;
+    };
+    expect(wireOk(p1({ cleared: 0, cleared_categories: [] }))).toBe(true);
+    expect(wireOk(p1({ cleared: 1, cleared_categories: [] }))).toBe(false);
+    expect(wireOk(p1({ cleared: 0, cleared_categories: ['hedge'] }))).toBe(false);
+    expect(wireOk(rev({ pass: 2, cleared: 1, cleared_categories: ['hedge'] }))).toBe(true);
+  });
+
+  it("skipped_reason only goes with verdict 'skipped' (or 'pass_cap' with verdict 'pass', 03 pass rule 3)", () => {
+    const r = (verdict: string, skipped_reason?: string) => {
+      const e = V('review_full');
+      e.verdict = verdict;
+      if (skipped_reason === undefined) delete e.skipped_reason;
+      else e.skipped_reason = skipped_reason;
+      return e;
+    };
+    expect(wireOk(r('skipped', 'below_floor'))).toBe(true);
+    expect(wireOk(r('skipped'))).toBe(true);
+    expect(wireOk(r('pass', 'pass_cap'))).toBe(true);
+    expect(wireOk(r('pass', 'below_floor'))).toBe(false);
+    expect(wireOk(r('revise', 'below_floor'))).toBe(false);
+    expect(wireOk(r('revise', 'pass_cap'))).toBe(false);
+    expect(wireOk(r('pass'))).toBe(true);
+  });
+});
+
+describe('telemetry allowlist: wrong types and gaps in every field', () => {
+  function paths(value: any, prefix: string[] = []): Array<{ path: string[]; value: unknown }> {
+    const out: Array<{ path: string[]; value: unknown }> = [];
+    for (const [k, v] of Object.entries(value)) {
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) out.push({ path: [...prefix, k], value: v }, ...paths(v, [...prefix, k]));
+      else out.push({ path: [...prefix, k], value: v });
+      if (Array.isArray(v)) v.forEach((item, i) => out.push({ path: [...prefix, k, String(i)], value: item }));
+    }
+    return out;
+  }
+  const wrongFor = (v: unknown): unknown[] => {
+    if (typeof v === 'string') return [5, null, true, [], {}];
+    if (typeof v === 'number') return ['5', null, true, [], {}, Number.NaN];
+    if (typeof v === 'boolean') return ['true', 1, 0, null, [], {}];
+    if (Array.isArray(v)) return ['x', null, {}, 5];
+    return ['x', null, [], 5, true];
+  };
+  const OPTIONAL = new Set(['skipped_reason', 'reviewer']);
+
+  it.each(Object.entries(VALID))('every field of %s rejects values of the wrong type', (_name, event) => {
+    let n = 0;
+    for (const { path, value } of paths(event)) {
+      for (const wrong of wrongFor(value)) {
+        const e = structuredClone(event) as any;
+        let t = e;
+        for (const p of path.slice(0, -1)) t = t[p];
+        t[path[path.length - 1] as string] = wrong;
+        expect(wireOk(e), `${path.join('.')} = ${JSON.stringify(wrong)}`).toBe(false);
+        n++;
+      }
+    }
+    expect(n).toBeGreaterThan(5);
+  });
+
+  it.each(Object.entries(VALID))('every required field of %s is required', (_name, event) => {
+    for (const { path } of paths(event)) {
+      if (OPTIONAL.has(path[path.length - 1] as string) || path[0] === 'by_category') continue;
+      if (path.length > 1 && /^\d+$/.test(path[path.length - 1] as string)) continue; // array elements
+      const e = structuredClone(event) as any;
+      let t = e;
+      for (const p of path.slice(0, -1)) t = t[p];
+      Reflect.deleteProperty(t, path[path.length - 1] as string);
+      expect(wireOk(e), `without ${path.join('.')}`).toBe(false);
+    }
+  });
+});
+
+describe('telemetry batch and the send path', () => {
   it(`accepts up to ${TELEMETRY_BATCH_MAX} events and rejects more`, () => {
     const mk = (n: number) => ({ events: Array.from({ length: n }, () => VALID['error']) });
-    expect(TelemetryBatchSchema.safeParse(mk(1)).success).toBe(true);
-    expect(TelemetryBatchSchema.safeParse(mk(50)).success).toBe(true);
-    expect(TelemetryBatchSchema.safeParse(mk(51)).success).toBe(false);
+    expect(WireBatchSchema.safeParse(mk(0)).success).toBe(true);
+    expect(WireBatchSchema.safeParse(mk(1)).success).toBe(true);
+    expect(WireBatchSchema.safeParse(mk(50)).success).toBe(true);
+    expect(WireBatchSchema.safeParse(mk(51)).success).toBe(false);
   });
   it('one bad event drops the whole batch', () => {
-    expect(TelemetryBatchSchema.safeParse({ events: [VALID['error'], { ...VALID['error'], text: 'x' }] }).success).toBe(false);
+    expect(WireBatchSchema.safeParse({ events: [VALID['error'], { ...VALID['error'], text: 'x' }] }).success).toBe(false);
   });
-  it('rejects a bare array and a missing events key', () => {
-    expect(TelemetryBatchSchema.safeParse([VALID['error']]).success).toBe(false);
-    expect(TelemetryBatchSchema.safeParse({}).success).toBe(false);
+  it('rejects a bare array and a missing or mistyped events key', () => {
+    expect(WireBatchSchema.safeParse([VALID['error']]).success).toBe(false);
+    expect(WireBatchSchema.safeParse({}).success).toBe(false);
+    expect(WireBatchSchema.safeParse({ events: 'x' }).success).toBe(false);
+  });
+
+  it('encodeTelemetryBatch returns the JSON of the parsed batch and round-trips', () => {
+    const batch = { events: Object.values(VALID) };
+    const wire = encodeTelemetryBatch(batch);
+    expect(typeof wire).toBe('string');
+    expect(JSON.parse(wire)).toEqual(batch);
+    expect(wire).toBe(JSON.stringify(WireBatchSchema.parse(batch)));
+    expect(WireBatchSchema.safeParse(JSON.parse(wire)).success).toBe(true);
+  });
+
+  it('encodeTelemetryBatch throws on anything the schema refuses, and returns nothing', () => {
+    expect(() => encodeTelemetryBatch({ events: [{ ...VALID['error'], session_id: 's1' }] })).toThrow();
+    expect(() => encodeTelemetryBatch({ events: [{ ...VALID['error'], account_id: 'a', device_id: 'd' }] })).toThrow();
+    expect(() => encodeTelemetryBatch({ events: Array.from({ length: 51 }, () => VALID['error']) })).toThrow();
+    expect(() => encodeTelemetryBatch({ events: [{ ...VALID['review_full'], reviewer: { ...VALID['review_full'], model: 'sk-proj-abcdef' } }] })).toThrow();
+    expect(() => encodeTelemetryBatch(null)).toThrow();
+    expect(() => encodeTelemetryBatch('{"events":[]}')).toThrow();
+  });
+
+  it('encodeTelemetryBatch refuses a model id with the shape of a key', () => {
+    const e = V('review_full');
+    e.reviewer.model = ['sk', 'proj', 'abcdefghijklmnop'].join('-');
+    expect(() => encodeTelemetryBatch({ events: [e] })).toThrow(/key or token/);
   });
 });
 
-// ---- property-style: prose never reaches the wire ------------------------------------------
+// ---- property-style: prose cannot leak -----------------------------------------------------
 
 function mulberry32(seed: number): () => number {
   let a = seed;
@@ -253,48 +480,51 @@ function mulberry32(seed: number): () => number {
 }
 
 const FAKE_PROSE = 'This PR introduces a robust caching layer that significantly improves performance.';
+const SPACELESS_PROSE = 'This_PR_introduces_a_robust_caching_layer';
 
 describe('telemetry property: prose cannot leak', () => {
   const rnd = mulberry32(0xc0ffee);
   const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rnd() * xs.length)] as T;
   const int = (n: number) => Math.floor(rnd() * n);
-  const tokenChars = 'abcdefghijklmnopqrstuvwxyz0123456789-_./:@';
-  const token = () => Array.from({ length: 1 + int(40) }, () => pick([...tokenChars])).join('');
-  const ruleId = () => `${token().replace(/[^a-z0-9-]/g, 'x')}.${pick(['filler', 'hedge', 'vocab', 'triad', 'structure', 'repetition'])}.${String(int(1000)).padStart(3, '0')}`;
-  const env = () => ({ account_id: token(), device_id: token(), ts: int(2_000_000_000_000) });
+  const slug = () => Array.from({ length: 1 + int(20) }, () => pick([...'abcdefghijklmnopqrstuvwxyz0123456789-'])).join('');
+  const profile = () => (rnd() < 0.2 ? 'local' : `${slug().replace(/^local$/, 'x')}/${slug()}`);
+  const ruleId = () => `${slug()}.${pick(['filler', 'hedge', 'vocab', 'triad', 'structure', 'repetition'])}.${String(int(1000)).padStart(3, '0')}`;
+  const minute = () => int(30_000_000) * 60_000;
 
-  function gen(): TelemetryEvent {
+  function gen(): WireEvent {
     switch (int(5)) {
       case 0:
-        return { ...env(), t: 'session_start', harness: token(), adapter_version: token(), profile_count: int(20), offline: rnd() < 0.5 };
+        return { ts: minute(), t: 'session_start', harness: 'claude-code', adapter_version: `${int(10)}.${int(30)}.${int(100)}`, profile_count: int(20), offline: rnd() < 0.5 };
       case 1: {
         const byCat: Partial<Record<Category, number>> = {};
         for (const c of CATEGORIES) if (rnd() < 0.4) byCat[c] = int(10);
-        const ids = [...new Set(Array.from({ length: int(6) }, ruleId))];
-        const e: TelemetryEvent = {
-          ...env(),
+        const pass = pick([1, 2] as const);
+        const cleared = pass === 1 ? 0 : int(10);
+        const cats = pass === 1 ? [] : [...new Set(Array.from({ length: int(4) }, () => pick(CATEGORIES)))];
+        const e: WireEvent = {
+          ts: minute(),
           t: 'review',
-          profile_id: token(),
-          pass: pick([1, 2] as const),
+          profile_id: profile(),
+          pass,
           verdict: pick(['pass', 'revise', 'skipped'] as const),
           prose_words_bucket: int(100) * 100,
           by_category: byCat,
-          rule_ids: ids,
-          cleared: int(10),
-          cleared_categories: Array.from({ length: int(4) }, () => pick(CATEGORIES)),
+          rule_ids: [...new Set(Array.from({ length: int(6) }, ruleId))],
+          cleared,
+          cleared_categories: cats,
         };
-        if (rnd() < 0.5 && e.t === 'review') e.skipped_reason = token();
-        if (rnd() < 0.5 && e.t === 'review') {
-          e.reviewer = { model: token(), latency_bucket_ms: pick([500, 1000, 2000, 4000, 8000] as const), findings: int(9), span_misses: int(3) };
+        if (e.t === 'review' && e.verdict === 'skipped' && rnd() < 0.5) e.skipped_reason = pick(['below_floor', 'no_prose', 'advisory_mode', 'reviewer_unavailable'] as const);
+        if (e.t === 'review' && rnd() < 0.5) {
+          e.reviewer = { model: `gpt-${slug()}`, latency_bucket_ms: pick([500, 1000, 2000, 4000, 8000] as const), findings: int(9), span_misses: int(3) };
         }
         return e;
       }
       case 2:
-        return { ...env(), t: 'enforcement', decision: pick(['allow', 'continue'] as const), enforcement_unavailable: rnd() < 0.5, override_used: rnd() < 0.5, notice_via_model: rnd() < 0.5 };
+        return { ts: minute(), t: 'enforcement', decision: pick(['allow', 'continue'] as const), enforcement_unavailable: rnd() < 0.5, override_used: rnd() < 0.5, notice_via_model: rnd() < 0.5 };
       case 3:
-        return { ...env(), t: 'profile_select', from: token(), to: token(), by: pick(['model', 'heuristic', 'user'] as const) };
+        return { ts: minute(), t: 'profile_select', from: profile(), to: profile(), by: pick(['model', 'heuristic', 'user'] as const) };
       default:
-        return { ...env(), t: 'error', code: pick(ERROR_CODES) };
+        return { ts: minute(), t: 'error', code: pick(ERROR_CODES) };
     }
   }
 
@@ -302,43 +532,62 @@ describe('telemetry property: prose cannot leak', () => {
 
   it('the generator produces only events the schema accepts', () => {
     for (const e of events) {
-      const r = TelemetryEventSchema.safeParse(e);
+      const r = WireEventSchema.safeParse(e);
       if (!r.success) throw new Error(`generator produced an invalid event: ${JSON.stringify(e)} ${r.error.message}`);
     }
   });
 
-  it('a parsed, serialised batch never contains the prose sentence or any of its words in a free field', () => {
+  it('an encoded batch never contains the prose sentence', () => {
     for (let i = 0; i < events.length; i += TELEMETRY_BATCH_MAX) {
-      const batch = TelemetryBatchSchema.parse({ events: events.slice(i, i + TELEMETRY_BATCH_MAX) });
-      const wire = JSON.stringify(batch);
+      const wire = encodeTelemetryBatch({ events: events.slice(i, i + TELEMETRY_BATCH_MAX) });
       expect(wire).not.toContain(FAKE_PROSE);
       expect(wire).not.toContain('caching layer');
     }
   });
 
-  it('prose injected into ANY string field of any generated event is rejected', () => {
+  function stringPaths(value: any, prefix: string[] = []): string[][] {
+    const out: string[][] = [];
+    for (const [k, v] of Object.entries(value)) {
+      if (typeof v === 'string' && k !== 't') out.push([...prefix, k]);
+      else if (Array.isArray(v)) v.forEach((item, i) => typeof item === 'string' && out.push([...prefix, k, String(i)]));
+      else if (v !== null && typeof v === 'object') out.push(...stringPaths(v, [...prefix, k]));
+    }
+    return out;
+  }
+  const inject = (event: unknown, path: string[], value: string) => {
+    const copy = structuredClone(event) as any;
+    let t = copy;
+    for (const p of path.slice(0, -1)) t = t[p];
+    t[path[path.length - 1] as string] = value;
+    return copy;
+  };
+
+  it('prose (with spaces) injected into ANY string field of any generated event is rejected', () => {
     let injected = 0;
     for (const e of events) {
-      const doc = e as Record<string, any>;
-      const targets: Array<[Record<string, any>, string]> = [];
-      for (const [k, v] of Object.entries(doc)) {
-        if (typeof v === 'string' && k !== 't') targets.push([doc, k]);
-      }
-      if (doc['reviewer']) targets.push([doc['reviewer'], 'model']);
-      for (const [obj, key] of targets) {
-        const copy = structuredClone(doc);
-        const holder = obj === doc ? copy : copy['reviewer'];
-        holder[key] = FAKE_PROSE;
-        expect(TelemetryEventSchema.safeParse(copy).success).toBe(false);
+      for (const path of stringPaths(e)) {
+        expect(wireOk(inject(e, path, FAKE_PROSE)), path.join('.')).toBe(false);
         injected++;
       }
     }
-    expect(injected).toBeGreaterThan(1000);
+    expect(injected).toBeGreaterThan(500);
+  });
+
+  it('the whitespace-free prose variant is rejected in every string field whose format can exclude it', () => {
+    let injected = 0;
+    for (const e of events) {
+      for (const path of stringPaths(e)) {
+        expect(wireOk(inject(e, path, SPACELESS_PROSE)), path.join('.')).toBe(false);
+        injected++;
+      }
+    }
+    expect(injected).toBeGreaterThan(500);
   });
 
   it('prose injected as an extra key, under any name, is rejected', () => {
     for (const e of events.slice(0, 200)) {
-      expect(TelemetryEventSchema.safeParse({ ...e, [token()]: FAKE_PROSE }).success).toBe(false);
+      expect(wireOk({ ...e, [slug()]: FAKE_PROSE })).toBe(false);
+      expect(wireOk({ ...e, [SPACELESS_PROSE]: 1 })).toBe(false);
     }
   });
 });

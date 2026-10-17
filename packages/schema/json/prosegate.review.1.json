@@ -36,7 +36,8 @@
       "additionalProperties": false
     },
     "profile_id": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,31}\\/[a-z0-9-]{1,31}$"
     },
     "pass": {
       "anyOf": [
@@ -86,5 +87,6 @@
     "prior_findings"
   ],
   "additionalProperties": false,
+  "$comment": "Producer schema; consumers must tolerate unknown optional fields and enum values per 03 Versioning.",
   "title": "prosegate.review/1"
 }

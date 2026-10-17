@@ -6,6 +6,11 @@ import type { Category } from './types.js';
  * Finding id (03): first 10 lowercase hex characters of
  * sha256(category | rule_id | span.text | segment.id), fields joined with '|', UTF-8 encoded.
  *
+ * PRIVACY: an id is a hash of the span text, so it is derived from the user's prose. Treat it as
+ * span text: never put a finding id in telemetry, logs sent off the machine, or any payload that
+ * must not carry prose (07 threat 5; the telemetry schema has no field for it by design). A short
+ * phrase can be recovered from its id by guessing, so "it is only a hash" is not a defence.
+ *
  * Choices 03 leaves open, fixed here:
  *  - a null rule_id (reviewer findings) is rendered as the empty string, so the preimage is
  *    `category||span.text|segment.id`;
