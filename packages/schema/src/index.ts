@@ -3,3 +3,5 @@ export const schemaPlaceholder = {
   id: "prosegate:schema:placeholder",
   uses: [] as readonly string[],
 } as const;
+
+export * from "./types.js";
