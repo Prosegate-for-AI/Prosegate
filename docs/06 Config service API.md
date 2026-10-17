@@ -21,7 +21,7 @@ Errors are `application/problem+json` with a stable `code`. All mutating endpoin
 | `GET /profiles/{id}/resolved` | dashboard | — | resolved snapshot per 04 | UI preview; never cached by the adapter |
 | `GET /rule-packs` | adapter, dashboard | — | list of `{id, versions[], publisher}` |  |
 | `GET /rule-packs/{id}/{version}` | adapter, dashboard | — | `yaml`, `signature` | Immutable once published |
-| `PUT /rule-packs/{id}/{version}` | dashboard (publisher) | `yaml` (≤ 256 KB) | `signature`, `eval_report` | Runs every rule's `hit`/`miss` examples and the 200 ms budget server-side; 422 with the failing rule ids |
+| `PUT /rule-packs/{id}/{version}` | dashboard (publisher) | `yaml` (≤ 256 KB) | `202` with a publish job id; then `signature`, `eval_report` | The API Worker validates schema and work caps; a separate publish job (not the API Worker, which has no engine) compiles RE2, runs every rule's `hit`/`miss` examples and the 200 ms budget, and signs; failure reports the failing rule ids (ADR-19) |
 | `GET /reviewer-prompts/{version}` | adapter | — | `text`, `signature`, `supported_models[]` |  |
 | `POST /reviewer-keys/vend` | adapter | `provider` | `key`, `key_id`, `cap_cents`, `expires_at` | Creates the per-user provider project on first call; one active key per device; 402 on free plan; 429 above 3 vends per day |
 | `GET /reviewer-keys` | adapter, dashboard | — | list of `{key_id, provider, status, usage_pct, expires_at}` | Never returns key values |
@@ -31,7 +31,7 @@ Errors are `application/problem+json` with a stable `code`. All mutating endpoin
 | `GET /samples`, `DELETE /samples/{id}` | dashboard | — | list / 204 |  |
 | `GET /dashboard/usage` | dashboard | query `from`, `to` | aggregates by day, profile, category | Computed from telemetry; no raw events exposed |
 | `GET /orgs/{id}/members`, `PUT /orgs/{id}/members/{user}` | dashboard (org admin) | `role` |  | `admin` or `member` |
-| `GET /orgs/{id}/policy`, `PUT /orgs/{id}/policy` | dashboard (org admin) | `enforcement_default`, `allowed_providers[]`, `byok_required`, `sharing_allowed` |  | Policy is merged into every org profile at resolution; `byok_required` disables vending for the org |
+| `GET /orgs/{id}/policy`, `PUT /orgs/{id}/policy` | adapter (GET), dashboard (org admin) | `enforcement_default`, `allowed_providers[]`, `byok_required`, `sharing_allowed` | GET: policy, `signature`, `etag` | Policy applies to every profile a member resolves (ADR-18) and is signed like profiles (ADR-19); `byok_required` disables vending for the org |
 
 ## Signing
 
@@ -41,7 +41,7 @@ The service holds one Ed25519 signing key; its public key ships inside the adapt
 
 | Table | Key columns | Notes |
 | --- | --- | --- |
-| `accounts` | `id`, `auth_subject`, `plan`, `org_id` | `auth_subject` from the managed provider |
+| `accounts` | `id`, `auth_subject`, `plan`, `org_id` | `auth_subject` from the managed provider; namespaces `local`, `prosegate` and `core` are reserved (ADR-19) |
 | `orgs`, `org_members` | `id`, `name`, `policy_json` / `org_id`, `account_id`, `role` |  |
 | `devices` | `id`, `account_id`, `name`, `key_hash`, `last_seen`, `revoked_at` | Key stored as SHA-256 only |
 | `profiles` | `id`, `namespace`, `version`, `yaml`, `signature`, `sharing_enabled`, `updated_at` | One row per version; current = max version |

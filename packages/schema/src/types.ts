@@ -42,7 +42,7 @@ export interface Segment {
 }
 
 export interface Finding {
-  id: string; // first 10 hex of sha256(category|rule_id|span.text|segment.id); stable across passes
+  id: string; // first 10 hex of sha256(category|rule_id|span.text|segment.id), rule_id null → ''; stable across passes; not unique within a result (ADR-17)
   span: { segment_id: string; start: number; end: number; text: string }; // text must equal the slice; consumers drop mismatches
   category: Category;
   source: 'rule' | 'reviewer';
@@ -98,7 +98,7 @@ export const DEFAULT_SEVERITY: Record<Category, Severity> = {
 // 03 "Instruction forks": exact text.
 export const FORK_TEXT = {
   unsupported_claim: 'Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation.',
-  vague_claim: 'Give the specific the question asked for (the number, the file, the name). If you do not have it, say so in one clause instead of generalising.',
+  vague_claim: 'Give the specific detail the question asked for (the number, the file, the name). If you do not have it, say so in one clause instead of generalising.',
 } as const;
 
 // 03 "Thresholds" defaults.

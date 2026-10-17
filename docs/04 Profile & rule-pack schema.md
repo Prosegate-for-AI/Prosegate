@@ -10,7 +10,7 @@ Free-tier users keep both kinds of file under `~/.prosegate/`; signed-in users g
 
 ```yaml
 schema: prosegate.rulepack/1
-id: core                         # lowercase, [a-z0-9-], unique per publisher
+id: core                         # [a-z0-9-]{1,31}, unique per publisher
 version: 0.3.0                   # semver
 findings_schema: 1               # the findings version its instructions target (03)
 rules:
@@ -27,7 +27,7 @@ rules:
       hit:  ["It's important to note that the cache is per tenant."]
       miss: ["Note the cache is per tenant."]
 
-  - id: core.structure.003
+  - id: core.structure.002
     category: structure
     severity: warn
     match:
@@ -37,20 +37,21 @@ rules:
       min_sentences: 8
     instruction: { action: restructure, text: "Rewrite as prose; keep a list only where the items are parallel." }
     examples:
-      hit:  ["<eval corpus ref: core/structure-003-hit-01>"]
-      miss: ["<eval corpus ref: core/structure-003-miss-01>"]
+      hit:  ["<eval corpus ref: core/structure-002-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-002-miss-01>"]
 ```
 
 Match kinds, all deterministic and bounded in time:
 
 | Kind | Fields | Span it produces |
 | --- | --- | --- |
-| `phrase` | `phrases[]`, `boundary: word \| none`, `case_insensitive`, `position: any \| sentence_start \| closing` (closing = last two sentences), `max_doc_words` (rule inactive above it) | The matched phrase |
-| `regex` | `pattern` (RE2 syntax: no backreferences, no lookaround), `flags` | Group 1 if present, else the whole match |
+| `phrase` | `phrases[]`, `boundary: word \| none` (checked only at word-character edges), `case_insensitive` (must be `true` in v0), `position: any \| sentence_start \| closing` (closing = last two sentences), `max_doc_words` (rule inactive above it), `sentence_max_words`, `sentence_exclude` (RE2 pattern; a sentence containing a match is skipped) | The matched phrase |
+| `regex` | `pattern` (RE2 syntax, lowercase: no backreferences, no lookaround), plus the same `position`, `max_doc_words`, `sentence_max_words`, `sentence_exclude` | The named group `(?P<span>…)` if present, else the whole match |
+| `any` | `parts[]`: phrase or regex matches (no nesting), each with its own filters | Whichever part matched (ADR-15) |
 | `sentence_metric` | `metric`, `above` or `below`, optional `pattern` | The whole sentence |
 | `document_metric` | `metric`, `above` or `below`, `min_sentences` | The first sentence of the document |
 
-Sentence metrics in v0: `word_count`, `starts_with` (pattern), `comma_count`, similarity\_to\_prior (bag-of-words cosine to any earlier sentence in the turn). Document metrics in v0: `bullet_ratio`, `headers_per_100_words`, `sentence_length_cv` (coefficient of variation, low = uniform), `closing_similarity` (cosine similarity of last paragraph to first, bag of words), bold\_per\_100\_words. The engine rejects a pack that names a metric it does not implement.
+All matching is case-insensitive on the segmenter's normalised, ASCII-lowercased copy of the text (offsets unchanged); spans are sliced from the original (ADR-15). Sentence metrics in v0: `word_count`, `starts_with` (pattern), `comma_count`, similarity\_to\_prior (bag-of-words cosine over content words, using the engine's published stop-word list, to any earlier sentence in the turn; optional `min_words` on the later sentence). Document metrics in v0: `bullet_ratio` (optional `min_item_words`: only items with at least that many words count), `headers_per_100_words`, `sentence_length_cv` (coefficient of variation, low = uniform), `closing_similarity` (cosine similarity of last paragraph to first, bag of words), bold\_per\_100\_words. The engine rejects a pack that names a metric it does not implement.
 
 Every rule ships with at least one `hit` and one `miss` example. The eval harness (10) runs them on every pack change; a rule whose examples fail is not published. Long examples live in the eval corpus and are referenced by id.
 
@@ -58,7 +59,7 @@ Every rule ships with at least one `hit` and one `miss` example. The eval harnes
 
 ```yaml
 schema: prosegate.profile/1
-id: org-default/pr-description   # <namespace>/<slug>; namespace = account or org
+id: org-default/pr-description   # <namespace>/<slug>, each [a-z0-9-]{1,31}; namespace = account or org
 version: 4                       # integer, server-assigned on save
 name: PR description
 extends: org-default/base        # single parent; chain depth ≤ 3 (base → domain → project)
@@ -104,8 +105,8 @@ enforcement:
 
 Resolution walks `extends` from the leaf to the root, then merges root-first so the leaf wins:
 
-- `rule_packs`: union by `id`; on conflict the child's version range wins. Two ranges with no intersection → resolution error, profile unusable, user told which pair.
-- `overrides.categories`, `overrides.rules`, `overrides.thresholds`: deep merge, child wins per key.
+- `rule_packs`: union by `id`; on conflict the child's version range wins. Every pair of ranges for one pack anywhere in the chain must intersect, and so must all of them together; otherwise resolution error, profile unusable, user told which pair. Ranges are stored normalised; an empty or wildcard-only range (`""`, `*`, `x`) is invalid. Prerelease pack versions are never selected unless the winning range names a prerelease.
+- `overrides.categories`, `overrides.rules`, `overrides.thresholds`: deep merge, child wins per key. A rule's effective severity comes from the closest layer (leaf first) that sets a rule or category override for it, rule beating category within a layer; with none, the pack's severity (ADR-18).
 - `overrides.allow_terms`: union.
 - `reviewer.register`: child replaces whole object if present.
 - `reviewer.enabled`, `reviewer.categories`, `enforcement.*`, `trigger.*`: child replaces if present.
@@ -132,5 +133,5 @@ Nothing is reviewed with no active profile; the fallback is always `<namespace>/
 - Rule packs are semver. A profile pins a range; the adapter resolves the highest cached version in range. A pack bumps its major version when it removes or renames a rule id or requires a newer findings schema.
 - Profiles are integer-versioned by the server on every save. The adapter fetches at session start with `If-None-Match`; mid-session server changes apply at the next session or on `prosegate reload`.
 - The adapter bundles `core` at a known version and `<namespace>/base` so the free tier and offline sessions work with no fetch.
-- Local YAML overlays sync: a local file with the same `id` as a synced profile is merged as a child of it (local wins); a local pack with the same `id` as a synced pack is a version conflict and is rejected with a message naming both.
+- Local YAML overlays sync: a local file with the same `id` as a synced profile is merged as a child of it (local wins), must keep the synced `extends`, and leaves the snapshot's integer version at the synced one; a local pack with the same `id` as a synced pack is a version conflict and is rejected with a message naming both. Under an org policy of `required`, overlays are ignored and only the org's own profiles are selectable (ADR-18).
 - Each resolved snapshot is written to `~/.prosegate/sessions/<session_id>/profile.json` so a turn-end hook in a fresh process reads the same profile the turn started with.

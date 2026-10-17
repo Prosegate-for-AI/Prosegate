@@ -1,25 +1,32 @@
 # STATUS
 
-Snapshot, rewritten at each change. Last updated 2026-10-17.
+Snapshot, rewritten at each change. Last updated 2026-10-17 (after session restart).
 
-**Phase:** 0 — Spikes and scaffold (plan 11 §5)
+**Phase:** 1 — Contracts (Phase 2 corpus work started in parallel).
+
+## Done this phase
+
+- W1.1 `@prosegate/schema`: merged to master (a69e1d6); 523 package tests, all gates green.
 
 ## In flight
 
 | Item | Owner (agent / model) | State |
 | --- | --- | --- |
-| W0.1 Monorepo scaffold | implementer / sonnet | briefed, running |
-| S1 Stop hook surface | orchestrator / top-tier | running |
-| S2 OpenAI vending | script: implementer / sonnet; run: **human** (needs admin key) | script being written; run blocked on HQ-1 |
-| S3 Keychain in single-file bundle | spike / top-tier | running |
-| S4 re2js budget | spike / sonnet | running |
+| W1.2 `segmenter` | implementer / sonnet, worktree `agent-aea51b47…` | conformance and adversarial reviews in; tests review resumed after restart; then cycle 1 |
+| W1.3 `profiles` + real `core` 0.1.0 | implementer / sonnet, worktree `agent-a6b58ffe…` | cycle 2 of 3 resumed after restart (partial edits were uncommitted) |
+| W2.1 corpus-ref example documents (12) | implementer / sonnet, worktree | running |
 
-## Blocked
+## Queued
 
-- S2 execution — needs an OpenAI admin key on a sandbox org (HQ-1). Proceeding on plan §6.7 design (rate limits + cost polling + revoke).
+- W1.4 (after W1.3 merges): move the injected-text filter to `schema` (ADR-20); fix its bypasses (accent folding, confusables skeleton, spaced/leet product names, command flags, injection phrasing) and false positives (`Data:`, `#123`, `$20`, CJK punctuation); wire into `findingProblems`; denylist-only pass on ids; final top-tier privacy verify of schema + filter.
+- Phase 2 engine brief: S4 pipeline against the real `core.yaml` and the W2.1 documents.
+
+## Waiting on Murray
+
+HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-7, HQ-8. None blocks Phases 1–2.
 
 ## Next three actions
 
-1. Collect S1/S3/S4 results; record in `docs/spikes/`; update 05 capability matrix and 09 render path.
-2. Review and verify W0.1 scaffold; commit.
-3. Phase 0 exit check, then brief Phase 1 (`schema`, `segmenter`, `profiles` resolver).
+1. Run W1.2's fix cycle once its tests review lands.
+2. Accept W1.3 after cycle 2, merge it, and launch W1.4.
+3. Brief and launch the Phase 2 engine.

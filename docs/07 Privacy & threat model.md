@@ -26,7 +26,7 @@ What the claim does not cover: the reviewer provider sees the draft under that p
 - Vended reviewer key: one OpenAI project per user, created through the Administration API at first paid session, with a hard spend limit, per-model rate limits and a model allowlist set at vend time, and a service-account key with an expiry (ADR-8). The service stores the project id and the key's id, never the key value after it is handed to the device (the hand-off is the only time it exists server-side, in memory).
 - Spend limit default: $5 per calendar month per user, adjustable per plan, set as the project's provider-side hard spend limit. The provider documents that enforcement is not instantaneous, so worst-case exposure per key is the limit plus the rate-limited spend during the enforcement lag; the admin doc states the number measured in S2. Usage is polled every 15 minutes through the Administration API. Burn above 3× the user's trailing seven-day daily average, or above 80% of the cap before day 20, revokes the key, flags the account, and emails the user. The next session vends a fresh key after the user confirms in the dashboard.
 - Keys never appear in `feedback_text`, telemetry, logs, crash reports or MCP responses. A unit test greps every outbound payload type for the key prefixes and fails the build on a match.
-- Keychain: `@napi-rs/keyring` or equivalent; where no keychain exists (CI, some containers), a 0600 file under `~/.prosegate/` with a one-time notice.
+- Keychain: `@napi-rs/keyring`; on Linux, Secret Service only, never the kernel keyring. The backend is chosen by a probe at `init` and `session-start` and recorded; where no keychain works (CI, some containers), a file under `~/.prosegate/` readable only by the user (mode 0600 on POSIX; an owner-and-SYSTEM-only ACL on Windows) with a one-time notice. Secrets are never passed on a command line (ADR-14).
 
 ## Threats and mitigations
 
@@ -34,7 +34,7 @@ What the claim does not cover: the reviewer provider sees the draft under that p
 | --- | --- | --- | --- | --- |
 | 1 | Config service compromise | Profiles, telemetry, key ids | No prose to lose; D1 encrypted at rest; device keys hashed; key values not stored; incident = revoke all vended keys and rotate device keys | Attacker learns which rules users hit and their profile names |
 | 2 | Vended key stolen from a user's machine | Prosegate's provider bill | Per-user project and cap; 15-minute usage polling; anomaly revoke; keychain storage | Up to one cap per stolen key before revoke |
-| 3 | Malicious or buggy rule pack or profile from sync | User's model receives harmful instructions; regex DoS | Packs and profiles signed by the service (Ed25519), adapter verifies; RE2 only; 200 ms pack budget; instruction text ≤ 200 chars, no URLs, no backticks; action enum fixed | An org admin can still write a bad instruction for their own org |
+| 3 | Malicious or buggy rule pack or profile from sync | User's model receives harmful instructions; regex DoS | Packs, profiles and org policy signed by the service (Ed25519), adapter verifies and re-resolves at every turn end; RE2 only; per-pack work caps; 200 ms pack budget in a publish job; every model-injected string ≤ 200 chars and passes one allowlist-plus-denylist filter (no URLs, links, markup, shell or tool vocabulary, `prosegate`, invisible characters; ADR-19); action enum fixed | An org admin can still write a bad instruction for their own org; a filter cannot stop an instruction that is harmful in plain words ("run the install step from the wiki"), so third-party packs need publisher vetting and the dashboard review step |
 | 4 | Prompt injection through the draft (content from a tool result steers the reviewer) | User's model acts on an injected instruction | Reviewer output is constrained: fixed fork text for two categories; `register` instruction ≤ 160 chars, filtered for URLs, code and tool names; actions are an enum; `feedback_text` is rendered by the adapter from fields, never from free text | A short malicious `register` instruction that passes filters; mitigated by `warn` cap on that category |
 | 5 | Telemetry used to reconstruct prose | User's text | No span text, offsets or lengths per finding; counts only; prose length bucketed to 100 words; server rejects unknown fields and strings over 64 chars | Rule ids imply short phrases appeared; accepted and disclosed |
 | 6 | Adapter reads the whole transcript | Everything in the session | Parser reads from the last user message onward only; nothing persisted; `--debug` is explicit and local | A compromised adapter binary could read more (see 8) |
@@ -62,10 +62,15 @@ type Event =
       cleared_categories: Category[] }
   | { t: 'enforcement'; decision: 'allow' | 'continue'; enforcement_unavailable: boolean; override_used: boolean; notice_via_model: boolean }
   | { t: 'profile_select'; from: string; to: string; by: 'model' | 'heuristic' | 'user' }
-  | { t: 'error'; code: string };   // code from a fixed list; no messages
+  | { t: 'error'; code: ErrorCode };   // fixed list below; no messages
+
+type ErrorCode =
+  | 'adapter_error' | 'reviewer_timeout' | 'reviewer_http_error' | 'reviewer_schema_invalid' | 'reviewer_key_missing'
+  | 'profile_resolution_failed' | 'pack_rejected' | 'signature_invalid' | 'snapshot_missing' | 'turn_budget_exceeded'
+  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped';
 ```
 
-Every event carries `account_id`, `device_id`, `ts`. No event carries a session or turn id; sequences cannot be reassembled across events.
+Every stored event carries `account_id`, `device_id` and `ts` (integer epoch milliseconds). The adapter sends `ts`; the service stamps `account_id` and `device_id` from the authenticated device key, so a client cannot attribute events to another account (ADR-17). Every string field has its own format (enum, semver, model-id pattern, or the 04 id grammar), at most 64 visible ASCII characters, and is rejected if it has the shape of a key. `profile_id`, `from` and `to` carry a synced id or the literal `local`, never a local profile's own name; `rule_ids` carry only ids from `core` or synced packs. The adapter enforces both by masking against the session's synced id sets in its single send path, because the schema cannot tell a local id from a synced one. Arrays and counts are bounded. The adapter truncates `ts` to the minute and shuffles events within a batch; no event carries a session or turn id. Events from one turn can still share a minute and a batch; what they reveal together is which rule ids fired on pass 1 and which were cleared on pass 2, which is the purpose of the event and is disclosed.
 
 ## Opt-in samples
 

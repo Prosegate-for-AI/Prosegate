@@ -51,7 +51,7 @@ export interface Segment {
 }
 
 export interface Finding {
-  id: string;                       // first 10 hex of sha256(category|rule_id|span.text|segment.id); stable across passes
+  id: string;                       // first 10 hex of sha256(category|rule_id|span.text|segment.id), rule_id null → ''; stable across passes; not unique within a result (ADR-17)
   span: { segment_id: string; start: number; end: number; text: string };  // text must equal the slice; consumers drop mismatches
   category: Category;
   source: 'rule' | 'reviewer';
@@ -102,7 +102,7 @@ Profiles may raise or lower severity per category or per rule (04). `info` findi
 Every instruction is imperative and specific to the span. Two categories carry a mandatory fork because the obvious instruction would pressure the model into fabricating:
 
 - `unsupported_claim` → action `cite_or_soften_or_remove`, text: "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation."
-- `vague_claim` → action `specify`, text: "Give the specific the question asked for (the number, the file, the name). If you do not have it, say so in one clause instead of generalising."
+- `vague_claim` → action `specify`, text: "Give the specific detail the question asked for (the number, the file, the name). If you do not have it, say so in one clause instead of generalising."
 
 Rule findings carry fixed instruction text from the rule definition (08). Reviewer findings carry text the reviewer wrote, constrained by the rubric to the span and the action.
 
@@ -119,7 +119,7 @@ Finding ids are content-derived so a span that survives revision unchanged keeps
 
 ## Overlap resolution
 
-Two findings whose spans intersect are resolved before output, in this order: higher severity wins; `rule` beats `reviewer`; earlier `span.start` wins. The loser is dropped, not merged. A reviewer finding that fully contains a rule finding is kept only when its category differs; otherwise the rule finding wins.
+Two findings whose spans intersect are resolved before output, in this order: higher severity wins; `rule` beats `reviewer`; earlier `span.start` wins. The loser is dropped, not merged. A reviewer finding that fully contains a rule finding is kept only when its category differs; otherwise the rule finding wins. That containment is the only intersection a result may hold; findings are sorted by `span.start`, then by `span.end` descending. Spans are never empty. Two occurrences of the same span text in one segment share an id; pass 2 treats ids as a set, and an id counts as cleared only when no occurrence remains (ADR-17).
 
 ## Thresholds
 
@@ -132,14 +132,17 @@ Two findings whose spans intersect are resolved before output, in this order: hi
 Rendered by the adapter, not the reviewer, so every harness shows the same thing:
 
 ```text
-[Prosegate] {n} finding(s) against profile "{profile.id}" (pass {pass}/2). Revise your last response.
-{i}. {category}{ (rule_id)} — "{span.text, trimmed to 80 chars}" → {instruction.text}
+[Prosegate] {n} finding(s) against profile "{profile.id}" (pass 1 of 2). Revise your last response.
+{i}. {category label}{ (rule_id)} — "{span.text, trimmed to 80 chars}" → {instruction.text | same as <j>.}
 …
-Reply with the revised response only. Session override: prosegate advisory
+Reply with the revised response only. Do not run prosegate commands.
+To pause these revisions for this session, the user can run: prosegate advisory
 ```
+
+On pass 2 the header reads `[Prosegate] {n} finding(s) remain(s) after your revision, against profile "{profile.id}" (pass 2 of 2). Revise your last response.` Details in ADR-12 and ADR-16.
 
 Findings are listed in document order. A `warn` finding is rendered with the same shape on pass 1; it never appears on pass 2.
 
 ## Versioning
 
-`schema` is an integer version. Adding an optional field, a new `skipped_reason`, or a new `Action` does not bump it; consumers must tolerate unknown values of those enums and render unknown actions with `instruction.text` alone. Adding a `Category`, removing or renaming any field, or changing offset semantics bumps the version. The adapter refuses a rule pack whose declared findings version it does not support.
+`schema` is an integer version. Adding an optional field, a new `skipped_reason`, or a new `Action` does not bump it; consumers must tolerate unknown values of those enums and render unknown actions with `instruction.text` alone. Adding a `Category`, removing or renaming any field, or changing offset semantics bumps the version. The adapter refuses a rule pack whose declared findings version it does not support. The JSON Schema files generated from these types are the producer form (unknown fields and values rejected); a consumer validating against them must still apply the tolerance rules above.
