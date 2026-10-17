@@ -58,4 +58,37 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Options:** (1, recommended) Re-login and run the script; it is headless, uses Haiku, costs a few cents of your plan. (2) I proceed doc-only and verify live at the end of Phase 3, when `init` is first run on your machine.
 - **Default I'm proceeding on:** Option 2 — documentation evidence, plus a shim that supports both render paths behind one switch. Reversal cost: none; S1's live answer only flips the switch's default.
 - **Needed by:** Phase 3 exit (target week 4).
-- **Answer:** Partly answered 2026-10-17: Murray re-logged in; the headless S1 run completed (ADR-11). The interactive TUI check is waiting on the workspace-trust prompt in the S1 terminal tab.
+- **Answer:** Answered 2026-10-17: Murray re-logged in and accepted the trust prompt; headless and interactive runs are done (ADR-11, ADR-13).
+
+---
+
+## HQ-6 · A private Git remote so CI actually runs
+
+- **Question:** May I push this repo to a **private** GitHub repository so the CI workflow runs on Linux, Windows and macOS runners? You can create it, or tell me the org and name and I'll create it with `gh`.
+- **Why it matters:** *Quality* — the CI file has never executed, and macOS (the keyring, plan §10 "all three platforms") can only be tested on a hosted runner. *Privacy* — the repo holds no user data or secrets; `check:secrets` gates every commit. *Revenue* — the paid service code stays private until HQ-3 is answered.
+- **Options:** (1, recommended) A private GitHub repo with Actions enabled. (2) Stay local: I run the CI step list on Windows only, and macOS stays untested until release.
+- **Default I'm proceeding on:** Option 2. Reversal cost: none; the first push runs everything.
+- **Needed by:** Phase 3 exit (the macOS `init` test).
+- **Answer:** _pending_
+
+---
+
+## HQ-7 · Which sources may go into the human-control corpus (licensing)
+
+- **Question:** May the public repo's human-control corpus use these sources: Python PEPs (CC0 or public domain), Rust RFCs (MIT/Apache-2.0), Kubernetes KEPs (Apache-2.0), `CHANGELOG.md` and release-note files from permissively licensed repos, and Stack Overflow answers dated 2021 or earlier (CC BY-SA, with per-item attribution)? All items would be dated before 2022.
+- **Why it matters:** *Quality* — the false-positive gate in 10 is only as good as this corpus: 300 per profile, written by humans before 2022. *Revenue/Marketability* — a corpus with unclear licensing can't ship in the open repo, and pulling it later breaks the reproducible eval story. *Privacy* — none; all public text. The hard genres are PR descriptions and email. GitHub PR bodies and mailing-list posts carry no clear licence, so I would keep them out of the public repo.
+- **Options:** (1, recommended) The list above in the public repo, one licence record per item. PR-description and email material from your team's own pre-agent writing goes in a private sibling repo, as 10 already says. (2) A stricter set: CC0/MIT/Apache/BSD only, no CC BY-SA. That leaves chat-reply thin. (3) Your own list.
+- **Default I'm proceeding on:** Building the corpus tooling (layout, licence records, annotation CLI, runners) against an empty corpus. I fetch nothing until you answer. Reversal cost: none.
+- **Needed by:** week 4, which is when the Phase 6 track starts collecting.
+- **Answer:** _pending_
+
+---
+
+## HQ-8 · Paid eval work: AI-corpus generation and annotation
+
+- **Question:** (a) May I spend model API money to generate the AI corpus? 10 asks for 4 models × 200 docs per profile × 5 profiles, about 4,000 generations; my estimate is USD 40–120 depending on models. (b) Who annotates? 10 asks for two annotators per item plus adjudication.
+- **Why it matters:** *Quality* — rule precision, reviewer gating and end-to-end clearance (10) cannot be measured without these. *Revenue* — over the USD 20 line in my brief. *Privacy* — none.
+- **Options for (b):** (1, recommended) Two LLM annotators from different providers, with the guidelines in `eval/GUIDELINES.md`. You or a teammate adjudicate disagreements and spot-check a 10% sample, and we report κ honestly as LLM-vs-LLM. (2) Two human annotators from your team for everything. That is the most valid and the slowest. (3) A mix: humans on the 150-item rubric set, LLMs on the larger rule-precision sample.
+- **Default I'm proceeding on:** Build the generation scripts with a hard cost cap and a dry-run mode, plus the annotation CLI; run nothing paid. API keys stay yours: you set them in your shell and run the script.
+- **Needed by:** week 5.
+- **Answer:** _pending_

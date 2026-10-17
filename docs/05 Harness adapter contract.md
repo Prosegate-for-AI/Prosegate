@@ -69,7 +69,7 @@ Hooks are registered in `.claude/settings.json` (project) or `~/.claude/settings
 | --- | --- | --- |
 | `SessionStart` | Read stdin; stdout is added to context | `session-start`; print `inject` |
 | `UserPromptSubmit` | Read `prompt` from stdin; stdout is added to context | `turn-start`; print `inject` if non-null |
-| `Stop` | Read `last_assistant_message` as the turn text, `stop_hook_active`, and `prompt_id` (used as `turn_id` when present); read the transcript only for the turn's tool-use names, best-effort, tolerating lag | `turn-end`; on `continue`, print `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":feedback_text},"systemMessage":notice}` and exit `0` (ADR-11; fallback: `feedback_text` on stderr, exit `2`) |
+| `Stop` | Read `last_assistant_message` as the turn text, `stop_hook_active`, and `prompt_id` (used as `turn_id` when present); read the transcript only for the turn's tool-use names, best-effort, tolerating lag | `turn-end`; on `continue`, print `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":feedback_text}}` and exit `0`; on `allow` with a notice (advisory, shipped as is), print `{"systemMessage":notice}` (ADR-11, ADR-13; fallback: `feedback_text` on stderr, exit `2`) |
 
 `stop_hook_active` is `true` when the Stop hook is running because a previous Stop hook already continued the model. The shim passes it as `continuation`; the adapter uses its own per-`turn_id` pass count as the source of truth and `continuation` only as a cross-check, because the flag does not distinguish Prosegate's continuation from another hook's.
 
@@ -88,4 +88,4 @@ The transcript parser reads only the tool-use blocks since the last user message
 
 ## Packaging
 
-`prosegate` ships as an npm package with a single-file build per platform, installed with `npx prosegate init --harness claude-code`, which writes the hook and MCP registrations and runs `session-start` once to confirm auth. The shim scripts are inside the package; a user never edits them.
+`prosegate` ships as an npm package containing one platform-independent JavaScript bundle (all pure-JS dependencies inlined) and one native dependency, `@napi-rs/keyring`, kept external and declared in `optionalDependencies`; npm installs only the prebuilt keyring binary for the host platform, with no install scripts or compiler. If the binary is absent or fails to load, keys use the file store described in 07. It is installed with `npx prosegate init --harness claude-code`, which writes the hook and MCP registrations, probes the key store once and records the result, and runs `session-start` once to confirm auth (ADR-14). The shim scripts are inside the package; a user never edits them.
