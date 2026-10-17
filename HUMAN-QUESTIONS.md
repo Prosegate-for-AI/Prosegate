@@ -58,4 +58,15 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Options:** (1, recommended) Re-login and run the script; it is headless, uses Haiku, costs a few cents of your plan. (2) I proceed doc-only and verify live at the end of Phase 3, when `init` is first run on your machine.
 - **Default I'm proceeding on:** Option 2 — documentation evidence, plus a shim that supports both render paths behind one switch. Reversal cost: none; S1's live answer only flips the switch's default.
 - **Needed by:** Phase 3 exit (target week 4).
-- **Answer:** Partly answered 2026-10-17: Murray re-logged in; the headless S1 run completed (ADR-11). The interactive TUI check is waiting on the workspace-trust prompt in the S1 terminal tab.
+- **Answer:** Answered 2026-10-17: Murray re-logged in and accepted the trust prompt; headless and interactive runs are done (ADR-11, ADR-13).
+
+---
+
+## HQ-6 · A private Git remote so CI actually runs
+
+- **Question:** May I push this repo to a **private** GitHub repository so the CI workflow runs on Linux, Windows and macOS runners? You can create it, or tell me the org and name and I'll create it with `gh`.
+- **Why it matters:** *Quality* — the CI file has never executed, and macOS (the keyring, plan §10 "all three platforms") can only be tested on a hosted runner. *Privacy* — the repo holds no user data or secrets; `check:secrets` gates every commit. *Revenue* — the paid service code stays private until HQ-3 is answered.
+- **Options:** (1, recommended) A private GitHub repo with Actions enabled. (2) Stay local: I run the CI step list on Windows only, and macOS stays untested until release.
+- **Default I'm proceeding on:** Option 2. Reversal cost: none; the first push runs everything.
+- **Needed by:** Phase 3 exit (the macOS `init` test).
+- **Answer:** _pending_
