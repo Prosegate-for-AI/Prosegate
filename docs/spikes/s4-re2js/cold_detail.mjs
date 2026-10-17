@@ -1,0 +1,21 @@
+// Scratch: where does the first (cold) run spend its time?  node cold_detail.mjs [cc]
+import { enableCompileCache } from 'node:module';
+if (process.argv[2] === 'cc') enableCompileCache(process.argv[3] || './.cc');
+const t00 = performance.now();
+const eng = await import('./engine.mjs');
+const { RULES } = await import('./rules.mjs');
+const { makeDoc } = await import('./corpus.mjs');
+const raw = makeDoc({ words: 2000, hitRate: 0.05, seed: 1 });
+const imp = performance.now() - t00;
+let t0 = performance.now();
+const pack = eng.buildPackOpt(RULES, { span: 'group1', gate: process.env.GATE !== '0', chunked: process.env.CHUNK !== '0' });
+const comp = performance.now() - t0;
+const stages = {};
+const tm = (k, fn) => { const t = performance.now(); const r = fn(); stages[k] = +(performance.now() - t).toFixed(2); return r; };
+const text = tm('normalise', () => eng.normalise(raw));
+const sentences = tm('split', () => eng.splitSentences(text));
+const ctx = { raw, text, sentences, words: eng.countWords(text) };
+tm('prepare(lower+RE2Set gate+chunks)', () => pack.prepare(ctx));
+for (const r of pack) tm(r.id, () => r.run(ctx));
+const total = Object.values(stages).reduce((a, b) => a + b, 0);
+console.log(JSON.stringify({ imp: +imp.toFixed(1), comp: +comp.toFixed(1), total: +total.toFixed(1), top: Object.entries(stages).sort((a, b) => b[1] - a[1]).slice(0, 8) }));

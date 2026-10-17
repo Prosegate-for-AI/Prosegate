@@ -54,7 +54,7 @@ output: ReviewResult   // 03; pass is always 1 and verdict never 'revise' — th
 | Session-start hook | yes | to verify | to verify | yes (your code) |
 | Turn-start hook with context injection | yes | to verify | to verify | yes |
 | Turn-end hook that can continue the model with a reason | yes | to verify | to verify | yes, and can buffer before render |
-| Last assistant text available to the hook | yes, via transcript file | to verify | to verify | yes |
+| Last assistant text available to the hook | yes, via `last_assistant_message` (ADR-9) | to verify | to verify | yes |
 | Tool calls of the turn visible | yes, via transcript | to verify | to verify | yes |
 | Stdio MCP server | yes | yes | yes | n/a |
 | Pre-render review (user never sees the unreviewed text) | no | no | no | yes |
@@ -69,17 +69,18 @@ Hooks are registered in `.claude/settings.json` (project) or `~/.claude/settings
 | --- | --- | --- |
 | `SessionStart` | Read stdin; stdout is added to context | `session-start`; print `inject` |
 | `UserPromptSubmit` | Read `prompt` from stdin; stdout is added to context | `turn-start`; print `inject` if non-null |
-| `Stop` | Read `stop_hook_active`; parse the transcript JSONL for the last assistant message's text blocks and the turn's tool-use names | `turn-end`; on `continue`, print `{"decision":"block","reason":feedback_text}` and exit `0`, or print `feedback_text` to stderr and exit `2` |
+| `Stop` | Read `last_assistant_message` as the turn text, `stop_hook_active`, and `prompt_id` (used as `turn_id` when present); read the transcript only for the turn's tool-use names, best-effort, tolerating lag | `turn-end`; on `continue`, print `{"decision":"block","reason":feedback_text,"systemMessage":notice}` and exit `0` (fallback: `feedback_text` on stderr, exit `2`) |
 
 `stop_hook_active` is `true` when the Stop hook is running because a previous Stop hook already continued the model. The shim passes it as `continuation`; the adapter uses its own per-`turn_id` pass count as the source of truth and `continuation` only as a cross-check, because the flag does not distinguish Prosegate's continuation from another hook's.
 
 The MCP server is registered in `.mcp.json` as a stdio server running `prosegate mcp`. One registration serves every project.
 
-The transcript parser reads only the last assistant turn and the tool-use blocks since the last user message. It never reads earlier turns and never writes to the transcript.
+The transcript parser reads only the tool-use blocks since the last user message; the turn text comes from `last_assistant_message`, because the transcript may lag at Stop time (ADR-9). It never reads earlier turns and never writes to the transcript.
 
 ## Budgets and failure modes
 
-- Rules: under 50 ms for 2,000 words of prose. A rule pack whose rules exceed 200 ms on the eval corpus is rejected at publish.
+- Rules: under 50 ms for 2,000 words of prose, measured on a loaded pack (`stats.rules_latency_ms`). A rule pack whose rules exceed 200 ms on the eval corpus is rejected at publish.
+- Cold `turn-end` with the reviewer off (spawn to exit, including pack load): at most 400 ms p95 on the 2,000-word fixture (ADR-10).
 - Reviewer: 4 s timeout, one retry on a network error, none on a model error. Timeout → rules-only result with `stats.reviewer: null`; the turn is still reviewed.
 - Whole `turn-end`: 6 s wall-clock cap, after which the adapter returns `allow` with `skipped_reason: 'reviewer_unavailable'` and logs it.
 - Offline: the adapter uses the bundled `core` pack and the cached session snapshot. No config-service call is on the turn path.

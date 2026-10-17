@@ -10,7 +10,7 @@ The shape, decided 2026-10-17:
 
 - Local adapter (TypeScript, open source): deterministic rule engine, reviewer client, profile selector, telemetry, one hook shim per harness. Serves `select_profile` and `review_prose` as MCP tools.
 - Config service (Cloudflare Workers, D1, Pages): accounts, profiles, versioned rule packs and reviewer prompts, device keys, vended reviewer keys, metadata telemetry. No endpoint accepts prose, except the opt-in samples endpoint, which is off by default and capped at 600 characters per excerpt.
-- Reviewer: any cheap competent model, called directly from the adapter. Key is either vended (one OpenAI project per user with a hard spend cap) or the user's own. One code path, two key sources.
+- Reviewer: any cheap competent model, called directly from the adapter. Key is either vended (one OpenAI project per user with a hard spend cap, rate limits and usage polling; ADR-8) or the user's own. One code path, two key sources.
 - Enforcement on by default; one command drops a session to advisory. Pass cap of two.
 - First customer: engineering teams running agentic harnesses, starting with the author's own team. Claude Code adapter ships first.
 

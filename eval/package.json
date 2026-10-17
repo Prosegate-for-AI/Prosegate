@@ -1,0 +1,20 @@
+{
+  "name": "@prosegate/eval",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prosegate/schema": "workspace:*",
+    "@prosegate/segmenter": "workspace:*",
+    "@prosegate/engine": "workspace:*",
+    "@prosegate/profiles": "workspace:*",
+    "@prosegate/reviewer": "workspace:*",
+    "prosegate": "workspace:*"
+  }
+}

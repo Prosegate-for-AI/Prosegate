@@ -1,0 +1,20 @@
+1. matcher.find() loop over whole text, (?i), with \b  [current]               p50   53.55  p95   74.11
+2. re.test(text) only, (?i), with \b                                           p50   39.32  p95   49.31
+3. re.test(text) only, (?i), NO \b                                             p50    2.09  p95    2.92
+4. re.test(lowercased text) only, case-sensitive, NO \b                        p50    2.30  p95    2.72
+5. matcher.find() loop, (?i), NO \b, whole text                                p50   53.76  p95   64.42
+6. matcher.find() loop, case-sensitive on lowercased text, NO \b               p50   24.43  p95   30.85
+7. test() gate on lowercased/no-\b, then find() only if gate hits              p50   19.76  p95   23.14
+8. matcher.find() on 38 paragraph substrings, (?i), with \b (offset += para start) p50   57.29  p95   76.72
+9. same, NO \b, lowercased paragraphs, case-sensitive                          p50    3.08  p95    3.42
+   RE2Set (case-sensitive, lowercased, no \b) matched pattern idx: [0,1,3,4,7,11,12,13,14,16,17,19]
+10. RE2Set.match(lowercased) one pass for all 17 patterns                      p50    0.22  p95    0.38
+11. RE2Set (?i) on original text, no \b                                        p50    0.23  p95    0.29
+12. RE2Set (?i) WITH \b                                                        p50   46.12  p95   55.57
+13. plain JS indexOf over all 83 phrases on lowercased text                    p50    0.59  p95    0.71
+
+per-pattern test() cost, (?i)+\b vs no-\b+lowercase (p50 ms over 60 runs):
+  core.filler.001    test(?i)\b   4.516 | test lower,noB   0.201 | find-loop(?i)\b   4.591
+  core.filler.002    test(?i)\b   2.842 | test lower,noB   0.151 | find-loop(?i)\b   2.785
+  core.filler.003    test(?i)\b   2.693 | test lower,noB   0.147 | find-loop(?i)\b   2.643
+  core.filler.004    test(?i)\b   1.442 | test lower,noB   0.111 | find-loop(?i)\b   1.808

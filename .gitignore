@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+.wrangler/
+eval/reports/*.local.json
+.env
+.env.*
+*.tsbuildinfo
+.dev.vars
+*.pem
+*.key
+*.tgz
+
+# Spike run artefacts (throwaway; may hold model output)
+docs/spikes/s1-stop-hook/events.jsonl
+docs/spikes/s1-stop-hook/stopcount
+docs/spikes/s1-stop-hook/transcript-at-stop-*.jsonl
+docs/spikes/s2-openai-vending/s2-report.json

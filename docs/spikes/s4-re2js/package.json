@@ -1,0 +1,13 @@
+{
+  "name": "prosegate-spike-s4-re2js",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Spike S4: re2js budget for the core rule pack",
+  "scripts": {
+    "bench": "node bench.mjs"
+  },
+  "dependencies": {
+    "re2js": "2.8.6"
+  }
+}

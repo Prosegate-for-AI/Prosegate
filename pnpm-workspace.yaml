@@ -1,0 +1,18 @@
+packages:
+  - "packages/*"
+  - "services/*"
+  - "apps/*"
+  - "eval"
+
+# pnpm 10 blocks dependency install scripts by default. esbuild works without its postinstall
+# (it ships a prebuilt per-platform binary), so state that explicitly instead of warning.
+ignoredBuiltDependencies:
+  - esbuild
+
+# Supply chain (doc 07 threat 8): refuse package versions published less than 24 hours ago.
+minimumReleaseAge: 1440
+
+# rollup 4.64.9 (a transitive dep of vite/tsup) was published less than 24 hours before this was
+# written and fails minimumReleaseAge. Remove this override once a newer matured version exists.
+overrides:
+  rollup: 4.64.7

@@ -1,0 +1,228 @@
+node v22.23.3 | re2js 2.8.6 | 11th Gen Intel(R) Core(TM) i5-11400H @ 2.70GHz | win32 x64
+
+=== A. re2js API facts ===
+A1 UTF-16 offsets: JS indexOf=11 re2js start=11 end=16 (3 astral chars precede the match; a code-point index would be 8) slice===match: true
+A1b group offsets with astral prefix: start(1)=5 end(1)=8 start(2)=9 text='def'
+A2 '.' consumes a whole astral code point: true ; lone surrogate: true
+A3 Matcher.find() loop: [[0,5],[6,11],[13,18]]
+A3b matchAll(): 3 matches; fields: 0,1,index,input,groups ; index=0,6,13; has group offsets (indices)? false
+A3c exec(): index=2 [0]=delve [1]=del indices? false
+A4 optional group 1 unmatched: start(1)=-1 end(1)=-1 group(1)=null groupCount=1
+A4b no group 1: groupCount=0
+A5 flag CASE_INSENSITIVE: true ; inline (?i): true ; none: false
+A5b flags are not wired to a '(?i)' prefix by the phrase compiler; both forms accepted. Unicode fold: (?i)k matches U+212A KELVIN: true ; (?i)s matches U+017F LONG S: true
+A6 backreference (a)\1                      REJECTED: error parsing regexp: invalid escape sequence: `\1`
+A6 lookahead (?=a)                          REJECTED: error parsing regexp: invalid or unsupported Perl syntax: `(?=`
+A6 negative lookahead (?!a)                 REJECTED: error parsing regexp: invalid or unsupported Perl syntax: `(?!`
+A6 lookbehind (?<=a)                        REJECTED: error parsing regexp: invalid named capture: `(?<=a)b`
+A6 lookbehind WITH RE2JS.LOOKBEHINDS flag   accepted
+A6 atomic group (?>a)                       REJECTED: error parsing regexp: invalid or unsupported Perl syntax: `(?>`
+A6 possessive a++                           REJECTED: error parsing regexp: invalid nested repetition operator: `++`
+A6 \d{1001}                                 REJECTED: error parsing regexp: invalid repeat count: `{1001}`
+A6 named group (?P<n>a)                     accepted
+A6 named group (?<n>a)                      accepted
+A6b NOTE: re2js 2.8.x ships an opt-in RE2JS.LOOKBEHINDS flag (non-standard). The pack loader must never pass it, or rules stop being portable to native re2.
+A7 ASCII-only classes: \w matches 'é': false ; \b between 'é' and 'x' (i.e. \bx\b in 'éx'): true ; \s matches NBSP: false ; \s matches U+2028: false ; \pL matches 'é': true
+A8 hedge.002 as printed in 08 (\| escapes)      compiles, SILENTLY NEVER MATCHES
+A8 vocab.002 as printed (\\b, \|)               compiles, SILENTLY NEVER MATCHES
+A8 hedge.004 as printed (\| escapes)            compiles, SILENTLY NEVER MATCHES
+A9 uniform \b(?:...)\b: false | per-edge boundaries (boundary only where the phrase edge is a word char): true   <- filler.001 "certainly!" in "Certainly! Here is the fix."
+A9 uniform \b(?:...)\b: false | per-edge boundaries (boundary only where the phrase edge is a word char): true   <- filler.004 "overall," in "Overall, the fix is safe."
+
+=== B. Correctness: 08 hit/miss examples through compiled patterns ===
+rule                   | hit fires: no-flags / (?i) | miss fires (?i) | verdict | span if group1 (04 semantics)   | span if whole match
+core.filler.001        | true  / true             | false           | PASS    | "Great question"|"Let's dive into" | "Great question"|"Let's dive into"
+core.filler.002        | true  / true             | false           | PASS    | "Let me know if you have any quest | "Let me know if you have any questions"
+core.filler.003        | true  / true             | false           | PASS    | "This document outlines"           | "This document outlines"
+core.filler.004        | true  / true             | false           | PASS    | "In summary"                       | "In summary"
+core.hedge.001         | true  / true             | false           | PASS    | "It's worth noting"                | "It's worth noting"
+core.hedge.002         | true  / true             | false           | PASS    | "relatively"                       | "relatively slow"
+core.hedge.003         | true  / true             | false           | PASS    | "Arguably"                         | "Arguably"
+core.hedge.004         | true  / true             | false           | PASS    | "could potentially"                | "could potentially"
+core.hedge.005         | false / true             | false           | PASS    | "It depends."                      | "It depends."
+core.vocab.001         | true  / true             | false           | PASS    | "leverage"                         | "leverage"
+core.vocab.002         | false / true             | false           | PASS    | "The"                              | "The current landscape"
+core.vocab.003         | true  / true             | false           | PASS    | "robust"|"seamless"                | "robust"|"seamless"
+core.vocab.004         | true  / true             | false           | PASS    | "incredibly"                       | "incredibly"
+core.vocab.005         | true  / true             | false           | PASS    | "a number of"                      | "a number of"
+core.triad.001         | true  / true             | true            | FAIL(miss fires) | "fast"                             | "fast, simple, and reliable"
+core.triad.002         | true  / true             | false           | PASS    | "just"                             | "not just about speed, it's about"
+core.triad.003         | true  / true             | false           | PASS    | "Whether it's"                     | "Whether it's"
+core.structure.001     | true  / true             | false           | PASS    | "## Heading 1\nThe scheduler hashe | "## Heading 1\nThe scheduler hashes old 
+core.structure.002     | true  / true             | true            | FAIL(miss fires) | "Here is what changed."            | "Here is what changed."
+core.structure.003     | true  / true             | false           | PASS    | "The worker number 1 reads the sha | "The worker number 1 reads the shared qu
+core.structure.004     | true  / true             | false           | PASS    | "The cache is keyed by tenant and  | "The cache is keyed by tenant and region
+core.structure.005     | true  / true             | false           | PASS    | "The deploy has **three** steps."  | "The deploy has **three** steps."
+core.repetition.001    | true  / true             | false           | PASS    | "Each tenant has its own cache."   | "Each tenant has its own cache."
+
+Extras (not in 08; expected true/false, null = informational):
+  core.filler.001   sentence-initial only: mid-sentence phrase must NOT fire           fires=false (no-flags: false) ok -
+  core.filler.002   closing only: phrase in first paragraph of a long doc must NOT fire fires=false (no-flags: false) ok -
+  core.filler.004   doc exactly 400 words, "under 400" boundary                        fires=false (no-flags: false) (info) -
+  core.hedge.001    "note that" sentence-initial                                       fires=true  (no-flags: true ) ok "Note that"
+  core.hedge.001    "note that" mid-sentence must NOT fire                             fires=false (no-flags: false) ok -
+  core.hedge.002    "rather than" false positive                                       fires=true  (no-flags: true ) (info) "rather"
+  core.hedge.004    sentence-initial capital                                           fires=true  (no-flags: false) ok "Could potentially"
+  core.vocab.001    noun "leverage" false positive                                     fires=true  (no-flags: true ) (info) "leverage"
+  core.vocab.001    inflection "leveraged" (not in list)                               fires=false (no-flags: false) (info) -
+  core.vocab.002    noun phrase "tapestry"                                             fires=true  (no-flags: true ) ok "tapestry"
+  core.vocab.004    regex part: "highly effective"                                     fires=true  (no-flags: true ) ok "effective"
+  core.triad.001    capitalised first word                                             fires=true  (no-flags: false) ok "Fast"
+  core.triad.001    digit in sentence suppresses                                       fires=false (no-flags: false) ok -
+  core.triad.001    no Oxford comma                                                    fires=true  (no-flags: true ) ok "fast"
+  core.triad.003    regex part: "from X to Y, and Z"                                   fires=true  (no-flags: true ) ok "and "
+  core.triad.003    regex part, sentence-initial capital                               fires=true  (no-flags: false) ok "From startups to enterprises, teams"
+
+Structure/repetition metric values for the 08 examples (hit / miss):
+  core.structure.001 headers_per_100_words  threshold >1.5, min_sentences 8: hit=1.89 (sentences=27, words=317)  miss=0.49 (sentences=122, words=1217)
+  core.structure.002 bullet_ratio           threshold >0.6, min_sentences 8: hit=0.80 (sentences=10, words=66)  miss=0.92 (sentences=13, words=30)
+  core.structure.003 sentence_length_cv     threshold <0.25, min_sentences 10: hit=0.00 (sentences=10, words=200)  miss=0.75 (sentences=4, words=54)
+  core.structure.004 closing_similarity     threshold >0.6, min_sentences 6: hit=1.00 (sentences=7, words=74)  miss=0.00 (sentences=6, words=65)
+  core.structure.005 bold_per_100_words     threshold >3, min_sentences 6: hit=4.83 (sentences=16, words=145)  miss=0.76 (sentences=14, words=131)
+
+repetition.001 cosine of the 08 hit example under different stop-word assumptions:
+  no stop words                            cosine=0.365  fires(min 6 words on later sentence only)=false  fires(min 6 on both)=false
+  common list (has each/own, not per)      cosine=0.816  fires(min 6 words on later sentence only)=true  fires(min 6 on both)=false
+  extended list (+per)                     cosine=1.000  fires(min 6 words on later sentence only)=true  fires(min 6 on both)=false
+
+=== C. Unicode / typography hazards ===
+  phrase hedge.001  "It’s worth noting that" (U+2019) vs pattern with '      raw: 0     normalised: 1
+  phrase filler.001 "Let’s dive into" (U+2019)                               raw: 0     normalised: 1
+  regex  triad.002  "It’s not just about speed, it’s about trust."           raw: 0     normalised: 1
+  regex  vocab.002  "today’s landscape"                                      raw: 0     normalised: 1
+  phrase filler.002 "Let me know if you have any questions" with NBSP (U+00A0) as spaces raw: 0     normalised: 1
+  phrase vocab.002  "game‑changer" (U+2011 non-breaking hyphen)              raw: 0     normalised: 1
+  phrase vocab.003  "cutting‐edge" (U+2010 hyphen)                           raw: 0     normalised: 1
+  -> after normalisation all of the above fire; before, every curly-apostrophe / NBSP / U+2010-1 variant is a silent false negative.
+
+  \b next to non-ASCII letters (re2js \b and \w are ASCII-only, same as native JS):
+    \bve\b      in "naïve"        -> true   (true = "ï" is a non-word char to RE2, so "ve" looks like a whole word)
+    \bcaf\b     in "café"         -> true
+    \brobust\b  in "robustés"      -> true   (listed word glued to an accented suffix)
+    \brobust\b  in "érobust"       -> true
+    triad.001 on "The naïve, simple, and robust option." matched "ve, simple, and robust" (match starts mid-word, after the "ï")
+    JS post-filter unicodeBoundaryOk() on the ASCII-\b match of "robust" in "robustés" (0-6) -> false (false = rejected)
+
+  Em/en dash adjacency (— U+2014, – U+2013):
+    "robust—and"               vocab.003/001 matches: 1
+    "—robust"                  vocab.003/001 matches: 1
+    "we delve—briefly"         vocab.003/001 matches: 1
+    "seamless–robust"          vocab.003/001 matches: 2
+    "a leverage— "             vocab.003/001 matches: 1
+    sentence splitter on "It works—however it is slow. Next one." -> 2 sentences (em dash is not a boundary)
+    \s+ between words does NOT match em dash: false ; "it—depends." hedge.005 -> 1 (fires)
+    ellipsis "It depends…" (U+2026) hedge.005 -> 0 ; closing quote 'It depends."' -> 1 ; "It depends!!" -> 1
+  normalise(): length preserved true; astral char untouched: true
+  normalise cost on 2,000 words (11839 chars): 17.3 us (replace w/ callback, avg of 1000)
+
+=== D0. Parity: optimised pipeline vs naive pipeline (exact spans), on 08 examples, extras and the bench docs ===
+1541 (text x rule) comparisons, 0 mismatches
+
+=== D. Benchmark: 2,000-word prose, 100 iterations after 30 warm-up (warm JIT, warm DFA caches) ===
+doc "realistic (~5% hit sentences)": 2014 words, 11839 chars, 173 sentences
+doc "dense (50% hit sentences)": 2014 words, 11792 chars, 189 sentences
+
+Full pack (normalise + split + word count + gate + all 23 rules in 08), ms per run:
+doc                              | variant  | p50     p95     max    | findings
+realistic (~5% hit sentences)    | naive    |  51.07   59.43  100.51 | 39
+realistic (~5% hit sentences)    | optwhole |  21.10   26.74   31.98 | 39
+realistic (~5% hit sentences)    | opt      |   6.59    7.72    8.02 | 39
+realistic (~5% hit sentences)    | optgate  |   5.96    7.01    7.85 | 39
+realistic (~5% hit sentences)    | native   |   4.10    4.92    8.44 | 39
+dense (50% hit sentences)        | naive    |  43.32   57.84   63.78 | 194
+dense (50% hit sentences)        | optwhole |  29.86   42.39   51.19 | 194
+dense (50% hit sentences)        | opt      |   6.87    9.63   13.09 | 194
+dense (50% hit sentences)        | optgate  |   7.01    8.27   10.60 | 194
+dense (50% hit sentences)        | native   |   2.69    3.25    3.39 | 194
+
+Breakdown p50 / p95 ms by stage:
+  [realistic (~5% hit sentences)] [naive]
+    normalise 0.042/0.054 | sentence split 0.116/0.167 | word count 0.049/0.078 | lowercase+RE2Set gate+chunking 0.000/0.001
+    phrase+regex (17 rules) 47.475/55.475 | structure (5 metrics) 0.129/0.196 | repetition.001 (similarity) 3.318/4.093
+  [realistic (~5% hit sentences)] [opt]
+    normalise 0.042/0.054 | sentence split 0.115/0.249 | word count 0.049/0.073 | lowercase+RE2Set gate+chunking 0.051/0.095
+    phrase+regex (17 rules) 2.941/3.678 | structure (5 metrics) 0.108/0.160 | repetition.001 (similarity) 3.245/3.944
+  [dense (50% hit sentences)] [naive]
+    normalise 0.042/0.059 | sentence split 0.106/0.174 | word count 0.045/0.063 | lowercase+RE2Set gate+chunking 0.000/0.001
+    phrase+regex (17 rules) 41.064/54.333 | structure (5 metrics) 0.118/0.158 | repetition.001 (similarity) 1.990/2.601
+  [dense (50% hit sentences)] [opt]
+    normalise 0.038/0.048 | sentence split 0.102/0.155 | word count 0.044/0.060 | lowercase+RE2Set gate+chunking 0.041/0.068
+    phrase+regex (17 rules) 4.454/7.032 | structure (5 metrics) 0.100/0.150 | repetition.001 (similarity) 1.869/2.375
+
+Per-rule p95 ms, realistic doc:  naive | optimised | native      (dense doc: naive | optimised)
+  core.filler.001          5.395 |   0.276 |   0.092      (4.979 | 0.621)
+  core.filler.002          3.994 |   0.111 |   0.048      (3.280 | 0.113)
+  core.filler.003          4.159 |   0.141 |   0.048      (4.435 | 0.701)
+  core.filler.004          0.003 |   0.001 |   0.001      (0.003 | 0.001)
+  core.hedge.001           4.702 |   0.139 |   0.036      (4.608 | 0.142)
+  core.hedge.002           1.840 |   0.330 |   0.027      (1.704 | 0.562)
+  core.hedge.003           3.927 |   0.215 |   0.046      (3.873 | 0.583)
+  core.hedge.004           1.911 |   0.261 |   0.021      (2.134 | 0.371)
+  core.hedge.005           1.151 |   0.030 |   0.012      (1.080 | 0.042)
+  core.vocab.001           8.363 |   0.188 |   0.072      (7.580 | 0.689)
+  core.vocab.002           5.362 |   0.550 |   0.086      (6.405 | 0.517)
+  core.vocab.003           6.030 |   0.623 |   0.067      (6.019 | 0.578)
+  core.vocab.004           4.634 |   0.405 |   0.058      (4.387 | 0.671)
+  core.vocab.005           4.342 |   0.135 |   0.034      (3.901 | 0.210)
+  core.triad.001           2.432 |   0.650 |   0.140      (2.315 | 1.087)
+  core.triad.002           1.178 |   0.028 |   0.018      (1.131 | 0.083)
+  core.triad.003           3.096 |   0.046 |   0.027      (2.709 | 0.094)
+  core.structure.001       0.193 |   0.158 |   0.207      (0.156 | 0.148)
+  core.structure.002       0.001 |   0.001 |   0.003      (0.001 | 0.001)
+  core.structure.003       0.001 |   0.001 |   0.001      (0.001 | 0.001)
+  core.structure.004       0.001 |   0.001 |   0.001      (0.001 | 0.001)
+  core.structure.005       0.001 |   0.001 |   0.001      (0.001 | 0.001)
+  core.repetition.001      4.093 |   3.944 |   3.711      (2.601 | 2.375)
+
+finding counts (naive / opt / native) realistic: 39 / 39 / 39 ; dense: 194 / 194 / 194
+
+=== D2. Pack compile time, in-process (17 phrase/regex rules + bold pattern; opt also builds the RE2Set) ===
+re2js naive (word-boundary + case flag, whole-doc Matcher) first call 1.50 ms | all 100: p50 1.279  p95 2.208  max 2.844 ms
+re2js opt A: no word-boundary in RE2, lowercased text, whole-doc Matcher first call 2.48 ms | all 100: p50 1.628  p95 3.694  max 9.131 ms
+re2js opt B: A + per-paragraph Matcher (RECOMMENDED) first call 1.67 ms | all 100: p50 1.640  p95 4.491  max 11.646 ms
+re2js opt C: B + RE2Set pre-gate first call 2.91 ms | all 100: p50 2.722  p95 5.402  max 12.698 ms
+native RegExp (reference) first call 0.19 ms | all 100: p50 0.089  p95 0.172  max 3.160 ms
+
+=== E1. Scaling: dense docs, 17 phrase/regex rules (+prep), p50 ms; x = ratio vs previous size (2.0 = linear) ===
+re2js naive (word-boundary + case flag, whole-doc Matcher) 1000w 18.79 | 2000w 37.41 (x2.0) | 4000w 76.47 (x2.0) | 8000w 177.59 (x2.3) | 16000w 320.96 (x1.8) | 32000w 627.46 (x2.0)
+re2js opt A: no word-boundary in RE2, lowercased text, whole-doc Matcher 1000w 9.64 | 2000w 28.99 (x3.0) | 4000w 70.69 (x2.4) | 8000w 142.16 (x2.0) | 16000w 310.71 (x2.2) | 32000w 773.08 (x2.5)
+re2js opt B: A + per-paragraph Matcher (RECOMMENDED) 1000w 2.05 | 2000w 4.46 (x2.2) | 4000w 10.33 (x2.3) | 8000w 24.60 (x2.4) | 16000w 52.36 (x2.1) | 32000w 85.13 (x1.6)
+re2js opt C: B + RE2Set pre-gate 1000w 2.51 | 2000w 5.78 (x2.3) | 4000w 11.08 (x1.9) | 8000w 20.29 (x1.8) | 16000w 50.63 (x2.5) | 32000w 74.53 (x1.5)
+native RegExp (reference) 1000w 0.50 | 2000w 0.75 (x1.5) | 4000w 1.36 (x1.8) | 8000w 2.97 (x2.2) | 16000w 5.68 (x1.9) | 32000w 10.96 (x1.9)
+
+=== E2. similarity_to_prior O(n^2) scaling (naive bag-of-words cosine vs every earlier sentence) ===
+     500 words,    42 sentences: p50     0.21 ms  max     0.27 ms
+    1000 words,    85 sentences: p50     0.73 ms  max     1.42 ms
+    2000 words,   169 sentences: p50     3.09 ms  max     3.87 ms
+    4000 words,   346 sentences: p50    10.30 ms  max    12.15 ms
+    8000 words,   685 sentences: p50    38.82 ms  max    40.03 ms
+   16000 words,  1354 sentences: p50   125.24 ms  max   132.04 ms
+   32000 words,  2689 sentences: p50   422.50 ms  max   559.95 ms
+
+=== E3. Pathological inputs: 17 phrase/regex rules incl. normalise+split+prep, p50 / max of 10 runs (ms) ===
+  a, a, a, and a x400 (2,000 words, no sentence end)  6000ch | naive   57.53/  74.12 4x:x2.4 n=0 | optwhole    3.38/   3.91 4x:x4.1 n=0 | opt    3.36/   4.52 4x:x3.9 n=0 | optgate    3.14/   4.74 4x:x4.3 n=0 | native    0.38/   0.99 4x:x2.6 n=0
+  Aa, aa, aa, and aa. x400 (400 sentences, triad.001 hits each)  8000ch | naive   61.60/  66.27 4x:x3.0 n=400 | optwhole    4.95/   6.99 4x:x3.7 n=400 | opt    2.88/   3.58 4x:x3.7 n=400 | optgate    2.10/   2.42 4x:x4.2 n=400 | native    0.56/   0.94 4x:x5.4 n=400
+  a, a, a, a, a, ... (no "and", 4,000 items)       12000ch | naive   65.38/  80.74 4x:x3.3 n=0 | optwhole    0.61/   1.13 4x:x5.8 n=0 | opt    0.62/   0.67 4x:x4.9 n=0 | optgate    0.48/   0.60 4x:x4.0 n=0 | native    0.48/   0.98 4x:x4.0 n=0
+  10,000-char single sentence, no punctuation      10000ch | naive   39.37/  46.42 4x:x4.1 n=0 | optwhole    3.24/   3.90 4x:x4.5 n=0 | opt    3.55/   3.81 4x:x3.8 n=0 | optgate    0.30/   0.45 4x:x4.2 n=0 | native    0.49/   0.84 4x:x3.8 n=0
+  "not just " x1100 (triad.002 lazy window)         9900ch | naive   40.82/  47.81 4x:x4.2 n=0 | optwhole    0.64/   0.72 4x:x4.3 n=0 | opt    0.73/   1.30 4x:x3.9 n=0 | optgate    0.22/   0.44 4x:x7.1 n=0 | native    0.43/   0.48 4x:x4.1 n=0
+  "it depends" / "somewhat " x1100                  9900ch | naive   56.10/  76.02 4x:x2.7 n=550 | optwhole    6.71/   7.68 4x:x3.7 n=550 | opt    6.49/   7.62 4x:x2.5 n=550 | optgate    3.95/   6.73 4x:x4.0 n=550 | native    0.34/   0.52 4x:x4.2 n=550
+  "from a to b, " x800 (triad.003)                 10400ch | naive   45.91/  72.26 4x:x4.3 n=400 | optwhole    2.60/   4.04 4x:x4.5 n=400 | opt    2.45/   2.65 4x:x4.1 n=400 | optgate    1.87/   1.91 4x:x4.6 n=400 | native    0.31/   0.33 4x:x4.1 n=400
+  "the current " x800 (vocab.002 near-miss)         9600ch | naive   34.48/  45.74 4x:x4.0 n=0 | optwhole    0.81/   0.87 4x:x4.0 n=0 | opt    0.81/   0.87 4x:x4.1 n=0 | optgate    0.20/   0.22 4x:x4.2 n=0 | native    0.27/   0.27 4x:x4.2 n=0
+  10,000 x "a" (one 10k-char word)                 10000ch | naive   28.14/  40.57 4x:x4.9 n=0 | optwhole    0.75/   0.91 4x:x4.6 n=0 | opt    0.53/   0.86 4x:x4.9 n=0 | optgate    0.26/   0.40 4x:x4.3 n=0 | native    0.30/   0.40 4x:x4.3 n=0
+  10,000-char run of commas and spaces             10000ch | naive   35.36/  40.20 4x:x3.5 n=0 | optwhole    0.65/   0.93 4x:x2.9 n=0 | opt    0.46/   0.60 4x:x5.0 n=0 | optgate    0.22/   0.25 4x:x4.2 n=0 | native    0.20/   0.25 4x:x4.5 n=0
+  classic ReDoS ^(a+)+$ on "a"x26+"!": re2js 0.950 ms vs native 19322.5 ms (native is exponential; none of the 08 patterns is vulnerable, this only demonstrates RE2 semantics)
+
+=== F. Cold start: fresh `node` process per run (what a command-hook CLI actually pays), 15 runs ===
+bare `node -e 0` wall: p50 132.4  p95 171.8 ms
+naive            process wall p50 713 p95 1063 | module load 18.0 | compile pack 19.4 | 1st run 106.0 (p95 160.6, max 160.6) | 2nd run 55.5 | 10th run 48.5
+        compile + 1st run (one hook invocation of engine work): p50 127.1  p95 182.3  max 182.3 ms
+optwhole         process wall p50 387 p95 500 | module load 17.4 | compile pack 19.7 | 1st run 63.4 (p95 80.9, max 80.9) | 2nd run 25.5 | 10th run 20.4
+        compile + 1st run (one hook invocation of engine work): p50 83.1  p95 108.0  max 108.0 ms
+opt              process wall p50 237 p95 337 | module load 16.9 | compile pack 19.8 | 1st run 32.4 (p95 56.3, max 56.3) | 2nd run 11.9 | 10th run 7.9
+        compile + 1st run (one hook invocation of engine work): p50 53.8  p95 86.3  max 86.3 ms
+optgate          process wall p50 280 p95 462 | module load 18.6 | compile pack 30.5 | 1st run 69.1 (p95 113.6, max 113.6) | 2nd run 13.3 | 10th run 6.4
+        compile + 1st run (one hook invocation of engine work): p50 100.0  p95 171.7  max 171.7 ms
+opt+compilecache process wall p50 240 p95 281 | module load 12.6 | compile pack 21.4 | 1st run 35.4 (p95 42.2, max 42.2) | 2nd run 12.6 | 10th run 7.7
+        compile + 1st run (one hook invocation of engine work): p50 59.6  p95 71.3  max 71.3 ms
+native           process wall p50 166 p95 276 | module load 17.0 | compile pack 0.9 | 1st run 17.6 (p95 27.1, max 27.1) | 2nd run 6.6 | 10th run 4.7
+        compile + 1st run (one hook invocation of engine work): p50 18.6  p95 29.9  max 29.9 ms

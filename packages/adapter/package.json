@@ -1,0 +1,26 @@
+{
+  "name": "prosegate",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "prosegate": "./dist/prosegate.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsup"
+  },
+  "devDependencies": {
+    "@prosegate/schema": "workspace:*",
+    "@prosegate/segmenter": "workspace:*",
+    "@prosegate/engine": "workspace:*",
+    "@prosegate/profiles": "workspace:*",
+    "@prosegate/reviewer": "workspace:*"
+  }
+}
