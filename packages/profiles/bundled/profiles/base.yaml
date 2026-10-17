@@ -1,0 +1,26 @@
+schema: prosegate.profile/1
+id: local/base
+version: 1
+name: Base
+
+trigger:
+  description: "General writing and answers where no more specific document type applies."
+  patterns: []
+  harness_hints: []
+  sticky: true
+
+rule_packs:
+  - { id: core, version: ">=0.1.0 <1.0.0" }
+
+reviewer:
+  enabled: true
+  categories: [unsupported_claim, vague_claim, register]
+  register:
+    max_words: 600
+    tone: "Plain and direct; state what is known and stop."
+    format: "Prose first, with headings and lists only where the content has that shape."
+
+enforcement:
+  mode: enforce
+  pass_cap: 2
+  render: diff

@@ -1,0 +1,21 @@
+schema: prosegate.profile/1
+id: local/chat-reply
+version: 1
+name: Chat reply
+extends: local/base
+
+trigger:
+  description: "Answering a question in a chat thread or a short conversational reply."
+  patterns: ["quick question", "chat reply", "slack message", "reply in chat"]
+  harness_hints: []
+  sticky: true
+
+overrides:
+  rules:
+    core.structure.005: { severity: block }
+
+reviewer:
+  register:
+    max_words: 250
+    tone: "Conversational and direct; answer first, then add only what the asker needs."
+    format: "Plain paragraphs, with bold only for the one thing the reader must not miss."

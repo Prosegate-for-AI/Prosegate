@@ -1,0 +1,24 @@
+schema: prosegate.profile/1
+id: local/design-doc
+version: 1
+name: Design doc
+extends: local/base
+
+trigger:
+  description: "Writing a design document, architecture proposal, RFC or technical specification."
+  patterns: ["design doc", "design document", "architecture proposal", "RFC", "technical spec"]
+  harness_hints: []
+  sticky: true
+
+overrides:
+  rules:
+    core.hedge.003: { severity: info }
+    core.structure.001: { severity: info }
+    core.structure.002: { severity: info }
+  allow_terms: ["comprehensive"]
+
+reviewer:
+  register:
+    max_words: 2500
+    tone: "Measured and precise; argue each position and state the trade-offs."
+    format: "Headings for the major sections, prose within them, and lists only for parallel items."
