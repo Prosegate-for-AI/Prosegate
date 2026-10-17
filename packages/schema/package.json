@@ -7,7 +7,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "build:schema": "tsx scripts/build-schema.ts",
+    "build": "pnpm run build:schema"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
