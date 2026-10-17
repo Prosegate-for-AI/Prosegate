@@ -1,0 +1,87 @@
+{
+  "text_length": 156,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 156,
+      "head": "The paper is by J. Smith and J"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 58,
+      "words": 14,
+      "continuation": false,
+      "head": "The paper is by J. Smith and J"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 59,
+      "end": 84,
+      "words": 4,
+      "continuation": false,
+      "head": "Then A. Einstein replied."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 85,
+      "end": 105,
+      "words": 5,
+      "continuation": false,
+      "head": "We also ship Plan B."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 106,
+      "end": 119,
+      "words": 3,
+      "continuation": false,
+      "head": "Next we test."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 120,
+      "end": 135,
+      "words": 3,
+      "continuation": false,
+      "head": "See Appendix A."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 136,
+      "end": 155,
+      "words": 4,
+      "continuation": false,
+      "head": "A few notes follow."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 155,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 33,
+  "language": "unknown"
+}

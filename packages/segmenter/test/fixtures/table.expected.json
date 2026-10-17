@@ -1,0 +1,68 @@
+{
+  "text_length": 192,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 20,
+      "head": "Results by region:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "table",
+      "start": 20,
+      "end": 141,
+      "head": "| Region | Latency | Errors |\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 141,
+      "end": 192,
+      "head": "The EU numbers are worse becau"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 18,
+      "words": 3,
+      "continuation": false,
+      "head": "Results by region:"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 141,
+      "end": 191,
+      "words": 10,
+      "continuation": false,
+      "head": "The EU numbers are worse becau"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 18,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 141,
+      "end": 191,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 13,
+  "language": "unknown"
+}

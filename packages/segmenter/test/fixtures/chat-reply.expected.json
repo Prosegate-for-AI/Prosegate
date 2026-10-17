@@ -1,0 +1,146 @@
+{
+  "text_length": 333,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 124,
+      "head": "Sure, here's what I found. The"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 124,
+      "end": 138,
+      "head": "Two options:\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 138,
+      "end": 248,
+      "head": "1. Strip trailing whitespace i"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 248,
+      "end": 333,
+      "head": "I'd go with option 2 — the par"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 26,
+      "words": 5,
+      "continuation": false,
+      "head": "Sure, here's what I found."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 27,
+      "end": 122,
+      "words": 17,
+      "continuation": false,
+      "head": "The failing test is `parses ne"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 124,
+      "end": 136,
+      "words": 2,
+      "continuation": false,
+      "head": "Two options:"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 141,
+      "end": 199,
+      "words": 8,
+      "continuation": false,
+      "head": "Strip trailing whitespace in t"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 203,
+      "end": 246,
+      "words": 8,
+      "continuation": false,
+      "head": "Fix the fixture and leave the "
+    },
+    {
+      "segment_id": "s4",
+      "kind": "sentence",
+      "start": 248,
+      "end": 304,
+      "words": 10,
+      "continuation": false,
+      "head": "I'd go with option 2 — the par"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "sentence",
+      "start": 305,
+      "end": 332,
+      "words": 6,
+      "continuation": false,
+      "head": "Want me to make the change?"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 122,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "start": 124,
+      "end": 136,
+      "unit_indexes": [
+        2
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 141,
+      "end": 246,
+      "unit_indexes": [
+        3,
+        4
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "start": 248,
+      "end": 332,
+      "unit_indexes": [
+        5,
+        6
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "inline_code",
+      "start": 47,
+      "end": 68,
+      "text": "`parses nested lists`"
+    }
+  ],
+  "bold": [],
+  "prose_words": 56,
+  "language": "en"
+}

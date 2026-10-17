@@ -1,0 +1,60 @@
+{
+  "text_length": 99,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 99,
+      "head": "Use ``a ` backtick`` for liter"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 73,
+      "words": 10,
+      "continuation": false,
+      "head": "Use ``a ` backtick`` for liter"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 74,
+      "end": 98,
+      "words": 4,
+      "continuation": false,
+      "head": "A dangling ` is literal."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 98,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "inline_code",
+      "start": 4,
+      "end": 20,
+      "text": "``a ` backtick``"
+    },
+    {
+      "kind": "inline_code",
+      "start": 47,
+      "end": 59,
+      "text": "`` `code` ``"
+    }
+  ],
+  "bold": [],
+  "prose_words": 14,
+  "language": "unknown"
+}

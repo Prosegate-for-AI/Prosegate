@@ -1,0 +1,57 @@
+{
+  "text_length": 157,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 157,
+      "head": "Latency dropped from 3.14 ms t"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 66,
+      "words": 19,
+      "continuation": false,
+      "head": "Latency dropped from 3.14 ms t"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 67,
+      "end": 119,
+      "words": 12,
+      "continuation": false,
+      "head": "Node 22.6 is required, but nod"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 120,
+      "end": 156,
+      "words": 11,
+      "continuation": false,
+      "head": "We pin pnpm@10.33.2 and tsx 4."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 156,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 42,
+  "language": "en"
+}

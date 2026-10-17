@@ -1,0 +1,68 @@
+{
+  "text_length": 61,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 18,
+      "head": "Intro paragraph.\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 18,
+      "end": 49,
+      "head": "\tcode with tab\n\tmore tab code\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 49,
+      "end": 61,
+      "head": "After code.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 16,
+      "words": 2,
+      "continuation": false,
+      "head": "Intro paragraph."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 49,
+      "end": 60,
+      "words": 2,
+      "continuation": false,
+      "head": "After code."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 16,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 49,
+      "end": 60,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 4,
+  "language": "unknown"
+}

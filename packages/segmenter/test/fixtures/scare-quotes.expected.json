@@ -1,0 +1,47 @@
+{
+  "text_length": 187,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 187,
+      "head": "The \"robust\" layer wraps every"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 112,
+      "words": 19,
+      "continuation": false,
+      "head": "The \"robust\" layer wraps every"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 113,
+      "end": 186,
+      "words": 14,
+      "continuation": false,
+      "head": "None of this is \"production re"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 186,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 33,
+  "language": "unknown"
+}

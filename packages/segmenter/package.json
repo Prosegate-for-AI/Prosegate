@@ -7,7 +7,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/segmenter/",
+    "fixtures": "node test/tools/build-expected.mjs"
   },
   "dependencies": {
     "@prosegate/schema": "workspace:*"

@@ -1,0 +1,47 @@
+{
+  "text_length": 111,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 111,
+      "head": "This sentence wraps across\nsev"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 67,
+      "words": 10,
+      "continuation": false,
+      "head": "This sentence wraps across\nsev"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 68,
+      "end": 110,
+      "words": 7,
+      "continuation": false,
+      "head": "A second sentence\nalso wraps\na"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 110,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 17,
+  "language": "unknown"
+}

@@ -1,0 +1,94 @@
+{
+  "text_length": 177,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 177,
+      "head": "Open README.md. Then edit src/"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 15,
+      "words": 3,
+      "continuation": false,
+      "head": "Open README.md."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 16,
+      "end": 116,
+      "words": 20,
+      "continuation": false,
+      "head": "Then edit src/index.ts and ./a"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 117,
+      "end": 176,
+      "words": 16,
+      "continuation": false,
+      "head": "The file notes.txt:12 has the "
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 176,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "path",
+      "start": 5,
+      "end": 14,
+      "text": "README.md"
+    },
+    {
+      "kind": "path",
+      "start": 26,
+      "end": 38,
+      "text": "src/index.ts"
+    },
+    {
+      "kind": "path",
+      "start": 43,
+      "end": 48,
+      "text": "./a.b"
+    },
+    {
+      "kind": "path",
+      "start": 64,
+      "end": 83,
+      "text": "../scripts/build.sh"
+    },
+    {
+      "kind": "path",
+      "start": 87,
+      "end": 115,
+      "text": "C:\\Users\\dev\\app\\config.json"
+    },
+    {
+      "kind": "path",
+      "start": 126,
+      "end": 138,
+      "text": "notes.txt:12"
+    }
+  ],
+  "bold": [],
+  "prose_words": 39,
+  "language": "unknown"
+}

@@ -1,0 +1,117 @@
+{
+  "text_length": 149,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 128,
+      "head": "She said, \"It is done.\" Then s"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 128,
+      "end": 149,
+      "head": "**Done.** Next step.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 23,
+      "words": 5,
+      "continuation": false,
+      "head": "She said, \"It is done.\""
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 24,
+      "end": 63,
+      "words": 7,
+      "continuation": false,
+      "head": "Then she left (finally!) and h"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 64,
+      "end": 90,
+      "words": 5,
+      "continuation": false,
+      "head": "The note read [see below]."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 91,
+      "end": 109,
+      "words": 3,
+      "continuation": false,
+      "head": "He asked (really?)"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 110,
+      "end": 126,
+      "words": 2,
+      "continuation": false,
+      "head": "Nobody answered."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 128,
+      "end": 137,
+      "words": 1,
+      "continuation": false,
+      "head": "**Done.**"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 138,
+      "end": 148,
+      "words": 2,
+      "continuation": false,
+      "head": "Next step."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 126,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "start": 128,
+      "end": 148,
+      "unit_indexes": [
+        5,
+        6
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [
+    {
+      "start": 128,
+      "end": 137,
+      "text": "**Done.**"
+    }
+  ],
+  "prose_words": 25,
+  "language": "unknown"
+}

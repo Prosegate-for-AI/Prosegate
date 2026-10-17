@@ -1,0 +1,78 @@
+{
+  "text_length": 106,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 10,
+      "head": "You wrote "
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 10,
+      "end": 60,
+      "head": "“the retry budget should never"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 60,
+      "end": 106,
+      "head": " in the ticket. The budget is "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 9,
+      "words": 2,
+      "continuation": false,
+      "head": "You wrote"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 61,
+      "end": 75,
+      "words": 3,
+      "continuation": true,
+      "head": "in the ticket."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 76,
+      "end": 105,
+      "words": 6,
+      "continuation": false,
+      "head": "The budget is now 90 seconds."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 9,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 61,
+      "end": 105,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 11,
+  "language": "unknown"
+}

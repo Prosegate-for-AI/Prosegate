@@ -1,0 +1,99 @@
+{
+  "text_length": 97,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 10,
+      "head": "Install:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 10,
+      "end": 29,
+      "head": "~~~bash\nnpm i\n~~~\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 29,
+      "end": 62,
+      "head": "Longer fence with a nested one"
+    },
+    {
+      "id": "s4",
+      "kind": "code",
+      "start": 62,
+      "end": 91,
+      "head": "````md\n```js\ninner\n```\n````\n\n"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 91,
+      "end": 97,
+      "head": "Done.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 8,
+      "words": 1,
+      "continuation": false,
+      "head": "Install:"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 29,
+      "end": 60,
+      "words": 6,
+      "continuation": false,
+      "head": "Longer fence with a nested one"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 91,
+      "end": 96,
+      "words": 1,
+      "continuation": false,
+      "head": "Done."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 8,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 29,
+      "end": 60,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "start": 91,
+      "end": 96,
+      "unit_indexes": [
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 8,
+  "language": "unknown"
+}

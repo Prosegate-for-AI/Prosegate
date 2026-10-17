@@ -1,0 +1,140 @@
+{
+  "text_length": 222,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 13,
+      "head": "The docs say "
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 13,
+      "end": 57,
+      "head": "\"pass the token in the Authori"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 57,
+      "end": 78,
+      "head": ", but the error says "
+    },
+    {
+      "id": "s4",
+      "kind": "quote",
+      "start": 78,
+      "end": 107,
+      "head": "\"invalid bearer token format\""
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 107,
+      "end": 139,
+      "head": " when we do. Ada Lovelace wrot"
+    },
+    {
+      "id": "s6",
+      "kind": "quote",
+      "start": 139,
+      "end": 191,
+      "head": "\"the engine might compose elab"
+    },
+    {
+      "id": "s7",
+      "kind": "prose",
+      "start": 191,
+      "end": 222,
+      "head": " long before anyone built one."
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 12,
+      "words": 3,
+      "continuation": false,
+      "head": "The docs say"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 57,
+      "end": 77,
+      "words": 4,
+      "continuation": true,
+      "head": ", but the error says"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 108,
+      "end": 119,
+      "words": 3,
+      "continuation": true,
+      "head": "when we do."
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 120,
+      "end": 138,
+      "words": 3,
+      "continuation": false,
+      "head": "Ada Lovelace wrote"
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
+      "start": 192,
+      "end": 221,
+      "words": 5,
+      "continuation": true,
+      "head": "long before anyone built one."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 12,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 57,
+      "end": 77,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "start": 108,
+      "end": 138,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    },
+    {
+      "segment_id": "s7",
+      "start": 192,
+      "end": 221,
+      "unit_indexes": [
+        4
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 18,
+  "language": "unknown"
+}

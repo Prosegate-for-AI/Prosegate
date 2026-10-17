@@ -1,0 +1,68 @@
+{
+  "text_length": 108,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 21,
+      "head": "Here are the numbers\n"
+    },
+    {
+      "id": "s2",
+      "kind": "table",
+      "start": 21,
+      "end": 72,
+      "head": "| Name | Count |\n|------|-----"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 72,
+      "end": 108,
+      "head": "Text immediately after has no "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 20,
+      "words": 4,
+      "continuation": false,
+      "head": "Here are the numbers"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 72,
+      "end": 107,
+      "words": 6,
+      "continuation": false,
+      "head": "Text immediately after has no "
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 20,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 72,
+      "end": 107,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 10,
+  "language": "unknown"
+}

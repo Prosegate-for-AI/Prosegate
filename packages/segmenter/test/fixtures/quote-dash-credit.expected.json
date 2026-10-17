@@ -1,0 +1,109 @@
+{
+  "text_length": 174,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "quote",
+      "start": 0,
+      "end": 51,
+      "head": "\"Ship it before it is perfect,"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 51,
+      "end": 68,
+      "head": " — Ada Lovelace\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 68,
+      "end": 89,
+      "head": "We took that advice. "
+    },
+    {
+      "id": "s4",
+      "kind": "quote",
+      "start": 89,
+      "end": 137,
+      "head": "\"Premature optimisation is the"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 137,
+      "end": 174,
+      "head": " — Donald Knuth. Later we disa"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 52,
+      "end": 66,
+      "words": 2,
+      "continuation": true,
+      "head": "— Ada Lovelace"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 68,
+      "end": 88,
+      "words": 4,
+      "continuation": false,
+      "head": "We took that advice."
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 138,
+      "end": 153,
+      "words": 2,
+      "continuation": true,
+      "head": "— Donald Knuth."
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 154,
+      "end": 173,
+      "words": 3,
+      "continuation": false,
+      "head": "Later we disagreed."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s2",
+      "start": 52,
+      "end": 66,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 68,
+      "end": 88,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "start": 138,
+      "end": 173,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 11,
+  "language": "unknown"
+}

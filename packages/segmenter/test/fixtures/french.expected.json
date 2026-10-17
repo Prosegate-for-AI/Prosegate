@@ -1,0 +1,91 @@
+{
+  "text_length": 441,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 335,
+      "head": "Bonjour à tous. Le serveur de "
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 335,
+      "end": 441,
+      "head": "Pour éviter que cela se reprod"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 15,
+      "words": 3,
+      "continuation": false,
+      "head": "Bonjour à tous."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 16,
+      "end": 98,
+      "words": 14,
+      "continuation": false,
+      "head": "Le serveur de production est t"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 99,
+      "end": 233,
+      "words": 22,
+      "continuation": false,
+      "head": "Nous avons restauré la base de"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 234,
+      "end": 333,
+      "words": 15,
+      "continuation": false,
+      "head": "Aucune donnée client n'a été p"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 335,
+      "end": 440,
+      "words": 16,
+      "continuation": false,
+      "head": "Pour éviter que cela se reprod"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 333,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "start": 335,
+      "end": 440,
+      "unit_indexes": [
+        4
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 70,
+  "language": "non_en"
+}

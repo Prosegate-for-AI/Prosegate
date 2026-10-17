@@ -1,0 +1,102 @@
+{
+  "text_length": 121,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 18,
+      "head": "Feedback so far:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 18,
+      "end": 29,
+      "head": "- You said "
+    },
+    {
+      "id": "s3",
+      "kind": "quote",
+      "start": 29,
+      "end": 62,
+      "head": "\"the onboarding flow is too lo"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 62,
+      "end": 121,
+      "head": " and we agree.\n- Nobody has co"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 16,
+      "words": 3,
+      "continuation": false,
+      "head": "Feedback so far:"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 20,
+      "end": 28,
+      "words": 2,
+      "continuation": false,
+      "head": "You said"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 63,
+      "end": 76,
+      "words": 3,
+      "continuation": true,
+      "head": "and we agree."
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 79,
+      "end": 120,
+      "words": 7,
+      "continuation": false,
+      "head": "Nobody has commented on the pr"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 16,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "start": 20,
+      "end": 28,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "start": 63,
+      "end": 120,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 15,
+  "language": "unknown"
+}

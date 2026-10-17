@@ -1,0 +1,47 @@
+{
+  "text_length": 224,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 224,
+      "head": "The team reviewed the plan on "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 92,
+      "words": 17,
+      "continuation": false,
+      "head": "The team reviewed the plan on "
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 93,
+      "end": 223,
+      "words": 23,
+      "continuation": false,
+      "head": "Everyone wanted a smaller scop"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 223,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 40,
+  "language": "en"
+}

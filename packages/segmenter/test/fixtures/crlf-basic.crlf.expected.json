@@ -1,0 +1,136 @@
+{
+  "text_length": 109,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 11,
+      "head": "# Notes\r\n\r\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 11,
+      "end": 58,
+      "head": "First paragraph here. It has t"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 58,
+      "end": 74,
+      "head": "- one\r\n- two\r\n\r\n"
+    },
+    {
+      "id": "s4",
+      "kind": "code",
+      "start": 74,
+      "end": 97,
+      "head": "```sh\r\necho hi\r\n```\r\n\r\n"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 97,
+      "end": 109,
+      "head": "Last line.\r\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "start": 2,
+      "end": 7,
+      "words": 1,
+      "continuation": false,
+      "head": "Notes"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 11,
+      "end": 32,
+      "words": 3,
+      "continuation": false,
+      "head": "First paragraph here."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 33,
+      "end": 54,
+      "words": 4,
+      "continuation": false,
+      "head": "It has two sentences."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 60,
+      "end": 63,
+      "words": 1,
+      "continuation": false,
+      "head": "one"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 67,
+      "end": 70,
+      "words": 1,
+      "continuation": false,
+      "head": "two"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 97,
+      "end": 107,
+      "words": 2,
+      "continuation": false,
+      "head": "Last line."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 2,
+      "end": 7,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "start": 11,
+      "end": 54,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "start": 60,
+      "end": 70,
+      "unit_indexes": [
+        3,
+        4
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "start": 97,
+      "end": 107,
+      "unit_indexes": [
+        5
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 12,
+  "language": "unknown"
+}

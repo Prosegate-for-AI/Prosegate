@@ -1,0 +1,97 @@
+{
+  "text_length": 146,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 146,
+      "head": "Bring pens, paper, etc. We sta"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 23,
+      "words": 4,
+      "continuation": false,
+      "head": "Bring pens, paper, etc."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 24,
+      "end": 42,
+      "words": 6,
+      "continuation": false,
+      "head": "We start at 9 a.m."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 43,
+      "end": 63,
+      "words": 3,
+      "continuation": false,
+      "head": "Please arrive early."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 64,
+      "end": 86,
+      "words": 5,
+      "continuation": false,
+      "head": "Item No. 5 is missing."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 87,
+      "end": 126,
+      "words": 7,
+      "continuation": false,
+      "head": "The audit closed Mar. 3 withou"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 127,
+      "end": 130,
+      "words": 1,
+      "continuation": false,
+      "head": "No."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 131,
+      "end": 145,
+      "words": 3,
+      "continuation": false,
+      "head": "That is wrong."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 145,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 29,
+  "language": "unknown"
+}

@@ -1,0 +1,131 @@
+{
+  "text_length": 178,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 20,
+      "head": "Release checklist:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 20,
+      "end": 178,
+      "head": "- Build\n  - Compile the TypeSc"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 18,
+      "words": 2,
+      "continuation": false,
+      "head": "Release checklist:"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 22,
+      "end": 27,
+      "words": 1,
+      "continuation": false,
+      "head": "Build"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 32,
+      "end": 62,
+      "words": 4,
+      "continuation": false,
+      "head": "Compile the TypeScript sources"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 67,
+      "end": 81,
+      "words": 3,
+      "continuation": false,
+      "head": "Bundle the CLI"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 88,
+      "end": 110,
+      "words": 4,
+      "continuation": false,
+      "head": "Verify the bundle size"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 113,
+      "end": 117,
+      "words": 1,
+      "continuation": false,
+      "head": "Test"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 123,
+      "end": 141,
+      "words": 4,
+      "continuation": false,
+      "head": "Run the unit tests"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 147,
+      "end": 167,
+      "words": 4,
+      "continuation": false,
+      "head": "Run the eval harness"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 170,
+      "end": 177,
+      "words": 1,
+      "continuation": false,
+      "head": "Publish"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "start": 0,
+      "end": 18,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "start": 22,
+      "end": 177,
+      "unit_indexes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 24,
+  "language": "unknown"
+}

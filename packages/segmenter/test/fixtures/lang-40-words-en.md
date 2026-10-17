@@ -1,0 +1,1 @@
+The team reviewed the plan on Monday and agreed that the first release should ship in March. Everyone wanted a smaller scope, so we cut two features and moved the rest to the next quarter without any real disagreement here.
