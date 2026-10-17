@@ -1,0 +1,123 @@
+{
+  "text_length": 174,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "quote",
+      "start": 0,
+      "end": 51,
+      "head": "\"Ship it before it is perfect,"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 51,
+      "end": 68,
+      "head": " — Ada Lovelace\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 68,
+      "end": 89,
+      "head": "We took that advice. "
+    },
+    {
+      "id": "s4",
+      "kind": "quote",
+      "start": 89,
+      "end": 137,
+      "head": "\"Premature optimisation is the"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 137,
+      "end": 174,
+      "head": " — Donald Knuth. Later we disa"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 52,
+      "end": 66,
+      "words": 2,
+      "text_start": 54,
+      "continuation": true,
+      "continued": false,
+      "head": "— Ada Lovelace"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 68,
+      "end": 88,
+      "words": 4,
+      "text_start": 68,
+      "continuation": false,
+      "continued": false,
+      "head": "We took that advice."
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 138,
+      "end": 153,
+      "words": 2,
+      "text_start": 140,
+      "continuation": true,
+      "continued": false,
+      "head": "— Donald Knuth."
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 154,
+      "end": 173,
+      "words": 3,
+      "text_start": 154,
+      "continuation": false,
+      "continued": false,
+      "head": "Later we disagreed."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 52,
+      "end": 66,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 68,
+      "end": 88,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 138,
+      "end": 173,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 11,
+  "language": "unknown"
+}

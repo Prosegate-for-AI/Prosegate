@@ -1,0 +1,1 @@
+The docs say "pass the token in the Authorization header", but the error says "invalid bearer token format" when we do. Ada Lovelace wrote "the engine might compose elaborate pieces of music" long before anyone built one.

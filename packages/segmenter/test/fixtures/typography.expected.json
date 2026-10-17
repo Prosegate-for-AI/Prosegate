@@ -1,0 +1,77 @@
+{
+  "text_length": 90,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 90,
+      "head": "It’s done. Let’s go. “Quoted” "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 10,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "It’s done."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 11,
+      "end": 20,
+      "words": 2,
+      "text_start": 11,
+      "continuation": false,
+      "continued": false,
+      "head": "Let’s go."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 21,
+      "end": 63,
+      "words": 7,
+      "text_start": 22,
+      "continuation": false,
+      "continued": false,
+      "head": "“Quoted” text with a no‑break "
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 64,
+      "end": 89,
+      "words": 6,
+      "text_start": 64,
+      "continuation": false,
+      "continued": false,
+      "head": "Cut–off and em—dash stay."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 89,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 17,
+  "language": "unknown"
+}

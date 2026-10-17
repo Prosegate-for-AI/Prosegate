@@ -1,0 +1,110 @@
+{
+  "text_length": 97,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 14,
+      "head": "Text before.\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 14,
+      "end": 54,
+      "head": "<!-- TODO: remove. This is hid"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 54,
+      "end": 97,
+      "head": "Inline <!-- note --> comment s"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 12,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Text before."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 14,
+      "end": 52,
+      "words": 5,
+      "text_start": 19,
+      "continuation": false,
+      "continued": false,
+      "head": "<!-- TODO: remove. This is hid"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 54,
+      "end": 96,
+      "words": 5,
+      "text_start": 54,
+      "continuation": false,
+      "continued": false,
+      "head": "Inline <!-- note --> comment s"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 12,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 14,
+      "end": 52,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b3",
+      "start": 54,
+      "end": 96,
+      "unit_indexes": [
+        2
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "html_comment",
+      "start": 14,
+      "end": 52,
+      "text": "<!-- TODO: remove. This is hidden. -->"
+    },
+    {
+      "kind": "html_comment",
+      "start": 61,
+      "end": 74,
+      "text": "<!-- note -->"
+    }
+  ],
+  "bold": [],
+  "prose_words": 12,
+  "language": "unknown"
+}

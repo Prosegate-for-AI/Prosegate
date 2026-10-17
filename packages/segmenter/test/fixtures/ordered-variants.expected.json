@@ -1,0 +1,117 @@
+{
+  "text_length": 72,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 8,
+      "head": "Steps:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 8,
+      "end": 72,
+      "head": "1) Open the file\n2) Edit the f"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 6,
+      "words": 1,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Steps:"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 11,
+      "end": 24,
+      "words": 3,
+      "text_start": 11,
+      "continuation": false,
+      "continued": false,
+      "head": "Open the file"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 28,
+      "end": 41,
+      "words": 3,
+      "text_start": 28,
+      "continuation": false,
+      "continued": false,
+      "head": "Edit the file"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 46,
+      "end": 53,
+      "words": 2,
+      "text_start": 46,
+      "continuation": false,
+      "continued": false,
+      "head": "Save it"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 56,
+      "end": 64,
+      "words": 2,
+      "text_start": 56,
+      "continuation": false,
+      "continued": false,
+      "head": "Close it"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 67,
+      "end": 71,
+      "words": 1,
+      "text_start": 67,
+      "continuation": false,
+      "continued": false,
+      "head": "Done"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 6,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 11,
+      "end": 71,
+      "unit_indexes": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 12,
+  "language": "unknown"
+}

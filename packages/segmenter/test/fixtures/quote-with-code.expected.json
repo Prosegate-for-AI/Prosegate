@@ -1,0 +1,146 @@
+{
+  "text_length": 149,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 14,
+      "head": "The spec says "
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 14,
+      "end": 48,
+      "head": "\"run `npm test` before every p"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 48,
+      "end": 62,
+      "head": " explicitly.\n\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 62,
+      "end": 108,
+      "head": "Set `\"a b c\"` in the config, b"
+    },
+    {
+      "id": "s5",
+      "kind": "quote",
+      "start": 108,
+      "end": 139,
+      "head": "\"keep the defaults as they are"
+    },
+    {
+      "id": "s6",
+      "kind": "prose",
+      "start": 139,
+      "end": 149,
+      "head": " earlier.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 13,
+      "words": 3,
+      "text_start": 0,
+      "continuation": false,
+      "continued": true,
+      "head": "The spec says"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 49,
+      "end": 60,
+      "words": 1,
+      "text_start": 49,
+      "continuation": true,
+      "continued": false,
+      "head": "explicitly."
+    },
+    {
+      "segment_id": "s4",
+      "kind": "sentence",
+      "start": 62,
+      "end": 107,
+      "words": 10,
+      "text_start": 62,
+      "continuation": false,
+      "continued": true,
+      "head": "Set `\"a b c\"` in the config, b"
+    },
+    {
+      "segment_id": "s6",
+      "kind": "sentence",
+      "start": 140,
+      "end": 148,
+      "words": 1,
+      "text_start": 140,
+      "continuation": true,
+      "continued": false,
+      "head": "earlier."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 13,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 49,
+      "end": 60,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 62,
+      "end": 107,
+      "unit_indexes": [
+        2
+      ]
+    },
+    {
+      "segment_id": "s6",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 140,
+      "end": 148,
+      "unit_indexes": [
+        3
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "inline_code",
+      "start": 66,
+      "end": 75,
+      "text": "`\"a b c\"`"
+    }
+  ],
+  "bold": [],
+  "prose_words": 15,
+  "language": "unknown"
+}

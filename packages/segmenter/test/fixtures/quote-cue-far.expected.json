@@ -1,0 +1,65 @@
+{
+  "text_length": 196,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 196,
+      "head": "You said earlier that the plan"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 40,
+      "words": 8,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "You said earlier that the plan"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 41,
+      "end": 113,
+      "words": 14,
+      "text_start": 41,
+      "continuation": false,
+      "continued": false,
+      "head": "I then wrote \"this is a differ"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 114,
+      "end": 195,
+      "words": 15,
+      "text_start": 114,
+      "continuation": false,
+      "continued": false,
+      "head": "You said that we really should"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 195,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 37,
+  "language": "unknown"
+}

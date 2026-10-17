@@ -1,0 +1,89 @@
+{
+  "text_length": 34,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 34,
+      "head": "• one\n‣ two\n◦ three\n▪ four\n● f"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 2,
+      "end": 5,
+      "words": 1,
+      "text_start": 2,
+      "continuation": false,
+      "continued": false,
+      "head": "one"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 8,
+      "end": 11,
+      "words": 1,
+      "text_start": 8,
+      "continuation": false,
+      "continued": false,
+      "head": "two"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 14,
+      "end": 19,
+      "words": 1,
+      "text_start": 14,
+      "continuation": false,
+      "continued": false,
+      "head": "three"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 22,
+      "end": 26,
+      "words": 1,
+      "text_start": 22,
+      "continuation": false,
+      "continued": false,
+      "head": "four"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 29,
+      "end": 33,
+      "words": 1,
+      "text_start": 29,
+      "continuation": false,
+      "continued": false,
+      "head": "five"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "list",
+      "block_id": "b1",
+      "start": 2,
+      "end": 33,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 5,
+  "language": "unknown"
+}

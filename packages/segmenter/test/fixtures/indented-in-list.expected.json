@@ -1,0 +1,97 @@
+{
+  "text_length": 77,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 14,
+      "head": "- First item\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 14,
+      "end": 63,
+      "head": "    continuation paragraph ind"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 63,
+      "end": 77,
+      "head": "- Second item\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 2,
+      "end": 12,
+      "words": 2,
+      "text_start": 2,
+      "continuation": false,
+      "continued": false,
+      "head": "First item"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 18,
+      "end": 61,
+      "words": 5,
+      "text_start": 18,
+      "continuation": false,
+      "continued": false,
+      "head": "continuation paragraph indente"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 65,
+      "end": 76,
+      "words": 2,
+      "text_start": 65,
+      "continuation": false,
+      "continued": false,
+      "head": "Second item"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "list",
+      "block_id": "b1",
+      "start": 2,
+      "end": 12,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 18,
+      "end": 61,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b1",
+      "start": 65,
+      "end": 76,
+      "unit_indexes": [
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 9,
+  "language": "unknown"
+}

@@ -1,0 +1,48 @@
+{
+  "text_length": 30,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "code",
+      "start": 0,
+      "end": 19,
+      "head": "   ```js\ncode\n```\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 19,
+      "end": 30,
+      "head": "Text here.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 19,
+      "end": 29,
+      "words": 2,
+      "text_start": 19,
+      "continuation": false,
+      "continued": false,
+      "head": "Text here."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 19,
+      "end": 29,
+      "unit_indexes": [
+        0
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 2,
+  "language": "unknown"
+}

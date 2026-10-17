@@ -1,0 +1,83 @@
+{
+  "text_length": 188,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 25,
+      "head": "The maintainer replied:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 25,
+      "end": 130,
+      "head": "> This is working as intended."
+    },
+    {
+      "id": "s3",
+      "kind": "quote",
+      "start": 130,
+      "end": 153,
+      "head": "> > nested quote line\n\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 153,
+      "end": 188,
+      "head": "I disagree, but I'll live with"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 23,
+      "words": 3,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "The maintainer replied:"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "sentence",
+      "start": 153,
+      "end": 187,
+      "words": 7,
+      "text_start": 153,
+      "continuation": false,
+      "continued": false,
+      "head": "I disagree, but I'll live with"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 23,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 153,
+      "end": 187,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 10,
+  "language": "unknown"
+}

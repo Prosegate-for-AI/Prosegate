@@ -1,0 +1,1 @@
+El equipo revisó el plan el lunes y acordó que la primera versión debería salir en marzo. Todos querían un alcance menor, así que recortamos dos funciones y movimos el resto al próximo trimestre sin ningún desacuerdo real en absoluto.

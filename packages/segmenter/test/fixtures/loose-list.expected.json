@@ -1,0 +1,153 @@
+{
+  "text_length": 106,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 7,
+      "head": "Plan:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 7,
+      "end": 29,
+      "head": "- first item is here\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 29,
+      "end": 52,
+      "head": "- second item is here\n\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 52,
+      "end": 85,
+      "head": "  with a continuation paragrap"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 85,
+      "end": 106,
+      "head": "- third item is here\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 5,
+      "words": 1,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Plan:"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 9,
+      "end": 27,
+      "words": 4,
+      "text_start": 9,
+      "continuation": false,
+      "continued": false,
+      "head": "first item is here"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 31,
+      "end": 50,
+      "words": 4,
+      "text_start": 31,
+      "continuation": false,
+      "continued": false,
+      "head": "second item is here"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "sentence",
+      "start": 54,
+      "end": 83,
+      "words": 4,
+      "text_start": 54,
+      "continuation": false,
+      "continued": false,
+      "head": "with a continuation paragraph"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "list_item",
+      "start": 87,
+      "end": 105,
+      "words": 4,
+      "text_start": 87,
+      "continuation": false,
+      "continued": false,
+      "head": "third item is here"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 5,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 9,
+      "end": 27,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 31,
+      "end": 50,
+      "unit_indexes": [
+        2
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b3",
+      "start": 54,
+      "end": 83,
+      "unit_indexes": [
+        3
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 87,
+      "end": 105,
+      "unit_indexes": [
+        4
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 17,
+  "language": "unknown"
+}

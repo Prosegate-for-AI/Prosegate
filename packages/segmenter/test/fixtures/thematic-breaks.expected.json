@@ -1,0 +1,83 @@
+{
+  "text_length": 37,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 11,
+      "head": "Part one.\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 11,
+      "end": 16,
+      "head": "---\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 16,
+      "end": 27,
+      "head": "Part two.\n\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 27,
+      "end": 37,
+      "head": "***\n* * *\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 9,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Part one."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 16,
+      "end": 25,
+      "words": 2,
+      "text_start": 16,
+      "continuation": false,
+      "continued": false,
+      "head": "Part two."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 9,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 16,
+      "end": 25,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 4,
+  "language": "unknown"
+}

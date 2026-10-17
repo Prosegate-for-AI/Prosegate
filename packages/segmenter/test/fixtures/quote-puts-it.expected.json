@@ -1,0 +1,102 @@
+{
+  "text_length": 119,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 27,
+      "head": "As the maintainers put it, "
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 27,
+      "end": 71,
+      "head": "\"we would rather ship late tha"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 71,
+      "end": 101,
+      "head": ", and I agree. As you put it: "
+    },
+    {
+      "id": "s4",
+      "kind": "quote",
+      "start": 101,
+      "end": 117,
+      "head": "\"make it boring\""
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 117,
+      "end": 119,
+      "head": ".\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 26,
+      "words": 5,
+      "text_start": 0,
+      "continuation": false,
+      "continued": true,
+      "head": "As the maintainers put it,"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 71,
+      "end": 85,
+      "words": 3,
+      "text_start": 73,
+      "continuation": true,
+      "continued": false,
+      "head": ", and I agree."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 86,
+      "end": 100,
+      "words": 4,
+      "text_start": 86,
+      "continuation": false,
+      "continued": true,
+      "head": "As you put it:"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 26,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 71,
+      "end": 100,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 12,
+  "language": "unknown"
+}

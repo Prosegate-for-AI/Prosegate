@@ -1,0 +1,153 @@
+{
+  "text_length": 410,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 251,
+      "head": "Use a VCS, e.g. Git, or i.e. a"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 251,
+      "end": 410,
+      "head": "We deploy in the U.S. and the "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 58,
+      "words": 13,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Use a VCS, e.g. Git, or i.e. a"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 59,
+      "end": 138,
+      "words": 15,
+      "text_start": 59,
+      "continuation": false,
+      "continued": false,
+      "head": "Mr. Jones and Mrs. Smith met D"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 139,
+      "end": 194,
+      "words": 8,
+      "text_start": 139,
+      "continuation": false,
+      "continued": false,
+      "head": "They compared tools vs. spread"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 195,
+      "end": 226,
+      "words": 6,
+      "text_start": 195,
+      "continuation": false,
+      "continued": false,
+      "head": "The cost is approx. 40 dollars"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 227,
+      "end": 249,
+      "words": 5,
+      "text_start": 227,
+      "continuation": false,
+      "continued": false,
+      "head": "Ask Ms. Gray about it."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 251,
+      "end": 284,
+      "words": 9,
+      "text_start": 251,
+      "continuation": false,
+      "continued": false,
+      "head": "We deploy in the U.S. and the "
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 285,
+      "end": 312,
+      "words": 7,
+      "text_start": 285,
+      "continuation": false,
+      "continued": false,
+      "head": "The U.S. Army sent 3 units."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 313,
+      "end": 367,
+      "words": 12,
+      "text_start": 313,
+      "continuation": false,
+      "continued": false,
+      "head": "St. Louis and Jr. staff joined"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 368,
+      "end": 409,
+      "words": 9,
+      "text_start": 368,
+      "continuation": false,
+      "continued": false,
+      "head": "Globex Ltd. Berlin opens at 5 "
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 249,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 251,
+      "end": 409,
+      "unit_indexes": [
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 84,
+  "language": "en"
+}

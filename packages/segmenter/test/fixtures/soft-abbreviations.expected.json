@@ -1,0 +1,101 @@
+{
+  "text_length": 128,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 128,
+      "head": "Meet at 9 a.m. Monday for the "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 37,
+      "words": 9,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Meet at 9 a.m. Monday for the "
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 38,
+      "end": 64,
+      "words": 7,
+      "text_start": 38,
+      "continuation": false,
+      "continued": false,
+      "head": "Call at 5 p.m. EST please."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 65,
+      "end": 81,
+      "words": 3,
+      "text_start": 65,
+      "continuation": false,
+      "continued": false,
+      "head": "Bring pens, etc."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 82,
+      "end": 93,
+      "words": 2,
+      "text_start": 82,
+      "continuation": false,
+      "continued": false,
+      "head": "Then relax."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 94,
+      "end": 112,
+      "words": 6,
+      "text_start": 94,
+      "continuation": false,
+      "continued": false,
+      "head": "We start at 9 a.m."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 113,
+      "end": 127,
+      "words": 2,
+      "text_start": 113,
+      "continuation": false,
+      "continued": false,
+      "head": "Please arrive."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 127,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 29,
+  "language": "unknown"
+}

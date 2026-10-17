@@ -1,0 +1,132 @@
+{
+  "text_length": 219,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 118,
+      "head": "This is **really important** a"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 118,
+      "end": 219,
+      "head": "**Note:** use `npm` here, or *"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 60,
+      "words": 9,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "This is **really important** a"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 61,
+      "end": 116,
+      "words": 12,
+      "text_start": 61,
+      "continuation": false,
+      "continued": false,
+      "head": "A snake_case_name stays as wri"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 118,
+      "end": 189,
+      "words": 11,
+      "text_start": 120,
+      "continuation": false,
+      "continued": false,
+      "head": "**Note:** use `npm` here, or *"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 190,
+      "end": 218,
+      "words": 4,
+      "text_start": 192,
+      "continuation": false,
+      "continued": false,
+      "head": "**Unclosed bold stays plain."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 116,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 118,
+      "end": 218,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "inline_code",
+      "start": 132,
+      "end": 137,
+      "text": "`npm`"
+    },
+    {
+      "kind": "inline_code",
+      "start": 175,
+      "end": 180,
+      "text": "`npm`"
+    }
+  ],
+  "bold": [
+    {
+      "start": 8,
+      "end": 28,
+      "text": "**really important**"
+    },
+    {
+      "start": 41,
+      "end": 59,
+      "text": "__also important__"
+    },
+    {
+      "start": 118,
+      "end": 127,
+      "text": "**Note:**"
+    },
+    {
+      "start": 147,
+      "end": 157,
+      "text": "***both***"
+    },
+    {
+      "start": 169,
+      "end": 182,
+      "text": "**Use `npm`**"
+    }
+  ],
+  "prose_words": 36,
+  "language": "unknown"
+}

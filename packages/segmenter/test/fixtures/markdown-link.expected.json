@@ -1,0 +1,72 @@
+{
+  "text_length": 166,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 166,
+      "head": "See [the migration guide](http"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 112,
+      "words": 17,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "See [the migration guide](http"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 113,
+      "end": 165,
+      "words": 8,
+      "text_start": 113,
+      "continuation": false,
+      "continued": false,
+      "head": "Contact [support](mailto:help@"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 165,
+      "unit_indexes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "url",
+      "start": 26,
+      "end": 62,
+      "text": "https://example.com/guide/migrate.md"
+    },
+    {
+      "kind": "path",
+      "start": 84,
+      "end": 98,
+      "text": "./CHANGELOG.md"
+    },
+    {
+      "kind": "email",
+      "start": 138,
+      "end": 154,
+      "text": "help@example.com"
+    }
+  ],
+  "bold": [],
+  "prose_words": 25,
+  "language": "unknown"
+}

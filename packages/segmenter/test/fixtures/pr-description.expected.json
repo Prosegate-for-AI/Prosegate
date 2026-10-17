@@ -1,0 +1,301 @@
+{
+  "text_length": 727,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 41,
+      "head": "# Fix retry storm in the webho"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 41,
+      "end": 238,
+      "head": "This change stops the webhook "
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 238,
+      "end": 255,
+      "head": "## What changed\n\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 255,
+      "end": 531,
+      "head": "- Added exponential backoff wi"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 531,
+      "end": 545,
+      "head": "## Test plan\n\n"
+    },
+    {
+      "id": "s6",
+      "kind": "prose",
+      "start": 545,
+      "end": 643,
+      "head": "- [x] Unit tests for the backo"
+    },
+    {
+      "id": "s7",
+      "kind": "code",
+      "start": 643,
+      "end": 682,
+      "head": "```bash\npnpm test --filter wor"
+    },
+    {
+      "id": "s8",
+      "kind": "prose",
+      "start": 682,
+      "end": 727,
+      "head": "Closes #482. Thanks to @maria "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "start": 2,
+      "end": 39,
+      "words": 7,
+      "text_start": 2,
+      "continuation": false,
+      "continued": false,
+      "head": "Fix retry storm in the webhook"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 41,
+      "end": 126,
+      "words": 14,
+      "text_start": 41,
+      "continuation": false,
+      "continued": false,
+      "head": "This change stops the webhook "
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 127,
+      "end": 236,
+      "words": 18,
+      "text_start": 127,
+      "continuation": false,
+      "continued": false,
+      "head": "The old code re-queued a faile"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "heading",
+      "start": 241,
+      "end": 253,
+      "words": 2,
+      "text_start": 241,
+      "continuation": false,
+      "continued": false,
+      "head": "What changed"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 257,
+      "end": 341,
+      "words": 14,
+      "text_start": 257,
+      "continuation": false,
+      "continued": false,
+      "head": "Added exponential backoff with"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 344,
+      "end": 422,
+      "words": 14,
+      "text_start": 344,
+      "continuation": false,
+      "continued": false,
+      "head": "Moved the attempt counter into"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 425,
+      "end": 529,
+      "words": 15,
+      "text_start": 427,
+      "continuation": false,
+      "continued": false,
+      "head": "**Breaking:** the `retryDelayM"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "heading",
+      "start": 534,
+      "end": 543,
+      "words": 2,
+      "text_start": 534,
+      "continuation": false,
+      "continued": false,
+      "head": "Test plan"
+    },
+    {
+      "segment_id": "s6",
+      "kind": "list_item",
+      "start": 551,
+      "end": 587,
+      "words": 6,
+      "text_start": 551,
+      "continuation": false,
+      "continued": false,
+      "head": "Unit tests for the backoff sch"
+    },
+    {
+      "segment_id": "s6",
+      "kind": "list_item",
+      "start": 594,
+      "end": 641,
+      "words": 9,
+      "text_start": 594,
+      "continuation": false,
+      "continued": false,
+      "head": "Soak test against a dead endpo"
+    },
+    {
+      "segment_id": "s8",
+      "kind": "sentence",
+      "start": 682,
+      "end": 694,
+      "words": 2,
+      "text_start": 682,
+      "continuation": false,
+      "continued": false,
+      "head": "Closes #482."
+    },
+    {
+      "segment_id": "s8",
+      "kind": "sentence",
+      "start": 695,
+      "end": 726,
+      "words": 6,
+      "text_start": 695,
+      "continuation": false,
+      "continued": false,
+      "head": "Thanks to @maria for the repro"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
+      "start": 2,
+      "end": 39,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 41,
+      "end": 236,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "heading",
+      "block_id": "b3",
+      "start": 241,
+      "end": 253,
+      "unit_indexes": [
+        3
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list",
+      "block_id": "b4",
+      "start": 257,
+      "end": 529,
+      "unit_indexes": [
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "kind": "heading",
+      "block_id": "b5",
+      "start": 534,
+      "end": 543,
+      "unit_indexes": [
+        7
+      ]
+    },
+    {
+      "segment_id": "s6",
+      "kind": "list",
+      "block_id": "b6",
+      "start": 551,
+      "end": 641,
+      "unit_indexes": [
+        8,
+        9
+      ]
+    },
+    {
+      "segment_id": "s8",
+      "kind": "text",
+      "block_id": "b7",
+      "start": 682,
+      "end": 726,
+      "unit_indexes": [
+        10,
+        11
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "inline_code",
+      "start": 298,
+      "end": 318,
+      "text": "`src/queue/retry.ts`"
+    },
+    {
+      "kind": "inline_code",
+      "start": 443,
+      "end": 457,
+      "text": "`retryDelayMs`"
+    },
+    {
+      "kind": "url",
+      "start": 478,
+      "end": 510,
+      "text": "https://example.com/docs/retries"
+    }
+  ],
+  "bold": [
+    {
+      "start": 425,
+      "end": 438,
+      "text": "**Breaking:**"
+    }
+  ],
+  "prose_words": 109,
+  "language": "en"
+}

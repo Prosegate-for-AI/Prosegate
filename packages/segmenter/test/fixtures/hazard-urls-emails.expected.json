@@ -1,0 +1,90 @@
+{
+  "text_length": 166,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 166,
+      "head": "Docs live at https://example.c"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 50,
+      "words": 13,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Docs live at https://example.c"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 51,
+      "end": 154,
+      "words": 19,
+      "text_start": 51,
+      "continuation": false,
+      "continued": false,
+      "head": "Mail ops@example.com or www.ex"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 155,
+      "end": 165,
+      "words": 2,
+      "text_start": 155,
+      "continuation": false,
+      "continued": false,
+      "head": "Then wait."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 165,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [
+    {
+      "kind": "url",
+      "start": 13,
+      "end": 49,
+      "text": "https://example.com/docs/a.b?x=1&y=2"
+    },
+    {
+      "kind": "email",
+      "start": 56,
+      "end": 71,
+      "text": "ops@example.com"
+    },
+    {
+      "kind": "url",
+      "start": 75,
+      "end": 95,
+      "text": "www.example.org/help"
+    },
+    {
+      "kind": "url",
+      "start": 101,
+      "end": 140,
+      "text": "https://en.wikipedia.org/wiki/Foo_(bar)"
+    }
+  ],
+  "bold": [],
+  "prose_words": 34,
+  "language": "unknown"
+}

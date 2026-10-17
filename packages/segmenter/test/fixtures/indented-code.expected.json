@@ -1,0 +1,88 @@
+{
+  "text_length": 146,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 11,
+      "head": "Run this:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 11,
+      "end": 41,
+      "head": "    npm install\n    npm test\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 41,
+      "end": 146,
+      "head": "Then check the output. A four-"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 9,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Run this:"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 41,
+      "end": 63,
+      "words": 4,
+      "text_start": 41,
+      "continuation": false,
+      "continued": false,
+      "head": "Then check the output."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 64,
+      "end": 145,
+      "words": 14,
+      "text_start": 64,
+      "continuation": false,
+      "continued": false,
+      "head": "A four-space indent in the mid"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 9,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 41,
+      "end": 145,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 20,
+  "language": "unknown"
+}

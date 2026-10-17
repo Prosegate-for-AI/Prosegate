@@ -1,0 +1,122 @@
+{
+  "text_length": 126,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 15,
+      "head": "To reproduce:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 15,
+      "end": 36,
+      "head": "1. Start the server:\n"
+    },
+    {
+      "id": "s3",
+      "kind": "code",
+      "start": 36,
+      "end": 66,
+      "head": "   ```bash\n   pnpm dev\n   ```\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 66,
+      "end": 126,
+      "head": "2. Open the page and click **R"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 13,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "To reproduce:"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 18,
+      "end": 35,
+      "words": 3,
+      "text_start": 18,
+      "continuation": false,
+      "continued": false,
+      "head": "Start the server:"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 69,
+      "end": 103,
+      "words": 6,
+      "text_start": 69,
+      "continuation": false,
+      "continued": false,
+      "head": "Open the page and click **Retr"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list_item",
+      "start": 107,
+      "end": 125,
+      "words": 3,
+      "text_start": 107,
+      "continuation": false,
+      "continued": false,
+      "head": "Watch the console."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 13,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 18,
+      "end": 35,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 69,
+      "end": 125,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [
+    {
+      "start": 93,
+      "end": 102,
+      "text": "**Retry**"
+    }
+  ],
+  "prose_words": 14,
+  "language": "unknown"
+}

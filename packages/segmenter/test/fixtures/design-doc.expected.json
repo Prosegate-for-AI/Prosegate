@@ -1,0 +1,412 @@
+{
+  "text_length": 916,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 36,
+      "head": "# Rate limiting for the public"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 36,
+      "end": 48,
+      "head": "## Context\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 48,
+      "end": 222,
+      "head": "Every public endpoint currentl"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 222,
+      "end": 232,
+      "head": "## Goals\n\n"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 232,
+      "end": 345,
+      "head": "1. Isolate tenants from each o"
+    },
+    {
+      "id": "s6",
+      "kind": "prose",
+      "start": 345,
+      "end": 358,
+      "head": "## Proposal\n\n"
+    },
+    {
+      "id": "s7",
+      "kind": "prose",
+      "start": 358,
+      "end": 554,
+      "head": "We will use a token bucket per"
+    },
+    {
+      "id": "s8",
+      "kind": "table",
+      "start": 554,
+      "end": 647,
+      "head": "| Plan | Rate | Burst |\n|-----"
+    },
+    {
+      "id": "s9",
+      "kind": "prose",
+      "start": 647,
+      "end": 665,
+      "head": "### Failure mode\n\n"
+    },
+    {
+      "id": "s10",
+      "kind": "prose",
+      "start": 665,
+      "end": 809,
+      "head": "If Redis is unreachable we fai"
+    },
+    {
+      "id": "s11",
+      "kind": "prose",
+      "start": 809,
+      "end": 828,
+      "head": "## Open questions\n\n"
+    },
+    {
+      "id": "s12",
+      "kind": "prose",
+      "start": 828,
+      "end": 916,
+      "head": "- Should webhooks count agains"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "start": 2,
+      "end": 34,
+      "words": 6,
+      "text_start": 2,
+      "continuation": false,
+      "continued": false,
+      "head": "Rate limiting for the public A"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "heading",
+      "start": 39,
+      "end": 46,
+      "words": 1,
+      "text_start": 39,
+      "continuation": false,
+      "continued": false,
+      "head": "Context"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 48,
+      "end": 104,
+      "words": 8,
+      "text_start": 48,
+      "continuation": false,
+      "continued": false,
+      "head": "Every public endpoint currentl"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 105,
+      "end": 220,
+      "words": 19,
+      "text_start": 105,
+      "continuation": false,
+      "continued": false,
+      "head": "A single noisy tenant can ther"
+    },
+    {
+      "segment_id": "s4",
+      "kind": "heading",
+      "start": 225,
+      "end": 230,
+      "words": 1,
+      "text_start": 225,
+      "continuation": false,
+      "continued": false,
+      "head": "Goals"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "list_item",
+      "start": 235,
+      "end": 267,
+      "words": 5,
+      "text_start": 235,
+      "continuation": false,
+      "continued": false,
+      "head": "Isolate tenants from each othe"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "list_item",
+      "start": 271,
+      "end": 305,
+      "words": 7,
+      "text_start": 271,
+      "continuation": false,
+      "continued": false,
+      "head": "Keep p99 added latency under 2"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "list_item",
+      "start": 309,
+      "end": 343,
+      "words": 5,
+      "text_start": 309,
+      "continuation": false,
+      "continued": false,
+      "head": "Make limits configurable per p"
+    },
+    {
+      "segment_id": "s6",
+      "kind": "heading",
+      "start": 348,
+      "end": 356,
+      "words": 1,
+      "text_start": 348,
+      "continuation": false,
+      "continued": false,
+      "head": "Proposal"
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
+      "start": 358,
+      "end": 413,
+      "words": 11,
+      "text_start": 358,
+      "continuation": false,
+      "continued": false,
+      "head": "We will use a token bucket per"
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
+      "start": 414,
+      "end": 443,
+      "words": 5,
+      "text_start": 414,
+      "continuation": false,
+      "continued": false,
+      "head": "Each request costs one token."
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
+      "start": 444,
+      "end": 552,
+      "words": 23,
+      "text_start": 444,
+      "continuation": false,
+      "continued": false,
+      "head": "Buckets refill at the plan rat"
+    },
+    {
+      "segment_id": "s9",
+      "kind": "heading",
+      "start": 651,
+      "end": 663,
+      "words": 2,
+      "text_start": 651,
+      "continuation": false,
+      "continued": false,
+      "head": "Failure mode"
+    },
+    {
+      "segment_id": "s10",
+      "kind": "sentence",
+      "start": 665,
+      "end": 702,
+      "words": 7,
+      "text_start": 665,
+      "continuation": false,
+      "continued": false,
+      "head": "If Redis is unreachable we fai"
+    },
+    {
+      "segment_id": "s10",
+      "kind": "sentence",
+      "start": 703,
+      "end": 807,
+      "words": 17,
+      "text_start": 703,
+      "continuation": false,
+      "continued": false,
+      "head": "This trades protection for ava"
+    },
+    {
+      "segment_id": "s11",
+      "kind": "heading",
+      "start": 812,
+      "end": 826,
+      "words": 2,
+      "text_start": 812,
+      "continuation": false,
+      "continued": false,
+      "head": "Open questions"
+    },
+    {
+      "segment_id": "s12",
+      "kind": "list_item",
+      "start": 830,
+      "end": 870,
+      "words": 6,
+      "text_start": 830,
+      "continuation": false,
+      "continued": false,
+      "head": "Should webhooks count against "
+    },
+    {
+      "segment_id": "s12",
+      "kind": "list_item",
+      "start": 873,
+      "end": 915,
+      "words": 8,
+      "text_start": 873,
+      "continuation": false,
+      "continued": false,
+      "head": "Do we expose remaining tokens "
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
+      "start": 2,
+      "end": 34,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "heading",
+      "block_id": "b2",
+      "start": 39,
+      "end": 46,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b3",
+      "start": 48,
+      "end": 220,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "heading",
+      "block_id": "b4",
+      "start": 225,
+      "end": 230,
+      "unit_indexes": [
+        4
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "kind": "list",
+      "block_id": "b5",
+      "start": 235,
+      "end": 343,
+      "unit_indexes": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "segment_id": "s6",
+      "kind": "heading",
+      "block_id": "b6",
+      "start": 348,
+      "end": 356,
+      "unit_indexes": [
+        8
+      ]
+    },
+    {
+      "segment_id": "s7",
+      "kind": "text",
+      "block_id": "b7",
+      "start": 358,
+      "end": 552,
+      "unit_indexes": [
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "segment_id": "s9",
+      "kind": "heading",
+      "block_id": "b8",
+      "start": 651,
+      "end": 663,
+      "unit_indexes": [
+        12
+      ]
+    },
+    {
+      "segment_id": "s10",
+      "kind": "text",
+      "block_id": "b9",
+      "start": 665,
+      "end": 807,
+      "unit_indexes": [
+        13,
+        14
+      ]
+    },
+    {
+      "segment_id": "s11",
+      "kind": "heading",
+      "block_id": "b10",
+      "start": 812,
+      "end": 826,
+      "unit_indexes": [
+        15
+      ]
+    },
+    {
+      "segment_id": "s12",
+      "kind": "list",
+      "block_id": "b11",
+      "start": 830,
+      "end": 915,
+      "unit_indexes": [
+        16,
+        17
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 134,
+  "language": "en"
+}

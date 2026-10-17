@@ -1,0 +1,88 @@
+{
+  "text_length": 125,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 9,
+      "head": "You said "
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 9,
+      "end": 53,
+      "head": "\"keep the migration reversible"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 53,
+      "end": 125,
+      "head": " in the kickoff, so I added a "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 8,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": true,
+      "head": "You said"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 54,
+      "end": 93,
+      "words": 9,
+      "text_start": 54,
+      "continuation": true,
+      "continued": false,
+      "head": "in the kickoff, so I added a d"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 94,
+      "end": 124,
+      "words": 7,
+      "text_start": 94,
+      "continuation": false,
+      "continued": false,
+      "head": "I did not touch the seed data."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 8,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 54,
+      "end": 124,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 18,
+  "language": "unknown"
+}

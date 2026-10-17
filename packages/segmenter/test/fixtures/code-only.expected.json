@@ -1,0 +1,25 @@
+{
+  "text_length": 49,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "code",
+      "start": 0,
+      "end": 31,
+      "head": "```ts\nexport const x = 1;\n```\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 31,
+      "end": 49,
+      "head": "    npm run build\n"
+    }
+  ],
+  "units": [],
+  "paragraphs": [],
+  "masks": [],
+  "bold": [],
+  "prose_words": 0,
+  "language": "unknown"
+}
