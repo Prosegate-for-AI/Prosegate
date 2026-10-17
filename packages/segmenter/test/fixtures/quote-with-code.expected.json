@@ -51,7 +51,9 @@
       "start": 0,
       "end": 13,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": true,
       "head": "The spec says"
     },
     {
@@ -60,7 +62,9 @@
       "start": 49,
       "end": 60,
       "words": 1,
+      "text_start": 49,
       "continuation": true,
+      "continued": false,
       "head": "explicitly."
     },
     {
@@ -69,7 +73,9 @@
       "start": 62,
       "end": 107,
       "words": 10,
+      "text_start": 62,
       "continuation": false,
+      "continued": true,
       "head": "Set `\"a b c\"` in the config, b"
     },
     {
@@ -78,13 +84,17 @@
       "start": 140,
       "end": 148,
       "words": 1,
+      "text_start": 140,
       "continuation": true,
+      "continued": false,
       "head": "earlier."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 13,
       "unit_indexes": [
@@ -93,6 +103,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
       "start": 49,
       "end": 60,
       "unit_indexes": [
@@ -101,6 +113,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b2",
       "start": 62,
       "end": 107,
       "unit_indexes": [
@@ -109,6 +123,8 @@
     },
     {
       "segment_id": "s6",
+      "kind": "text",
+      "block_id": "b2",
       "start": 140,
       "end": 148,
       "unit_indexes": [

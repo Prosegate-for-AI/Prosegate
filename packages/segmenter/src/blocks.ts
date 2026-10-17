@@ -25,6 +25,8 @@ export interface ProseLine {
   cs: number;
   /** Content end: trimmed of trailing whitespace and of an ATX closing sequence. */
   cend: number;
+  /** For list-item lines: the id of the list this item belongs to (a list survives blank lines and indented code). 0 otherwise. */
+  run: number;
 }
 
 export interface NonProseBlock {
@@ -58,13 +60,15 @@ function isDigit(c: number): boolean {
   return c >= 48 && c <= 57;
 }
 
+/** Indentation columns and the position of the first non-indent character. A BOM at offset 0 is skipped; NBSP counts as a space. */
 function indentOf(text: string, s: number, ce: number): { indent: number; pos: number } {
   let col = 0;
   let i = s;
   for (; i < ce; i++) {
     const c = text.charCodeAt(i);
-    if (c === SPACE) col++;
+    if (c === SPACE || c === 0xa0) col++;
     else if (c === TAB) col += 4 - (col % 4);
+    else if (c === 0xfeff && i === 0) continue;
     else break;
   }
   return { indent: col, pos: i };
@@ -139,8 +143,8 @@ function listMarker(text: string, pos: number, ce: number): ListMarker | null {
   let j: number;
   let ordered = false;
   let num = 0;
-  if (c === 45 || c === 42 || c === 43) {
-    j = pos + 1;
+  if (c === 45 || c === 42 || c === 43 || c === 0x2022 || c === 0x2023 || c === 0x25e6 || c === 0x25aa || c === 0x25cf) {
+    j = pos + 1; // - * + and the typographic bullets • ‣ ◦ ▪ ●
   } else if (isDigit(c)) {
     let k = pos;
     while (k < ce && isDigit(text.charCodeAt(k)) && k - pos < 9) k++;
@@ -225,12 +229,17 @@ function quoteHasContent(text: string, pos: number, ce: number): boolean {
   return false;
 }
 
+function isFrontMatterOpener(text: string, line: Line): boolean {
+  return text.slice(line.s, line.ce).replace(/^\uFEFF/, "").trimEnd() === "---";
+}
+
 export function scanBlocks(text: string, lines: Line[]): Block[] {
   const n = lines.length;
   const blocks: Block[] = [];
   // Mutable scan state lives in one object so closures and the main loop see the same declared types.
   const st: { prose: ProseBlock | null; paraStart: number } = { prose: null, paraStart: -1 };
   let listActive = false;
+  let runId = 0;
   let prevBlank = true;
 
   const closeProse = (): void => {
@@ -250,6 +259,25 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
   };
 
   let i = 0;
+
+  // YAML front matter: "---" on the first line, a key or comment on the next, closed by "---" or "...".
+  const first = lines[0];
+  if (first !== undefined && isFrontMatterOpener(text, first)) {
+    const second = lines[1];
+    if (second !== undefined && /^(?:#|[A-Za-z_][\w.-]*[ \t]*:)/.test(text.slice(skipWs(text, second.s, second.ce), second.ce))) {
+      for (let j = 1; j < n; j++) {
+        const M = lines[j] as Line;
+        const body = text.slice(M.s, M.ce).trimEnd();
+        if (body === "---" || body === "...") {
+          blocks.push({ kind: "code", s: first.s, e: M.ce });
+          prevBlank = false;
+          i = j + 1;
+          break;
+        }
+      }
+    }
+  }
+
   while (i < n) {
     const L = lines[i] as Line;
     if (isBlankRange(text, L.s, L.ce)) {
@@ -271,6 +299,27 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
 
     const inLikeTop = indent < 4 || listActive;
 
+    // 0. a fence opener as the first content of a list item: the marker stays prose, the code starts at the fence
+    const markerFence = lm !== null && lm.cs < L.ce ? fenceOpen(text, lm.cs, L.ce) : null;
+    if (lm !== null && markerFence !== null) {
+      if (!listActive) runId++;
+      pushLine({ s: L.s, ce: lm.cs, kind: "li", cs: lm.cs, cend: lm.cs, run: runId });
+      closeProse();
+      listActive = true;
+      let j = i + 1;
+      let end = L.ce;
+      while (j < n) {
+        const M = lines[j] as Line;
+        end = M.ce;
+        j++;
+        if (fenceClose(text, M.s, M.ce, markerFence.ch, markerFence.len)) break;
+      }
+      blocks.push({ kind: "code", s: lm.cs, e: end });
+      prevBlank = false;
+      i = j;
+      continue;
+    }
+
     // 1. fenced code
     const fo = inLikeTop ? fenceOpen(text, pos, L.ce) : null;
     if (fo !== null) {
@@ -290,7 +339,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
     }
 
     // 2. indented code
-    if (indent >= 4 && !listActive && (prevBlank || st.prose === null)) {
+    if (indent >= 4 && !listActive && (prevBlank || st.prose === null || lk === "h" || lk === "hr" || lk === "su")) {
       closeProse();
       let j = i + 1;
       let lastNonBlank = i;
@@ -345,7 +394,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
     // 4. ATX heading
     const ah = inLikeTop ? atxHeading(text, pos, L.ce) : null;
     if (ah !== null) {
-      pushLine({ s: L.s, ce: L.ce, kind: "h", cs: ah.cs, cend: ah.cend });
+      pushLine({ s: L.s, ce: L.ce, kind: "h", cs: ah.cs, cend: ah.cend, run: 0 });
       st.paraStart = -1;
       prevBlank = false;
       i++;
@@ -357,7 +406,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
       const lvl = setextLevel(text, pos, L.ce);
       if (lvl > 0) {
         for (let k = st.paraStart; k < st.prose.lines.length; k++) (st.prose.lines[k] as ProseLine).kind = "sh";
-        pushLine({ s: L.s, ce: L.ce, kind: "su", cs: pos, cend: trimEnd(text, pos, L.ce) });
+        pushLine({ s: L.s, ce: L.ce, kind: "su", cs: pos, cend: trimEnd(text, pos, L.ce), run: 0 });
         st.paraStart = -1;
         prevBlank = false;
         i++;
@@ -367,7 +416,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
 
     // 6. thematic break
     if (hr) {
-      pushLine({ s: L.s, ce: L.ce, kind: "hr", cs: pos, cend: trimEnd(text, pos, L.ce) });
+      pushLine({ s: L.s, ce: L.ce, kind: "hr", cs: pos, cend: trimEnd(text, pos, L.ce), run: 0 });
       st.paraStart = -1;
       prevBlank = false;
       i++;
@@ -375,7 +424,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
     }
 
     // 7. pipe table
-    if (indent < 4 && isTableStart(text, lines, i)) {
+    if (inLikeTop && isTableStart(text, lines, i)) {
       closeProse();
       let j = i + 2;
       let end = (lines[i + 1] as Line).ce;
@@ -393,7 +442,8 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
 
     // 8. list item
     if (lm !== null) {
-      pushLine({ s: L.s, ce: L.ce, kind: "li", cs: lm.cs, cend: trimEnd(text, lm.cs, L.ce) });
+      if (!listActive) runId++;
+      pushLine({ s: L.s, ce: L.ce, kind: "li", cs: lm.cs, cend: trimEnd(text, lm.cs, L.ce), run: runId });
       st.paraStart = -1;
       listActive = true;
       prevBlank = false;
@@ -404,7 +454,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
     // 9. plain text: a list continuation after a list item, else a paragraph line
     const lazy = lk === "li" || lk === "cont";
     if (!lazy && lk !== "p") st.paraStart = st.prose === null ? 0 : st.prose.lines.length;
-    pushLine({ s: L.s, ce: L.ce, kind: lazy ? "cont" : "p", cs: pos, cend: trimEnd(text, pos, L.ce) });
+    pushLine({ s: L.s, ce: L.ce, kind: lazy ? "cont" : "p", cs: pos, cend: trimEnd(text, pos, L.ce), run: 0 });
     prevBlank = false;
     i++;
   }

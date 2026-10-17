@@ -30,7 +30,9 @@
       "start": 0,
       "end": 9,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Run this:"
     },
     {
@@ -39,7 +41,9 @@
       "start": 41,
       "end": 63,
       "words": 4,
+      "text_start": 41,
       "continuation": false,
+      "continued": false,
       "head": "Then check the output."
     },
     {
@@ -48,13 +52,17 @@
       "start": 64,
       "end": 145,
       "words": 14,
+      "text_start": 64,
       "continuation": false,
+      "continued": false,
       "head": "A four-space indent in the mid"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 9,
       "unit_indexes": [
@@ -63,6 +71,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
       "start": 41,
       "end": 145,
       "unit_indexes": [

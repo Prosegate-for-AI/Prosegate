@@ -78,7 +78,10 @@ export function checkInvariants(text: string, label = "input"): Analysis {
     expect(u.words, `${ctx}: unit ${k} words`).toBe(countWords(sl));
     expect(u.words).toBeGreaterThan(0);
     expect(["sentence", "list_item", "heading"]).toContain(u.kind);
-    if (u.kind === "heading") expect(u.continuation).toBe(false);
+    if (u.kind === "heading") expect(u.continuation || u.continued).toBe(false);
+    expect(u.text_start >= u.start && u.text_start < u.end, `${ctx}: unit ${k} text_start range`).toBe(true);
+    expect(/^[\p{L}\p{N}]/u.test(text.slice(u.text_start, u.text_start + 2)), `${ctx}: unit ${k} text_start is a word character`).toBe(true);
+    expect(/[\p{L}\p{N}]/u.test(text.slice(u.start, u.text_start)), `${ctx}: unit ${k} text_start is the first word character`).toBe(false);
     words += u.words;
   });
   expect(a.prose_words, `${ctx}: prose_words`).toBe(words);
@@ -99,6 +102,31 @@ export function checkInvariants(text: string, label = "input"): Analysis {
     }
   }
   expect(covered, `${ctx}: paragraphs cover units in order`).toEqual(a.units.map((_, i) => i));
+
+  // Paragraph kind follows its units; a block id never mixes kinds; ids are b1, b2, ... by first appearance.
+  const kindOfBlock = new Map<string, string>();
+  for (const p of a.paragraphs) {
+    const uk = (a.units[p.unit_indexes[0] as number] as { kind: string }).kind;
+    for (const i of p.unit_indexes) expect((a.units[i] as { kind: string }).kind, `${ctx}: paragraph mixes unit kinds`).toBe(uk);
+    expect(p.kind, ctx).toBe(uk === "heading" ? "heading" : uk === "list_item" ? "list" : "text");
+    const known = kindOfBlock.get(p.block_id);
+    if (known === undefined) {
+      expect(p.block_id, `${ctx}: block ids by first appearance`).toBe(`b${kindOfBlock.size + 1}`);
+      kindOfBlock.set(p.block_id, p.kind);
+    } else {
+      expect(known, `${ctx}: block ${p.block_id} mixes paragraph kinds`).toBe(p.kind);
+    }
+  }
+
+  // continuation / continued mean an attributed quote segment sits right before / after the piece.
+  a.units.forEach((u, k) => {
+    const prevEnd = k > 0 ? (a.units[k - 1] as { end: number }).end : 0;
+    const nextStart = k + 1 < a.units.length ? (a.units[k + 1] as { start: number }).start : text.length;
+    const quoteBetween = (lo: number, hi: number): boolean =>
+      a.segments.some((s) => s.kind === "quote" && s.start >= lo && s.end <= hi && !text.slice(s.start, s.end).trimStart().startsWith(">"));
+    if (u.continuation) expect(quoteBetween(prevEnd, u.start + 1), `${ctx}: unit ${k} continuation without a quote before it`).toBe(true);
+    if (u.continued) expect(quoteBetween(u.end - 1, nextStart), `${ctx}: unit ${k} continued without a quote after it`).toBe(true);
+  });
 
   // Masks and bold: ordered, inside one prose segment, never inside a quote segment.
   let pm = 0;
@@ -125,7 +153,7 @@ export function checkInvariants(text: string, label = "input"): Analysis {
     if (sl[0] === ">") continue;
     expect(/^["“]/.test(sl), `${ctx}: inline quote starts with a quote mark`).toBe(true);
     expect(/["”]\s*$/.test(sl), `${ctx}: inline quote ends with a quote mark`).toBe(true);
-    expect(countWords(sl.slice(1, sl.trimEnd().length - 1)), `${ctx}: inline quote word count`).toBeGreaterThanOrEqual(3);
+    expect(countWords(sl.slice(1, sl.trimEnd().length - 1)), `${ctx}: inline quote word count`).toBeGreaterThanOrEqual(1);
   }
 
   return a;

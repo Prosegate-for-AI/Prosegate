@@ -30,7 +30,9 @@
       "start": 0,
       "end": 105,
       "words": 18,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "The release notes call it \"a c"
     },
     {
@@ -39,7 +41,9 @@
       "start": 106,
       "end": 120,
       "words": 3,
+      "text_start": 106,
       "continuation": false,
+      "continued": false,
       "head": "We should ask."
     },
     {
@@ -48,7 +52,9 @@
       "start": 122,
       "end": 208,
       "words": 16,
+      "text_start": 122,
       "continuation": false,
+      "continued": false,
       "head": "Someone on the thread wrote \"t"
     },
     {
@@ -57,7 +63,9 @@
       "start": 209,
       "end": 265,
       "words": 11,
+      "text_start": 209,
       "continuation": false,
+      "continued": false,
       "head": "It reads \"return the first mat"
     },
     {
@@ -66,13 +74,17 @@
       "start": 267,
       "end": 320,
       "words": 11,
+      "text_start": 267,
       "continuation": false,
+      "continued": false,
       "head": "He said \"we will ship on Frida"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 120,
       "unit_indexes": [
@@ -82,6 +94,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 122,
       "end": 265,
       "unit_indexes": [
@@ -91,6 +105,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b3",
       "start": 267,
       "end": 320,
       "unit_indexes": [

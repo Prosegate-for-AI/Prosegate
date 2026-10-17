@@ -1,0 +1,65 @@
+{
+  "text_length": 77,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 77,
+      "head": "[Step 1. Install](#install) is"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 37,
+      "words": 6,
+      "text_start": 1,
+      "continuation": false,
+      "continued": false,
+      "head": "[Step 1. Install](#install) is"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 38,
+      "end": 70,
+      "words": 7,
+      "text_start": 38,
+      "continuation": false,
+      "continued": false,
+      "head": "See [Part 2. Run it](#run) nex"
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 71,
+      "end": 76,
+      "words": 1,
+      "text_start": 71,
+      "continuation": false,
+      "continued": false,
+      "head": "Done."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 76,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 14,
+  "language": "unknown"
+}

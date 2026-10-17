@@ -44,7 +44,9 @@
       "start": 2,
       "end": 7,
       "words": 1,
+      "text_start": 2,
       "continuation": false,
+      "continued": false,
       "head": "Notes"
     },
     {
@@ -53,7 +55,9 @@
       "start": 11,
       "end": 32,
       "words": 3,
+      "text_start": 11,
       "continuation": false,
+      "continued": false,
       "head": "First paragraph here."
     },
     {
@@ -62,7 +66,9 @@
       "start": 33,
       "end": 54,
       "words": 4,
+      "text_start": 33,
       "continuation": false,
+      "continued": false,
       "head": "It has two sentences."
     },
     {
@@ -71,7 +77,9 @@
       "start": 60,
       "end": 63,
       "words": 1,
+      "text_start": 60,
       "continuation": false,
+      "continued": false,
       "head": "one"
     },
     {
@@ -80,7 +88,9 @@
       "start": 67,
       "end": 70,
       "words": 1,
+      "text_start": 67,
       "continuation": false,
+      "continued": false,
       "head": "two"
     },
     {
@@ -89,13 +99,17 @@
       "start": 97,
       "end": 107,
       "words": 2,
+      "text_start": 97,
       "continuation": false,
+      "continued": false,
       "head": "Last line."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
       "start": 2,
       "end": 7,
       "unit_indexes": [
@@ -104,6 +118,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 11,
       "end": 54,
       "unit_indexes": [
@@ -113,6 +129,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b3",
       "start": 60,
       "end": 70,
       "unit_indexes": [
@@ -122,6 +140,8 @@
     },
     {
       "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b4",
       "start": 97,
       "end": 107,
       "unit_indexes": [

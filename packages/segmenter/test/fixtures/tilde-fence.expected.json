@@ -44,7 +44,9 @@
       "start": 0,
       "end": 8,
       "words": 1,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Install:"
     },
     {
@@ -53,7 +55,9 @@
       "start": 29,
       "end": 60,
       "words": 6,
+      "text_start": 29,
       "continuation": false,
+      "continued": false,
       "head": "Longer fence with a nested one"
     },
     {
@@ -62,13 +66,17 @@
       "start": 91,
       "end": 96,
       "words": 1,
+      "text_start": 91,
       "continuation": false,
+      "continued": false,
       "head": "Done."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 8,
       "unit_indexes": [
@@ -77,6 +85,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
       "start": 29,
       "end": 60,
       "unit_indexes": [
@@ -85,6 +95,8 @@
     },
     {
       "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b3",
       "start": 91,
       "end": 96,
       "unit_indexes": [

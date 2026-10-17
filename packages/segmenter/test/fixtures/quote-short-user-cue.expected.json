@@ -1,0 +1,170 @@
+{
+  "text_length": 153,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 16,
+      "head": "You asked me to "
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 16,
+      "end": 26,
+      "head": "\"leverage\""
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 26,
+      "end": 52,
+      "head": " the cache. You asked for "
+    },
+    {
+      "id": "s4",
+      "kind": "quote",
+      "start": 52,
+      "end": 74,
+      "head": "\"seamless integration\""
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 74,
+      "end": 89,
+      "head": ". When you say "
+    },
+    {
+      "id": "s6",
+      "kind": "quote",
+      "start": 89,
+      "end": 95,
+      "head": "\"fast\""
+    },
+    {
+      "id": "s7",
+      "kind": "prose",
+      "start": 95,
+      "end": 153,
+      "head": " I assume under a second. The "
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 15,
+      "words": 4,
+      "text_start": 0,
+      "continuation": false,
+      "continued": true,
+      "head": "You asked me to"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 27,
+      "end": 37,
+      "words": 2,
+      "text_start": 27,
+      "continuation": true,
+      "continued": false,
+      "head": "the cache."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 38,
+      "end": 51,
+      "words": 3,
+      "text_start": 38,
+      "continuation": false,
+      "continued": true,
+      "head": "You asked for"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 76,
+      "end": 88,
+      "words": 3,
+      "text_start": 76,
+      "continuation": false,
+      "continued": true,
+      "head": "When you say"
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
+      "start": 96,
+      "end": 120,
+      "words": 5,
+      "text_start": 96,
+      "continuation": true,
+      "continued": false,
+      "head": "I assume under a second."
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
+      "start": 121,
+      "end": 152,
+      "words": 5,
+      "text_start": 121,
+      "continuation": false,
+      "continued": false,
+      "head": "The \"robust\" layer stays prose"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 15,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 27,
+      "end": 51,
+      "unit_indexes": [
+        1,
+        2
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 76,
+      "end": 88,
+      "unit_indexes": [
+        3
+      ]
+    },
+    {
+      "segment_id": "s7",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 96,
+      "end": 152,
+      "unit_indexes": [
+        4,
+        5
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 22,
+  "language": "unknown"
+}

@@ -30,7 +30,9 @@
       "start": 0,
       "end": 21,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": true,
       "head": "According to Nielsen,"
     },
     {
@@ -39,7 +41,9 @@
       "start": 70,
       "end": 102,
       "words": 5,
+      "text_start": 70,
       "continuation": true,
+      "continued": false,
       "head": "and that matters for onboardin"
     },
     {
@@ -48,13 +52,17 @@
       "start": 103,
       "end": 139,
       "words": 6,
+      "text_start": 103,
       "continuation": false,
+      "continued": false,
       "head": "The result held across both st"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 21,
       "unit_indexes": [
@@ -63,6 +71,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
       "start": 70,
       "end": 139,
       "unit_indexes": [

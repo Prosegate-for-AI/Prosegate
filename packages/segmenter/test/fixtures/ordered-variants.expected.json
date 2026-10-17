@@ -23,7 +23,9 @@
       "start": 0,
       "end": 6,
       "words": 1,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Steps:"
     },
     {
@@ -32,7 +34,9 @@
       "start": 11,
       "end": 24,
       "words": 3,
+      "text_start": 11,
       "continuation": false,
+      "continued": false,
       "head": "Open the file"
     },
     {
@@ -41,7 +45,9 @@
       "start": 28,
       "end": 41,
       "words": 3,
+      "text_start": 28,
       "continuation": false,
+      "continued": false,
       "head": "Edit the file"
     },
     {
@@ -50,7 +56,9 @@
       "start": 46,
       "end": 53,
       "words": 2,
+      "text_start": 46,
       "continuation": false,
+      "continued": false,
       "head": "Save it"
     },
     {
@@ -59,7 +67,9 @@
       "start": 56,
       "end": 64,
       "words": 2,
+      "text_start": 56,
       "continuation": false,
+      "continued": false,
       "head": "Close it"
     },
     {
@@ -68,13 +78,17 @@
       "start": 67,
       "end": 71,
       "words": 1,
+      "text_start": 67,
       "continuation": false,
+      "continued": false,
       "head": "Done"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 6,
       "unit_indexes": [
@@ -83,6 +97,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 11,
       "end": 71,
       "unit_indexes": [

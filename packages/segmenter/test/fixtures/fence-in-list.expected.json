@@ -37,7 +37,9 @@
       "start": 0,
       "end": 13,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "To reproduce:"
     },
     {
@@ -46,7 +48,9 @@
       "start": 18,
       "end": 35,
       "words": 3,
+      "text_start": 18,
       "continuation": false,
+      "continued": false,
       "head": "Start the server:"
     },
     {
@@ -55,7 +59,9 @@
       "start": 69,
       "end": 103,
       "words": 6,
+      "text_start": 69,
       "continuation": false,
+      "continued": false,
       "head": "Open the page and click **Retr"
     },
     {
@@ -64,13 +70,17 @@
       "start": 107,
       "end": 125,
       "words": 3,
+      "text_start": 107,
       "continuation": false,
+      "continued": false,
       "head": "Watch the console."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 13,
       "unit_indexes": [
@@ -79,6 +89,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 18,
       "end": 35,
       "unit_indexes": [
@@ -87,6 +99,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "list",
+      "block_id": "b2",
       "start": 69,
       "end": 125,
       "unit_indexes": [

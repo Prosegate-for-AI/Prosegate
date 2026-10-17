@@ -23,7 +23,9 @@
       "start": 0,
       "end": 23,
       "words": 5,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "She said, \"It is done.\""
     },
     {
@@ -32,7 +34,9 @@
       "start": 24,
       "end": 63,
       "words": 7,
+      "text_start": 24,
       "continuation": false,
+      "continued": false,
       "head": "Then she left (finally!) and h"
     },
     {
@@ -41,7 +45,9 @@
       "start": 64,
       "end": 90,
       "words": 5,
+      "text_start": 64,
       "continuation": false,
+      "continued": false,
       "head": "The note read [see below]."
     },
     {
@@ -50,7 +56,9 @@
       "start": 91,
       "end": 109,
       "words": 3,
+      "text_start": 91,
       "continuation": false,
+      "continued": false,
       "head": "He asked (really?)"
     },
     {
@@ -59,7 +67,9 @@
       "start": 110,
       "end": 126,
       "words": 2,
+      "text_start": 110,
       "continuation": false,
+      "continued": false,
       "head": "Nobody answered."
     },
     {
@@ -68,7 +78,9 @@
       "start": 128,
       "end": 137,
       "words": 1,
+      "text_start": 130,
       "continuation": false,
+      "continued": false,
       "head": "**Done.**"
     },
     {
@@ -77,13 +89,17 @@
       "start": 138,
       "end": 148,
       "words": 2,
+      "text_start": 138,
       "continuation": false,
+      "continued": false,
       "head": "Next step."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 126,
       "unit_indexes": [
@@ -96,6 +112,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 128,
       "end": 148,
       "unit_indexes": [

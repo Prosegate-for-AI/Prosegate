@@ -30,14 +30,6 @@ export function isAsciiAlnum(c: number): boolean {
   return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 }
 
-export function isHighSurrogate(c: number): boolean {
-  return c >= 0xd800 && c <= 0xdbff;
-}
-
-export function isLowSurrogate(c: number): boolean {
-  return c >= 0xdc00 && c <= 0xdfff;
-}
-
 /** Split into lines. `\r\n` is one break; a lone `\r` is also a break; no line is produced after a final break. */
 export function splitLines(text: string): Line[] {
   const lines: Line[] = [];

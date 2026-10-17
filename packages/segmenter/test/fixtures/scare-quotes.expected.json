@@ -16,7 +16,9 @@
       "start": 0,
       "end": 112,
       "words": 19,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "The \"robust\" layer wraps every"
     },
     {
@@ -25,13 +27,17 @@
       "start": 113,
       "end": 186,
       "words": 14,
+      "text_start": 113,
       "continuation": false,
+      "continued": false,
       "head": "None of this is \"production re"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 186,
       "unit_indexes": [

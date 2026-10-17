@@ -23,7 +23,9 @@
       "start": 0,
       "end": 15,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Bonjour à tous."
     },
     {
@@ -32,7 +34,9 @@
       "start": 16,
       "end": 98,
       "words": 14,
+      "text_start": 16,
       "continuation": false,
+      "continued": false,
       "head": "Le serveur de production est t"
     },
     {
@@ -41,7 +45,9 @@
       "start": 99,
       "end": 233,
       "words": 22,
+      "text_start": 99,
       "continuation": false,
+      "continued": false,
       "head": "Nous avons restauré la base de"
     },
     {
@@ -50,7 +56,9 @@
       "start": 234,
       "end": 333,
       "words": 15,
+      "text_start": 234,
       "continuation": false,
+      "continued": false,
       "head": "Aucune donnée client n'a été p"
     },
     {
@@ -59,13 +67,17 @@
       "start": 335,
       "end": 440,
       "words": 16,
+      "text_start": 335,
       "continuation": false,
+      "continued": false,
       "head": "Pour éviter que cela se reprod"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 333,
       "unit_indexes": [
@@ -77,6 +89,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 335,
       "end": 440,
       "unit_indexes": [

@@ -23,7 +23,9 @@
       "start": 0,
       "end": 18,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Release checklist:"
     },
     {
@@ -32,7 +34,9 @@
       "start": 22,
       "end": 27,
       "words": 1,
+      "text_start": 22,
       "continuation": false,
+      "continued": false,
       "head": "Build"
     },
     {
@@ -41,7 +45,9 @@
       "start": 32,
       "end": 62,
       "words": 4,
+      "text_start": 32,
       "continuation": false,
+      "continued": false,
       "head": "Compile the TypeScript sources"
     },
     {
@@ -50,7 +56,9 @@
       "start": 67,
       "end": 81,
       "words": 3,
+      "text_start": 67,
       "continuation": false,
+      "continued": false,
       "head": "Bundle the CLI"
     },
     {
@@ -59,7 +67,9 @@
       "start": 88,
       "end": 110,
       "words": 4,
+      "text_start": 88,
       "continuation": false,
+      "continued": false,
       "head": "Verify the bundle size"
     },
     {
@@ -68,7 +78,9 @@
       "start": 113,
       "end": 117,
       "words": 1,
+      "text_start": 113,
       "continuation": false,
+      "continued": false,
       "head": "Test"
     },
     {
@@ -77,7 +89,9 @@
       "start": 123,
       "end": 141,
       "words": 4,
+      "text_start": 123,
       "continuation": false,
+      "continued": false,
       "head": "Run the unit tests"
     },
     {
@@ -86,7 +100,9 @@
       "start": 147,
       "end": 167,
       "words": 4,
+      "text_start": 147,
       "continuation": false,
+      "continued": false,
       "head": "Run the eval harness"
     },
     {
@@ -95,13 +111,17 @@
       "start": 170,
       "end": 177,
       "words": 1,
+      "text_start": 170,
       "continuation": false,
+      "continued": false,
       "head": "Publish"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 18,
       "unit_indexes": [
@@ -110,6 +130,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 22,
       "end": 177,
       "unit_indexes": [

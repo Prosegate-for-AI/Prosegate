@@ -16,7 +16,9 @@
       "start": 0,
       "end": 50,
       "words": 13,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Docs live at https://example.c"
     },
     {
@@ -25,7 +27,9 @@
       "start": 51,
       "end": 154,
       "words": 19,
+      "text_start": 51,
       "continuation": false,
+      "continued": false,
       "head": "Mail ops@example.com or www.ex"
     },
     {
@@ -34,13 +38,17 @@
       "start": 155,
       "end": 165,
       "words": 2,
+      "text_start": 155,
       "continuation": false,
+      "continued": false,
       "head": "Then wait."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 165,
       "unit_indexes": [

@@ -23,13 +23,17 @@
       "start": 0,
       "end": 19,
       "words": 4,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Here is the script:"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 19,
       "unit_indexes": [

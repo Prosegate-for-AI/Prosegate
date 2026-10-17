@@ -1,0 +1,55 @@
+{
+  "text_length": 55,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 2,
+      "head": "- "
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 2,
+      "end": 33,
+      "head": "```bash\n  npm i leakword\n  ```"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 33,
+      "end": 55,
+      "head": "- Next item is prose.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 35,
+      "end": 54,
+      "words": 4,
+      "text_start": 35,
+      "continuation": false,
+      "continued": false,
+      "head": "Next item is prose."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b1",
+      "start": 35,
+      "end": 54,
+      "unit_indexes": [
+        0
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 4,
+  "language": "unknown"
+}

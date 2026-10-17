@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { specs } from "../fixtures/specs.mjs";
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
-const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
+const WORD = /[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['\u2019\u02bc\u2010\u2011-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu;
 
 /** First 30 UTF-16 units of a slice, never cutting a surrogate pair. */
 function head(s) {
@@ -80,7 +80,9 @@ function build(name, spec) {
       start: s,
       end: e,
       words: (text.slice(s, e).match(WORD) ?? []).length,
-      continuation: flag === "cont",
+      text_start: s + text.slice(s, e).search(/[\p{L}\p{N}]/u), // first word character
+      continuation: (flag ?? "").split(" ").includes("cont"),
+      continued: (flag ?? "").split(" ").includes("cut"),
       head: head(text.slice(s, e)),
     });
     cur = e;
@@ -93,11 +95,17 @@ function build(name, spec) {
   };
 
   if (spec.paragraphs !== undefined) {
-    out.paragraphs = spec.paragraphs.map((idx) => {
+    // pblocks: the block number of each paragraph (paragraphs of one list, or of one text paragraph a
+    // quote cut, share a number); default is one block per paragraph.
+    const pblocks = spec.pblocks ?? spec.paragraphs.map((_, k) => k + 1);
+    if (pblocks.length !== spec.paragraphs.length) fail(name, "pblocks must match paragraphs");
+    out.paragraphs = spec.paragraphs.map((idx, k) => {
       const first = units[idx[0]];
       const last = units[idx[idx.length - 1]];
       if (first === undefined || last === undefined) fail(name, `bad paragraph ${JSON.stringify(idx)}`);
-      return { segment_id: first.segment_id, start: first.start, end: last.end, unit_indexes: idx };
+      const pk = first.kind === "heading" ? "heading" : first.kind === "list_item" ? "list" : "text";
+      if (idx.some((i) => units[i].kind !== first.kind)) fail(name, `paragraph ${k} mixes unit kinds`);
+      return { segment_id: first.segment_id, kind: pk, block_id: `b${pblocks[k]}`, start: first.start, end: last.end, unit_indexes: idx };
     });
     const flat = spec.paragraphs.flat();
     if (flat.length !== units.length || flat.some((v, i) => v !== i)) fail(name, "paragraphs must cover units in order");

@@ -16,7 +16,9 @@
       "start": 0,
       "end": 15,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Open README.md."
     },
     {
@@ -25,7 +27,9 @@
       "start": 16,
       "end": 116,
       "words": 20,
+      "text_start": 16,
       "continuation": false,
+      "continued": false,
       "head": "Then edit src/index.ts and ./a"
     },
     {
@@ -34,13 +38,17 @@
       "start": 117,
       "end": 176,
       "words": 16,
+      "text_start": 117,
       "continuation": false,
+      "continued": false,
       "head": "The file notes.txt:12 has the "
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 176,
       "unit_indexes": [

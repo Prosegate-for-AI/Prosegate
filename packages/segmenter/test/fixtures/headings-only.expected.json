@@ -51,7 +51,9 @@
       "start": 2,
       "end": 7,
       "words": 1,
+      "text_start": 2,
       "continuation": false,
+      "continued": false,
       "head": "Title"
     },
     {
@@ -60,7 +62,9 @@
       "start": 12,
       "end": 23,
       "words": 2,
+      "text_start": 12,
       "continuation": false,
+      "continued": false,
       "head": "Section one"
     },
     {
@@ -69,7 +73,9 @@
       "start": 29,
       "end": 39,
       "words": 1,
+      "text_start": 29,
       "continuation": false,
+      "continued": false,
       "head": "Subsection"
     },
     {
@@ -78,7 +84,9 @@
       "start": 46,
       "end": 50,
       "words": 1,
+      "text_start": 46,
       "continuation": false,
+      "continued": false,
       "head": "Four"
     },
     {
@@ -87,7 +95,9 @@
       "start": 63,
       "end": 67,
       "words": 1,
+      "text_start": 63,
       "continuation": false,
+      "continued": false,
       "head": "Five"
     },
     {
@@ -96,13 +106,17 @@
       "start": 82,
       "end": 85,
       "words": 1,
+      "text_start": 82,
       "continuation": false,
+      "continued": false,
       "head": "Six"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
       "start": 2,
       "end": 7,
       "unit_indexes": [
@@ -111,6 +125,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "heading",
+      "block_id": "b2",
       "start": 12,
       "end": 23,
       "unit_indexes": [
@@ -119,6 +135,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "heading",
+      "block_id": "b3",
       "start": 29,
       "end": 39,
       "unit_indexes": [
@@ -127,6 +145,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "heading",
+      "block_id": "b4",
       "start": 46,
       "end": 50,
       "unit_indexes": [
@@ -135,6 +155,8 @@
     },
     {
       "segment_id": "s5",
+      "kind": "heading",
+      "block_id": "b5",
       "start": 63,
       "end": 67,
       "unit_indexes": [
@@ -143,6 +165,8 @@
     },
     {
       "segment_id": "s6",
+      "kind": "heading",
+      "block_id": "b6",
       "start": 82,
       "end": 85,
       "unit_indexes": [

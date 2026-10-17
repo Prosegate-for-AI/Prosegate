@@ -16,7 +16,9 @@
       "start": 0,
       "end": 89,
       "words": 17,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "El equipo revisó el plan el lu"
     },
     {
@@ -25,13 +27,17 @@
       "start": 90,
       "end": 234,
       "words": 23,
+      "text_start": 90,
       "continuation": false,
+      "continued": false,
       "head": "Todos querían un alcance menor"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 234,
       "unit_indexes": [

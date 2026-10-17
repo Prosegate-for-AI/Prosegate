@@ -65,7 +65,9 @@
       "start": 2,
       "end": 39,
       "words": 7,
+      "text_start": 2,
       "continuation": false,
+      "continued": false,
       "head": "Fix retry storm in the webhook"
     },
     {
@@ -74,7 +76,9 @@
       "start": 41,
       "end": 126,
       "words": 14,
+      "text_start": 41,
       "continuation": false,
+      "continued": false,
       "head": "This change stops the webhook "
     },
     {
@@ -83,7 +87,9 @@
       "start": 127,
       "end": 236,
       "words": 18,
+      "text_start": 127,
       "continuation": false,
+      "continued": false,
       "head": "The old code re-queued a faile"
     },
     {
@@ -92,7 +98,9 @@
       "start": 241,
       "end": 253,
       "words": 2,
+      "text_start": 241,
       "continuation": false,
+      "continued": false,
       "head": "What changed"
     },
     {
@@ -101,7 +109,9 @@
       "start": 257,
       "end": 341,
       "words": 14,
+      "text_start": 257,
       "continuation": false,
+      "continued": false,
       "head": "Added exponential backoff with"
     },
     {
@@ -110,7 +120,9 @@
       "start": 344,
       "end": 422,
       "words": 14,
+      "text_start": 344,
       "continuation": false,
+      "continued": false,
       "head": "Moved the attempt counter into"
     },
     {
@@ -119,7 +131,9 @@
       "start": 425,
       "end": 529,
       "words": 15,
+      "text_start": 427,
       "continuation": false,
+      "continued": false,
       "head": "**Breaking:** the `retryDelayM"
     },
     {
@@ -128,7 +142,9 @@
       "start": 534,
       "end": 543,
       "words": 2,
+      "text_start": 534,
       "continuation": false,
+      "continued": false,
       "head": "Test plan"
     },
     {
@@ -137,7 +153,9 @@
       "start": 551,
       "end": 587,
       "words": 6,
+      "text_start": 551,
       "continuation": false,
+      "continued": false,
       "head": "Unit tests for the backoff sch"
     },
     {
@@ -146,7 +164,9 @@
       "start": 594,
       "end": 641,
       "words": 9,
+      "text_start": 594,
       "continuation": false,
+      "continued": false,
       "head": "Soak test against a dead endpo"
     },
     {
@@ -155,7 +175,9 @@
       "start": 682,
       "end": 694,
       "words": 2,
+      "text_start": 682,
       "continuation": false,
+      "continued": false,
       "head": "Closes #482."
     },
     {
@@ -164,13 +186,17 @@
       "start": 695,
       "end": 726,
       "words": 6,
+      "text_start": 695,
       "continuation": false,
+      "continued": false,
       "head": "Thanks to @maria for the repro"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
       "start": 2,
       "end": 39,
       "unit_indexes": [
@@ -179,6 +205,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 41,
       "end": 236,
       "unit_indexes": [
@@ -188,6 +216,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "heading",
+      "block_id": "b3",
       "start": 241,
       "end": 253,
       "unit_indexes": [
@@ -196,6 +226,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "list",
+      "block_id": "b4",
       "start": 257,
       "end": 529,
       "unit_indexes": [
@@ -206,6 +238,8 @@
     },
     {
       "segment_id": "s5",
+      "kind": "heading",
+      "block_id": "b5",
       "start": 534,
       "end": 543,
       "unit_indexes": [
@@ -214,6 +248,8 @@
     },
     {
       "segment_id": "s6",
+      "kind": "list",
+      "block_id": "b6",
       "start": 551,
       "end": 641,
       "unit_indexes": [
@@ -223,6 +259,8 @@
     },
     {
       "segment_id": "s8",
+      "kind": "text",
+      "block_id": "b7",
       "start": 682,
       "end": 726,
       "unit_indexes": [

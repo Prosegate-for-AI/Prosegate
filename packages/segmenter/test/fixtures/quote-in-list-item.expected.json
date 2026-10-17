@@ -37,7 +37,9 @@
       "start": 0,
       "end": 16,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Feedback so far:"
     },
     {
@@ -46,7 +48,9 @@
       "start": 20,
       "end": 28,
       "words": 2,
+      "text_start": 20,
       "continuation": false,
+      "continued": true,
       "head": "You said"
     },
     {
@@ -55,7 +59,9 @@
       "start": 63,
       "end": 76,
       "words": 3,
+      "text_start": 63,
       "continuation": true,
+      "continued": false,
       "head": "and we agree."
     },
     {
@@ -64,13 +70,17 @@
       "start": 79,
       "end": 120,
       "words": 7,
+      "text_start": 79,
       "continuation": false,
+      "continued": false,
       "head": "Nobody has commented on the pr"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 16,
       "unit_indexes": [
@@ -79,6 +89,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 20,
       "end": 28,
       "unit_indexes": [
@@ -87,6 +99,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "list",
+      "block_id": "b2",
       "start": 63,
       "end": 120,
       "unit_indexes": [

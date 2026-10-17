@@ -1,0 +1,77 @@
+{
+  "text_length": 60,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 60,
+      "head": "Done. ✅ Tests pass. ⚠️ One war"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 5,
+      "words": 1,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Done."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 6,
+      "end": 19,
+      "words": 2,
+      "text_start": 8,
+      "continuation": false,
+      "continued": false,
+      "head": "✅ Tests pass."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 20,
+      "end": 43,
+      "words": 3,
+      "text_start": 23,
+      "continuation": false,
+      "continued": false,
+      "head": "⚠️ One warning remains."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 44,
+      "end": 59,
+      "words": 3,
+      "text_start": 46,
+      "continuation": false,
+      "continued": false,
+      "head": "→ Next we ship."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 59,
+      "unit_indexes": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 9,
+  "language": "unknown"
+}

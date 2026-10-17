@@ -1,0 +1,90 @@
+{
+  "text_length": 83,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 10,
+      "head": "# Heading\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 10,
+      "end": 44,
+      "head": "    code right after the headi"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 44,
+      "end": 48,
+      "head": "---\n"
+    },
+    {
+      "id": "s4",
+      "kind": "code",
+      "start": 48,
+      "end": 71,
+      "head": "    code after a rule\n\n"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 71,
+      "end": 83,
+      "head": "Plain text.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "start": 2,
+      "end": 9,
+      "words": 1,
+      "text_start": 2,
+      "continuation": false,
+      "continued": false,
+      "head": "Heading"
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 71,
+      "end": 82,
+      "words": 2,
+      "text_start": 71,
+      "continuation": false,
+      "continued": false,
+      "head": "Plain text."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
+      "start": 2,
+      "end": 9,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 71,
+      "end": 82,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 3,
+  "language": "unknown"
+}

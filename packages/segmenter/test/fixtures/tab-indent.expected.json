@@ -30,7 +30,9 @@
       "start": 0,
       "end": 16,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Intro paragraph."
     },
     {
@@ -39,13 +41,17 @@
       "start": 49,
       "end": 60,
       "words": 2,
+      "text_start": 49,
       "continuation": false,
+      "continued": false,
       "head": "After code."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 16,
       "unit_indexes": [
@@ -54,6 +60,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
       "start": 49,
       "end": 60,
       "unit_indexes": [

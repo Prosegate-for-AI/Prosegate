@@ -30,7 +30,9 @@
       "start": 2,
       "end": 12,
       "words": 2,
+      "text_start": 2,
       "continuation": false,
+      "continued": false,
       "head": "First item"
     },
     {
@@ -39,7 +41,9 @@
       "start": 18,
       "end": 61,
       "words": 5,
+      "text_start": 18,
       "continuation": false,
+      "continued": false,
       "head": "continuation paragraph indente"
     },
     {
@@ -48,13 +52,17 @@
       "start": 65,
       "end": 76,
       "words": 2,
+      "text_start": 65,
       "continuation": false,
+      "continued": false,
       "head": "Second item"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "list",
+      "block_id": "b1",
       "start": 2,
       "end": 12,
       "unit_indexes": [
@@ -63,6 +71,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 18,
       "end": 61,
       "unit_indexes": [
@@ -71,6 +81,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b1",
       "start": 65,
       "end": 76,
       "unit_indexes": [

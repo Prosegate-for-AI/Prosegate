@@ -1,0 +1,65 @@
+{
+  "text_length": 58,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 58,
+      "head": "Steps: 1. Install the deps. 2."
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 27,
+      "words": 5,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Steps: 1. Install the deps."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 28,
+      "end": 45,
+      "words": 4,
+      "text_start": 28,
+      "continuation": false,
+      "continued": false,
+      "head": "2. Run the tests."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 46,
+      "end": 57,
+      "words": 3,
+      "text_start": 46,
+      "continuation": false,
+      "continued": false,
+      "head": "3) Ship it."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 57,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 12,
+  "language": "unknown"
+}

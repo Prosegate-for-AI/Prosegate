@@ -44,7 +44,9 @@
       "start": 0,
       "end": 26,
       "words": 5,
+      "text_start": 0,
       "continuation": false,
+      "continued": true,
       "head": "As the maintainers put it,"
     },
     {
@@ -53,7 +55,9 @@
       "start": 71,
       "end": 85,
       "words": 3,
+      "text_start": 73,
       "continuation": true,
+      "continued": false,
       "head": ", and I agree."
     },
     {
@@ -62,13 +66,17 @@
       "start": 86,
       "end": 100,
       "words": 4,
+      "text_start": 86,
       "continuation": false,
+      "continued": true,
       "head": "As you put it:"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 26,
       "unit_indexes": [
@@ -77,6 +85,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
       "start": 71,
       "end": 100,
       "unit_indexes": [

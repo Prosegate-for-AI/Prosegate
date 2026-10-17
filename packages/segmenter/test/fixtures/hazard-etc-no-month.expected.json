@@ -16,7 +16,9 @@
       "start": 0,
       "end": 23,
       "words": 4,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Bring pens, paper, etc."
     },
     {
@@ -25,7 +27,9 @@
       "start": 24,
       "end": 42,
       "words": 6,
+      "text_start": 24,
       "continuation": false,
+      "continued": false,
       "head": "We start at 9 a.m."
     },
     {
@@ -34,7 +38,9 @@
       "start": 43,
       "end": 63,
       "words": 3,
+      "text_start": 43,
       "continuation": false,
+      "continued": false,
       "head": "Please arrive early."
     },
     {
@@ -43,7 +49,9 @@
       "start": 64,
       "end": 86,
       "words": 5,
+      "text_start": 64,
       "continuation": false,
+      "continued": false,
       "head": "Item No. 5 is missing."
     },
     {
@@ -52,7 +60,9 @@
       "start": 87,
       "end": 126,
       "words": 7,
+      "text_start": 87,
       "continuation": false,
+      "continued": false,
       "head": "The audit closed Mar. 3 withou"
     },
     {
@@ -61,7 +71,9 @@
       "start": 127,
       "end": 130,
       "words": 1,
+      "text_start": 127,
       "continuation": false,
+      "continued": false,
       "head": "No."
     },
     {
@@ -70,13 +82,17 @@
       "start": 131,
       "end": 145,
       "words": 3,
+      "text_start": 131,
       "continuation": false,
+      "continued": false,
       "head": "That is wrong."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 145,
       "unit_indexes": [

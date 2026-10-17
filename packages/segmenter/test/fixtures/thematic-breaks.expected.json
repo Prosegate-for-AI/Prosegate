@@ -37,7 +37,9 @@
       "start": 0,
       "end": 9,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Part one."
     },
     {
@@ -46,13 +48,17 @@
       "start": 16,
       "end": 25,
       "words": 2,
+      "text_start": 16,
       "continuation": false,
+      "continued": false,
       "head": "Part two."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 9,
       "unit_indexes": [
@@ -61,6 +67,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
       "start": 16,
       "end": 25,
       "unit_indexes": [

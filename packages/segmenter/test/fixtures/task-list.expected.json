@@ -23,7 +23,9 @@
       "start": 0,
       "end": 5,
       "words": 1,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Todo:"
     },
     {
@@ -32,7 +34,9 @@
       "start": 13,
       "end": 29,
       "words": 3,
+      "text_start": 13,
       "continuation": false,
+      "continued": false,
       "head": "write the parser"
     },
     {
@@ -41,7 +45,9 @@
       "start": 36,
       "end": 51,
       "words": 3,
+      "text_start": 36,
       "continuation": false,
+      "continued": false,
       "head": "write the tests"
     },
     {
@@ -50,7 +56,9 @@
       "start": 58,
       "end": 65,
       "words": 2,
+      "text_start": 58,
       "continuation": false,
+      "continued": false,
       "head": "ship it"
     },
     {
@@ -59,13 +67,17 @@
       "start": 77,
       "end": 87,
       "words": 2,
+      "text_start": 77,
       "continuation": false,
+      "continued": false,
       "head": "spaced box"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 5,
       "unit_indexes": [
@@ -74,6 +86,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 13,
       "end": 87,
       "unit_indexes": [

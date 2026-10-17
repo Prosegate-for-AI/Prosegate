@@ -37,7 +37,9 @@
       "start": 0,
       "end": 23,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "The maintainer replied:"
     },
     {
@@ -46,13 +48,17 @@
       "start": 153,
       "end": 187,
       "words": 7,
+      "text_start": 153,
       "continuation": false,
+      "continued": false,
       "head": "I disagree, but I'll live with"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 23,
       "unit_indexes": [
@@ -61,6 +67,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b2",
       "start": 153,
       "end": 187,
       "unit_indexes": [

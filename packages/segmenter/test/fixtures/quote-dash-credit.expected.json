@@ -44,7 +44,9 @@
       "start": 52,
       "end": 66,
       "words": 2,
+      "text_start": 54,
       "continuation": true,
+      "continued": false,
       "head": "— Ada Lovelace"
     },
     {
@@ -53,7 +55,9 @@
       "start": 68,
       "end": 88,
       "words": 4,
+      "text_start": 68,
       "continuation": false,
+      "continued": false,
       "head": "We took that advice."
     },
     {
@@ -62,7 +66,9 @@
       "start": 138,
       "end": 153,
       "words": 2,
+      "text_start": 140,
       "continuation": true,
+      "continued": false,
       "head": "— Donald Knuth."
     },
     {
@@ -71,13 +77,17 @@
       "start": 154,
       "end": 173,
       "words": 3,
+      "text_start": 154,
       "continuation": false,
+      "continued": false,
       "head": "Later we disagreed."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b1",
       "start": 52,
       "end": 66,
       "unit_indexes": [
@@ -86,6 +96,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
       "start": 68,
       "end": 88,
       "unit_indexes": [
@@ -94,6 +106,8 @@
     },
     {
       "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b2",
       "start": 138,
       "end": 173,
       "unit_indexes": [

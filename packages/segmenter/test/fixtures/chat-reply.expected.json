@@ -37,7 +37,9 @@
       "start": 0,
       "end": 26,
       "words": 5,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Sure, here's what I found."
     },
     {
@@ -46,7 +48,9 @@
       "start": 27,
       "end": 122,
       "words": 17,
+      "text_start": 27,
       "continuation": false,
+      "continued": false,
       "head": "The failing test is `parses ne"
     },
     {
@@ -55,7 +59,9 @@
       "start": 124,
       "end": 136,
       "words": 2,
+      "text_start": 124,
       "continuation": false,
+      "continued": false,
       "head": "Two options:"
     },
     {
@@ -64,7 +70,9 @@
       "start": 141,
       "end": 199,
       "words": 8,
+      "text_start": 141,
       "continuation": false,
+      "continued": false,
       "head": "Strip trailing whitespace in t"
     },
     {
@@ -73,7 +81,9 @@
       "start": 203,
       "end": 246,
       "words": 8,
+      "text_start": 203,
       "continuation": false,
+      "continued": false,
       "head": "Fix the fixture and leave the "
     },
     {
@@ -82,7 +92,9 @@
       "start": 248,
       "end": 304,
       "words": 10,
+      "text_start": 248,
       "continuation": false,
+      "continued": false,
       "head": "I'd go with option 2 — the par"
     },
     {
@@ -91,13 +103,17 @@
       "start": 305,
       "end": 332,
       "words": 6,
+      "text_start": 305,
       "continuation": false,
+      "continued": false,
       "head": "Want me to make the change?"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 122,
       "unit_indexes": [
@@ -107,6 +123,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 124,
       "end": 136,
       "unit_indexes": [
@@ -115,6 +133,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b3",
       "start": 141,
       "end": 246,
       "unit_indexes": [
@@ -124,6 +144,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b4",
       "start": 248,
       "end": 332,
       "unit_indexes": [

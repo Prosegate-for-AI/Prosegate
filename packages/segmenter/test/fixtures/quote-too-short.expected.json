@@ -5,32 +5,46 @@
       "id": "s1",
       "kind": "prose",
       "start": 0,
-      "end": 44,
-      "head": "You said \"ship it\" yesterday, "
+      "end": 9,
+      "head": "You said "
     },
     {
       "id": "s2",
+      "kind": "quote",
+      "start": 9,
+      "end": 18,
+      "head": "\"ship it\""
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 18,
+      "end": 44,
+      "head": " yesterday, and you asked "
+    },
+    {
+      "id": "s4",
       "kind": "quote",
       "start": 44,
       "end": 57,
       "head": "\"why not now\""
     },
     {
-      "id": "s3",
+      "id": "s5",
       "kind": "prose",
       "start": 57,
       "end": 91,
       "head": " this morning. Then you mentio"
     },
     {
-      "id": "s4",
+      "id": "s6",
       "kind": "quote",
       "start": 91,
       "end": 120,
       "head": "\"the second option is better\""
     },
     {
-      "id": "s5",
+      "id": "s7",
       "kind": "prose",
       "start": 120,
       "end": 131,
@@ -42,68 +56,103 @@
       "segment_id": "s1",
       "kind": "sentence",
       "start": 0,
-      "end": 43,
-      "words": 8,
-      "continuation": false,
-      "head": "You said \"ship it\" yesterday, "
-    },
-    {
-      "segment_id": "s3",
-      "kind": "sentence",
-      "start": 58,
-      "end": 71,
+      "end": 8,
       "words": 2,
-      "continuation": true,
-      "head": "this morning."
+      "text_start": 0,
+      "continuation": false,
+      "continued": true,
+      "head": "You said"
     },
     {
       "segment_id": "s3",
       "kind": "sentence",
-      "start": 72,
-      "end": 90,
-      "words": 3,
-      "continuation": false,
-      "head": "Then you mentioned"
+      "start": 19,
+      "end": 43,
+      "words": 4,
+      "text_start": 19,
+      "continuation": true,
+      "continued": true,
+      "head": "yesterday, and you asked"
     },
     {
       "segment_id": "s5",
       "kind": "sentence",
+      "start": 58,
+      "end": 71,
+      "words": 2,
+      "text_start": 58,
+      "continuation": true,
+      "continued": false,
+      "head": "this morning."
+    },
+    {
+      "segment_id": "s5",
+      "kind": "sentence",
+      "start": 72,
+      "end": 90,
+      "words": 3,
+      "text_start": 72,
+      "continuation": false,
+      "continued": true,
+      "head": "Then you mentioned"
+    },
+    {
+      "segment_id": "s7",
+      "kind": "sentence",
       "start": 121,
       "end": 130,
       "words": 2,
+      "text_start": 121,
       "continuation": true,
+      "continued": false,
       "head": "at lunch."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
-      "end": 43,
+      "end": 8,
       "unit_indexes": [
         0
       ]
     },
     {
       "segment_id": "s3",
-      "start": 58,
-      "end": 90,
+      "kind": "text",
+      "block_id": "b1",
+      "start": 19,
+      "end": 43,
       "unit_indexes": [
-        1,
-        2
+        1
       ]
     },
     {
       "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 58,
+      "end": 90,
+      "unit_indexes": [
+        2,
+        3
+      ]
+    },
+    {
+      "segment_id": "s7",
+      "kind": "text",
+      "block_id": "b1",
       "start": 121,
       "end": 130,
       "unit_indexes": [
-        3
+        4
       ]
     }
   ],
   "masks": [],
   "bold": [],
-  "prose_words": 15,
+  "prose_words": 13,
   "language": "unknown"
 }

@@ -23,10 +23,12 @@ const WORDS = [
   "./a.b", "C:\\x\\y.json", "and/or", "https://x.io/a.b?c=d", "www.x.io", "a@b.co", "ops@example.com", "d'accord",
   "don’t", "per-tenant", "naïve", "café", "İstanbul", "ẞ", "😀", "𝒳", "𝄞", "—", "–", "…", "...", "\u00a0", "\u2011",
   "\u2019", "\u201c", "\u201d", "\u2018",
+  "<!--", "-->", "[x.", "y](z)", "[a. b](c)", "✅", "→", "⚠️", "a.m.", "p.m.", "9", "1.", "2.", "Monday", "EST", "Jr.", "al.", "Corp.",
+  "•", "\uFEFF", "\u3000", "und", "der", "le", "the",
 ];
 const PUNCT = [".", ".", ".", "!", "?", ",", ":", ";", "(", ")", "[", "]", "\"", "\"", "“", "”", "'", "`", "``", "**", "__", "*", "_", "|", "-", "#", "~", "<", ">", "&", "\\"];
-const LEADS = ["", "", "", "- ", "* ", "+ ", "1. ", "2) ", "- [ ] ", "- [x] ", "> ", ">> ", "# ", "## ", "###### ", "    ", "\t", "  ", "   - ", "    - ", "```", "~~~", "````", "---", "***", "===", "| a | b |", "|---|---|", "| 1 | 2 |"];
-const CUES = ["You said ", "you wrote ", "The user asked ", "According to Nielsen, ", "The docs say ", "The spec says ", "Ada Lovelace wrote ", "As you put it, ", "He said ", "It reads "];
+const LEADS = ["• ", "\u00a0\u00a0\u00a0\u00a0", "\u00a0\u00a0\u00a0", "- ```sh", "1. ```", "    | a | b |\n    |---|---|", "---\ntitle: x\n---\n", "\uFEFF", "", "", "", "- ", "* ", "+ ", "1. ", "2) ", "- [ ] ", "- [x] ", "> ", ">> ", "# ", "## ", "###### ", "    ", "\t", "  ", "   - ", "    - ", "```", "~~~", "````", "---", "***", "===", "| a | b |", "|---|---|", "| 1 | 2 |"];
+const CUES = ["You asked me to ", "When you say ", "Your request: ", "You asked for ", "Okafor's docs say ", "The error message says ", "You said **", "(you said ", "You said ", "you wrote ", "The user asked ", "According to Nielsen, ", "The docs say ", "The spec says ", "Ada Lovelace wrote ", "As you put it, ", "He said ", "It reads "];
 const BREAKS = ["\n", "\n", "\n", "\n\n", "\r\n", "\r\n\r\n", "\r", "\n\n\n", " \n", "\t\n"];
 
 function randomDoc(r: () => number, crlfOnly: boolean): string {

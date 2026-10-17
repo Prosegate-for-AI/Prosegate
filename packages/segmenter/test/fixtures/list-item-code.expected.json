@@ -23,7 +23,9 @@
       "start": 0,
       "end": 12,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Setup steps:"
     },
     {
@@ -32,7 +34,9 @@
       "start": 16,
       "end": 91,
       "words": 12,
+      "text_start": 16,
       "continuation": false,
+      "continued": false,
       "head": "Install the CLI with `npm inst"
     },
     {
@@ -41,7 +45,9 @@
       "start": 94,
       "end": 162,
       "words": 10,
+      "text_start": 94,
       "continuation": false,
+      "continued": false,
       "head": "Copy the config:\n  `cp config."
     },
     {
@@ -50,13 +56,17 @@
       "start": 165,
       "end": 238,
       "words": 11,
+      "text_start": 165,
       "continuation": false,
+      "continued": false,
       "head": "Edit `~/.prosegate/config.json"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 12,
       "unit_indexes": [
@@ -65,6 +75,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 16,
       "end": 238,
       "unit_indexes": [

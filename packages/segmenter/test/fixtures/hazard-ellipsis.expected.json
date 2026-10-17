@@ -16,7 +16,9 @@
       "start": 0,
       "end": 22,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Wait... what happened?"
     },
     {
@@ -25,7 +27,9 @@
       "start": 23,
       "end": 42,
       "words": 4,
+      "text_start": 23,
       "continuation": false,
+      "continued": false,
       "head": "I tried it again..."
     },
     {
@@ -34,7 +38,9 @@
       "start": 43,
       "end": 78,
       "words": 7,
+      "text_start": 43,
       "continuation": false,
+      "continued": false,
       "head": "Then it worked… and then it fa"
     },
     {
@@ -43,7 +49,9 @@
       "start": 79,
       "end": 83,
       "words": 1,
+      "text_start": 79,
       "continuation": false,
+      "continued": false,
       "head": "Hmm…"
     },
     {
@@ -52,13 +60,17 @@
       "start": 84,
       "end": 96,
       "words": 2,
+      "text_start": 84,
       "continuation": false,
+      "continued": false,
       "head": "Maybe later."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 96,
       "unit_indexes": [

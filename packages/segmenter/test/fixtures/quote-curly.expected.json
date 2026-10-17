@@ -30,7 +30,9 @@
       "start": 0,
       "end": 9,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": true,
       "head": "You wrote"
     },
     {
@@ -39,7 +41,9 @@
       "start": 61,
       "end": 75,
       "words": 3,
+      "text_start": 61,
       "continuation": true,
+      "continued": false,
       "head": "in the ticket."
     },
     {
@@ -48,13 +52,17 @@
       "start": 76,
       "end": 105,
       "words": 6,
+      "text_start": 76,
       "continuation": false,
+      "continued": false,
       "head": "The budget is now 90 seconds."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 9,
       "unit_indexes": [
@@ -63,6 +71,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
       "start": 61,
       "end": 105,
       "unit_indexes": [

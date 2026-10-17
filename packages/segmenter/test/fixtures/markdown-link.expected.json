@@ -16,7 +16,9 @@
       "start": 0,
       "end": 112,
       "words": 17,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "See [the migration guide](http"
     },
     {
@@ -25,13 +27,17 @@
       "start": 113,
       "end": 165,
       "words": 8,
+      "text_start": 113,
       "continuation": false,
+      "continued": false,
       "head": "Contact [support](mailto:help@"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 165,
       "unit_indexes": [

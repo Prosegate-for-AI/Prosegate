@@ -1,0 +1,177 @@
+{
+  "text_length": 368,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 12,
+      "head": "## Summary\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 12,
+      "end": 368,
+      "head": "- Added retry logic with expon"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "start": 3,
+      "end": 10,
+      "words": 1,
+      "text_start": 3,
+      "continuation": false,
+      "continued": false,
+      "head": "Summary"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 14,
+      "end": 78,
+      "words": 10,
+      "text_start": 14,
+      "continuation": false,
+      "continued": false,
+      "head": "Added retry logic with exponen"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 81,
+      "end": 119,
+      "words": 6,
+      "text_start": 81,
+      "continuation": false,
+      "continued": false,
+      "head": "Moved attempt counter into job"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 122,
+      "end": 153,
+      "words": 6,
+      "text_start": 122,
+      "continuation": false,
+      "continued": false,
+      "head": "Fixed flaky test in queue suit"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 156,
+      "end": 190,
+      "words": 4,
+      "text_start": 156,
+      "continuation": false,
+      "continued": false,
+      "head": "Removed unused retryDelayMs op"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 193,
+      "end": 219,
+      "words": 4,
+      "text_start": 193,
+      "continuation": false,
+      "continued": false,
+      "head": "Updated docs for migration"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 222,
+      "end": 245,
+      "words": 6,
+      "text_start": 222,
+      "continuation": false,
+      "continued": false,
+      "head": "Bumped vitest to 4.1.12"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 248,
+      "end": 281,
+      "words": 5,
+      "text_start": 248,
+      "continuation": false,
+      "continued": false,
+      "head": "Renamed parse helpers for clar"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 284,
+      "end": 303,
+      "words": 3,
+      "text_start": 284,
+      "continuation": false,
+      "continued": false,
+      "head": "Added CRLF fixtures"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 306,
+      "end": 336,
+      "words": 5,
+      "text_start": 306,
+      "continuation": false,
+      "continued": false,
+      "head": "Tightened lint rules for tests"
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list_item",
+      "start": 339,
+      "end": 367,
+      "words": 4,
+      "text_start": 339,
+      "continuation": false,
+      "continued": false,
+      "head": "Dropped legacy config loader"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
+      "start": 3,
+      "end": 10,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
+      "start": 14,
+      "end": 367,
+      "unit_indexes": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 54,
+  "language": "en"
+}

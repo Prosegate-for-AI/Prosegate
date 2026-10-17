@@ -58,7 +58,9 @@
       "start": 0,
       "end": 12,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": true,
       "head": "The docs say"
     },
     {
@@ -67,7 +69,9 @@
       "start": 57,
       "end": 77,
       "words": 4,
+      "text_start": 59,
       "continuation": true,
+      "continued": true,
       "head": ", but the error says"
     },
     {
@@ -76,7 +80,9 @@
       "start": 108,
       "end": 119,
       "words": 3,
+      "text_start": 108,
       "continuation": true,
+      "continued": false,
       "head": "when we do."
     },
     {
@@ -85,7 +91,9 @@
       "start": 120,
       "end": 138,
       "words": 3,
+      "text_start": 120,
       "continuation": false,
+      "continued": true,
       "head": "Ada Lovelace wrote"
     },
     {
@@ -94,13 +102,17 @@
       "start": 192,
       "end": 221,
       "words": 5,
+      "text_start": 192,
       "continuation": true,
+      "continued": false,
       "head": "long before anyone built one."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 12,
       "unit_indexes": [
@@ -109,6 +121,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b1",
       "start": 57,
       "end": 77,
       "unit_indexes": [
@@ -117,6 +131,8 @@
     },
     {
       "segment_id": "s5",
+      "kind": "text",
+      "block_id": "b1",
       "start": 108,
       "end": 138,
       "unit_indexes": [
@@ -126,6 +142,8 @@
     },
     {
       "segment_id": "s7",
+      "kind": "text",
+      "block_id": "b1",
       "start": 192,
       "end": 221,
       "unit_indexes": [

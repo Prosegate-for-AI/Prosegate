@@ -23,7 +23,9 @@
       "start": 0,
       "end": 21,
       "words": 3,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Shipped 🚀 on Friday!"
     },
     {
@@ -32,7 +34,9 @@
       "start": 22,
       "end": 64,
       "words": 6,
+      "text_start": 22,
       "continuation": false,
+      "continued": false,
       "head": "The 𝒳 operator handles 😀 and"
     },
     {
@@ -41,7 +45,9 @@
       "start": 65,
       "end": 72,
       "words": 1,
+      "text_start": 65,
       "continuation": false,
+      "continued": false,
       "head": "Done ✅."
     },
     {
@@ -50,7 +56,9 @@
       "start": 76,
       "end": 101,
       "words": 4,
+      "text_start": 79,
       "continuation": false,
+      "continued": false,
       "head": "🎉 Release notes are live"
     },
     {
@@ -59,13 +67,17 @@
       "start": 104,
       "end": 121,
       "words": 4,
+      "text_start": 104,
       "continuation": false,
+      "continued": false,
       "head": "Café ☕ opens at 9"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 0,
       "end": 72,
       "unit_indexes": [
@@ -76,6 +88,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "list",
+      "block_id": "b2",
       "start": 76,
       "end": 121,
       "unit_indexes": [

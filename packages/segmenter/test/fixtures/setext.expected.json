@@ -37,7 +37,9 @@
       "start": 0,
       "end": 10,
       "words": 2,
+      "text_start": 0,
       "continuation": false,
+      "continued": false,
       "head": "Main Title"
     },
     {
@@ -46,7 +48,9 @@
       "start": 23,
       "end": 55,
       "words": 5,
+      "text_start": 23,
       "continuation": false,
+      "continued": false,
       "head": "Intro paragraph under the titl"
     },
     {
@@ -55,7 +59,9 @@
       "start": 57,
       "end": 68,
       "words": 2,
+      "text_start": 57,
       "continuation": false,
+      "continued": false,
       "head": "Sub Heading"
     },
     {
@@ -64,7 +70,9 @@
       "start": 81,
       "end": 112,
       "words": 5,
+      "text_start": 81,
       "continuation": false,
+      "continued": false,
       "head": "Text right after the underline"
     },
     {
@@ -73,13 +81,17 @@
       "start": 114,
       "end": 135,
       "words": 4,
+      "text_start": 114,
       "continuation": false,
+      "continued": false,
       "head": "Two line\nheading here"
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "heading",
+      "block_id": "b1",
       "start": 0,
       "end": 10,
       "unit_indexes": [
@@ -88,6 +100,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 23,
       "end": 55,
       "unit_indexes": [
@@ -96,6 +110,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "heading",
+      "block_id": "b3",
       "start": 57,
       "end": 68,
       "unit_indexes": [
@@ -104,6 +120,8 @@
     },
     {
       "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b4",
       "start": 81,
       "end": 112,
       "unit_indexes": [
@@ -112,6 +130,8 @@
     },
     {
       "segment_id": "s4",
+      "kind": "heading",
+      "block_id": "b5",
       "start": 114,
       "end": 135,
       "unit_indexes": [

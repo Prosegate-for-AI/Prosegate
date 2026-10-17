@@ -24,11 +24,15 @@ describe("countWords", () => {
     ["12 apples and 3.5 pears", 6], // 12, apples, and, 3, 5, pears
     ["🚀 launch 😀", 1],
     ["𝒳 operator", 2], // astral letter counts
-    ["no‑break", 2], // U+2011 is not a joiner in the spec set
+    ["no\u2011break", 1], // U+2011 joins, like the ASCII hyphen
     ["it's don't can't", 3],
     ["snake_case", 2], // underscore separates
-    ["café", 1], // a decomposed accent ends the word
-    ["cafés", 2], // ...and splits it when letters follow (documented limitation of the spec regex)
+    ["cafe\u0301", 1], // a decomposed accent stays inside the word
+    ["cafe\u0301s", 1], // ...even when letters follow
+    ["well\u2010known", 1], // U+2010 joins
+    ["don\u02bct", 1], // U+02BC joins
+    ["a\u0301", 1],
+    ["\u0301a", 1], // a mark alone never starts a word
   ];
   for (const [input, n] of table) {
     it(`counts ${JSON.stringify(input)} as ${n}`, () => {
@@ -43,7 +47,7 @@ describe("countWords", () => {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
       return seed / 4294967296;
     };
-    const spec = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
+    const spec = /[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['\u2019\u02bc\u2010\u2011-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu;
     for (let i = 0; i < 4000; i++) {
       let s = "";
       const n = Math.floor(next() * 24);

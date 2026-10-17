@@ -23,7 +23,9 @@
       "start": 5,
       "end": 21,
       "words": 2,
+      "text_start": 5,
       "continuation": false,
+      "continued": false,
       "head": "First paragraph."
     },
     {
@@ -32,13 +34,17 @@
       "start": 25,
       "end": 42,
       "words": 2,
+      "text_start": 25,
       "continuation": false,
+      "continued": false,
       "head": "Second paragraph."
     }
   ],
   "paragraphs": [
     {
       "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
       "start": 5,
       "end": 21,
       "unit_indexes": [
@@ -47,6 +53,8 @@
     },
     {
       "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
       "start": 25,
       "end": 42,
       "unit_indexes": [

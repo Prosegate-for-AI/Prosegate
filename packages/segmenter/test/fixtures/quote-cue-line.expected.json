@@ -1,0 +1,160 @@
+{
+  "text_length": 112,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 12,
+      "head": "You asked:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "quote",
+      "start": 12,
+      "end": 31,
+      "head": "\"fix the bug now\"\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 31,
+      "end": 41,
+      "head": "Ok then.\n\n"
+    },
+    {
+      "id": "s4",
+      "kind": "prose",
+      "start": 41,
+      "end": 56,
+      "head": "Your request:\n\n"
+    },
+    {
+      "id": "s5",
+      "kind": "prose",
+      "start": 56,
+      "end": 58,
+      "head": "- "
+    },
+    {
+      "id": "s6",
+      "kind": "quote",
+      "start": 58,
+      "end": 75,
+      "head": "\"add retry logic\""
+    },
+    {
+      "id": "s7",
+      "kind": "prose",
+      "start": 75,
+      "end": 78,
+      "head": "\n- "
+    },
+    {
+      "id": "s8",
+      "kind": "quote",
+      "start": 78,
+      "end": 93,
+      "head": "\"bump the deps\""
+    },
+    {
+      "id": "s9",
+      "kind": "prose",
+      "start": 93,
+      "end": 112,
+      "head": "\n- plain item here\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 10,
+      "words": 2,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "You asked:"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 31,
+      "end": 39,
+      "words": 2,
+      "text_start": 31,
+      "continuation": false,
+      "continued": false,
+      "head": "Ok then."
+    },
+    {
+      "segment_id": "s4",
+      "kind": "sentence",
+      "start": 41,
+      "end": 54,
+      "words": 2,
+      "text_start": 41,
+      "continuation": false,
+      "continued": false,
+      "head": "Your request:"
+    },
+    {
+      "segment_id": "s9",
+      "kind": "list_item",
+      "start": 96,
+      "end": 111,
+      "words": 3,
+      "text_start": 96,
+      "continuation": false,
+      "continued": false,
+      "head": "plain item here"
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 10,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 31,
+      "end": 39,
+      "unit_indexes": [
+        1
+      ]
+    },
+    {
+      "segment_id": "s4",
+      "kind": "text",
+      "block_id": "b3",
+      "start": 41,
+      "end": 54,
+      "unit_indexes": [
+        2
+      ]
+    },
+    {
+      "segment_id": "s9",
+      "kind": "list",
+      "block_id": "b4",
+      "start": 96,
+      "end": 111,
+      "unit_indexes": [
+        3
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 9,
+  "language": "unknown"
+}
