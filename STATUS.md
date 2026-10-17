@@ -1,27 +1,32 @@
 # STATUS
 
-Snapshot, rewritten at each change. Last updated 2026-10-17.
+Snapshot, rewritten at each change. Last updated 2026-10-17 (after session restart).
 
-**Phase:** 1 — Contracts. Phase 0 exited (ledger, HEAD 798787d).
+**Phase:** 1 — Contracts (Phase 2 corpus work started in parallel).
+
+## Done this phase
+
+- W1.1 `@prosegate/schema`: merged to master (a69e1d6); 523 package tests, all gates green.
 
 ## In flight
 
 | Item | Owner (agent / model) | State |
 | --- | --- | --- |
-| W1.1 `schema` | implementer / sonnet, worktree `agent-ae9aecbb…` | 3 of 4 reviews in (conformance, UX, privacy); tests review pending → then cycle 1 |
-| W1.2 `segmenter` | implementer / sonnet, worktree `agent-aea51b47…` | implementing |
-| W1.3 `profiles` + `core` 0.1.0 YAML | implementer / sonnet, worktree `agent-a6b58ffe…` | review cycle 1 of 3 in progress (4 reviews: conformance, correctness, tests, security/top-tier) |
+| W1.2 `segmenter` | implementer / sonnet, worktree `agent-aea51b47…` | conformance and adversarial reviews in; tests review resumed after restart; then cycle 1 |
+| W1.3 `profiles` + real `core` 0.1.0 | implementer / sonnet, worktree `agent-a6b58ffe…` | cycle 2 of 3 resumed after restart (partial edits were uncommitted) |
+| W2.1 corpus-ref example documents (12) | implementer / sonnet, worktree | running |
 
-## Spec changes this phase
+## Queued
 
-ADR-15 (core corrections, `any` match kind), ADR-16 (feedback_text is user copy), ADR-17 (contract clarifications), ADR-18 (org policy binds the session; severity precedence), ADR-19 (allowlisted injected text, signed policy, pack caps, YAML hardening), 04 range semantics.
+- W1.4 (after W1.3 merges): move the injected-text filter to `schema` (ADR-20); fix its bypasses (accent folding, confusables skeleton, spaced/leet product names, command flags, injection phrasing) and false positives (`Data:`, `#123`, `$20`, CJK punctuation); wire into `findingProblems`; denylist-only pass on ids; final top-tier privacy verify of schema + filter.
+- Phase 2 engine brief: S4 pipeline against the real `core.yaml` and the W2.1 documents.
 
-## Blocked / waiting on Murray
+## Waiting on Murray
 
-HQ-1 (S2 run), HQ-2 (auth), HQ-3 (licences), HQ-4 (name), HQ-6 (private remote), HQ-7 (corpus licensing), HQ-8 (paid eval work). None blocks Phase 1 or 2.
+HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-7, HQ-8. None blocks Phases 1–2.
 
 ## Next three actions
 
-1. Send the W1.1 cycle 1 once its tests review lands; review W1.2 when it reports (top-tier verify on offsets).
-2. Merge W1.1–W1.3 into master once each exits; run the Phase 1 proving command.
-3. Brief Phase 2: engine on S4's pipeline against the real `core.yaml`, corpus-ref example files, and `eval:rules`.
+1. Run W1.2's fix cycle once its tests review lands.
+2. Accept W1.3 after cycle 2, merge it, and launch W1.4.
+3. Brief and launch the Phase 2 engine.
