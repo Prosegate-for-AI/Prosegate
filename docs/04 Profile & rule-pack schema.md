@@ -105,7 +105,7 @@ enforcement:
 
 Resolution walks `extends` from the leaf to the root, then merges root-first so the leaf wins:
 
-- `rule_packs`: union by `id`; on conflict the child's version range wins. Two ranges with no intersection → resolution error, profile unusable, user told which pair.
+- `rule_packs`: union by `id`; on conflict the child's version range wins. Every pair of ranges for one pack anywhere in the chain must intersect, and so must all of them together; otherwise resolution error, profile unusable, user told which pair. Ranges are stored normalised; an empty or wildcard-only range (`""`, `*`, `x`) is invalid. Prerelease pack versions are never selected unless the winning range names a prerelease.
 - `overrides.categories`, `overrides.rules`, `overrides.thresholds`: deep merge, child wins per key. A rule's effective severity comes from the closest layer (leaf first) that sets a rule or category override for it, rule beating category within a layer; with none, the pack's severity (ADR-18).
 - `overrides.allow_terms`: union.
 - `reviewer.register`: child replaces whole object if present.
