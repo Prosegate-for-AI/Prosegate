@@ -1,0 +1,5 @@
+The CI pipeline takes 22 minutes because the test job reinstalls every dependency on each run. The cache key includes the lockfile timestamp, which changes on every checkout, so the cache never hits. The integration tests also start a fresh database container for each of the 140 test files. Finally, the build job compiles the frontend twice, once for the preview and once for the release.
+
+I tried a fix on a branch. Keying the cache on the lockfile hash alone brought the install step from nine minutes down to forty seconds. Sharing one container across test files saved another six minutes. The frontend now builds once and uploads its output for both jobs.
+
+So the CI pipeline takes 22 minutes because the test job reinstalls every dependency on each run, because the cache key includes the lockfile timestamp, which changes on every checkout, because the integration tests start a fresh database container for each of the 140 test files, and because the build job compiles the frontend twice, once for the preview and once for the release, all of which the branch fixes by keying the cache on the lockfile hash, sharing one container, and building the frontend once.
