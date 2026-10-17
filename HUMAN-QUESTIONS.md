@@ -70,3 +70,25 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Default I'm proceeding on:** Option 2. Reversal cost: none; the first push runs everything.
 - **Needed by:** Phase 3 exit (the macOS `init` test).
 - **Answer:** _pending_
+
+---
+
+## HQ-7 · Which sources may go into the human-control corpus (licensing)
+
+- **Question:** May the public repo's human-control corpus use these sources: Python PEPs (CC0 or public domain), Rust RFCs (MIT/Apache-2.0), Kubernetes KEPs (Apache-2.0), `CHANGELOG.md` and release-note files from permissively licensed repos, and Stack Overflow answers dated 2021 or earlier (CC BY-SA, with per-item attribution)? All items would be dated before 2022.
+- **Why it matters:** *Quality* — the false-positive gate in 10 is only as good as this corpus: 300 per profile, written by humans before 2022. *Revenue/Marketability* — a corpus with unclear licensing can't ship in the open repo, and pulling it later breaks the reproducible eval story. *Privacy* — none; all public text. The hard genres are PR descriptions and email. GitHub PR bodies and mailing-list posts carry no clear licence, so I would keep them out of the public repo.
+- **Options:** (1, recommended) The list above in the public repo, one licence record per item. PR-description and email material from your team's own pre-agent writing goes in a private sibling repo, as 10 already says. (2) A stricter set: CC0/MIT/Apache/BSD only, no CC BY-SA. That leaves chat-reply thin. (3) Your own list.
+- **Default I'm proceeding on:** Building the corpus tooling (layout, licence records, annotation CLI, runners) against an empty corpus. I fetch nothing until you answer. Reversal cost: none.
+- **Needed by:** week 4, which is when the Phase 6 track starts collecting.
+- **Answer:** _pending_
+
+---
+
+## HQ-8 · Paid eval work: AI-corpus generation and annotation
+
+- **Question:** (a) May I spend model API money to generate the AI corpus? 10 asks for 4 models × 200 docs per profile × 5 profiles, about 4,000 generations; my estimate is USD 40–120 depending on models. (b) Who annotates? 10 asks for two annotators per item plus adjudication.
+- **Why it matters:** *Quality* — rule precision, reviewer gating and end-to-end clearance (10) cannot be measured without these. *Revenue* — over the USD 20 line in my brief. *Privacy* — none.
+- **Options for (b):** (1, recommended) Two LLM annotators from different providers, with the guidelines in `eval/GUIDELINES.md`. You or a teammate adjudicate disagreements and spot-check a 10% sample, and we report κ honestly as LLM-vs-LLM. (2) Two human annotators from your team for everything. That is the most valid and the slowest. (3) A mix: humans on the 150-item rubric set, LLMs on the larger rule-precision sample.
+- **Default I'm proceeding on:** Build the generation scripts with a hard cost cap and a dry-run mode, plus the annotation CLI; run nothing paid. API keys stay yours: you set them in your shell and run the script.
+- **Needed by:** week 5.
+- **Answer:** _pending_
