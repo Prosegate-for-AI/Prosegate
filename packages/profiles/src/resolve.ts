@@ -8,11 +8,13 @@ import {
 import { ResolutionError, summariseIssues } from "./errors.js";
 import { parseProfileYaml, type Profile } from "./profile.js";
 import type { RulePack } from "./rulepack.js";
+import { sanitizeInput } from "./sanitize.js";
 import {
-  OrgPolicySchema,
+  OrgPolicyInputSchema,
   SNAPSHOT_SCHEMA,
   contentHash,
-  type OrgPolicy,
+  type OrgPolicyInput,
+  type ResolvedPolicy,
   type ResolvedProfile,
 } from "./snapshot.js";
 import { zodToIssues } from "./yaml.js";
@@ -22,16 +24,22 @@ export const MAX_PROFILE_DEPTH = 3;
 /** Hard stop for the walk so a pathological source set cannot make resolution unbounded. */
 const WALK_LIMIT = 32;
 
-/** A synced (or bundled) profile document. `signed` is the adapter's verdict on its signature (06). */
+/**
+ * A synced or bundled profile document. `signed` is the adapter's verdict on its signature (06);
+ * content from the network (`synced`) is only accepted signed (ADR-19). Content shipped inside the
+ * adapter is `bundled` and carries no service signature.
+ */
 export interface ProfileSource {
   yaml: string;
   signed: boolean;
+  origin: "synced" | "bundled";
 }
 
 /** One available version of a rule pack. The resolver needs versions, not pack bodies. */
 export interface PackVersionSource {
   version: string;
   signed: boolean;
+  origin: "synced" | "bundled";
 }
 
 export interface ResolutionSources {
@@ -50,11 +58,12 @@ export interface LocalOverlay {
 
 export interface ResolveOptions {
   /**
-   * Org policy (06 `/orgs/{id}/policy`). 06 says "policy is merged into every org profile at
-   * resolution": the caller passes the policy of the org that owns the profile being resolved, and
-   * the resolver applies it to this resolution. Omit it for a personal or free-tier profile.
+   * The signed org policy of the ACCOUNT, passed for every resolution, whatever the profile's
+   * namespace (ADR-18): an org's policy binds the whole session, not only profiles in the org's
+   * namespace. Omit it (or pass null) for an account with no org. Under `required` the leaf must be
+   * in the policy's namespace and local overlays are ignored.
    */
-  policy?: OrgPolicy | undefined;
+  policy?: OrgPolicyInput | null | undefined;
   local?: LocalOverlay | undefined;
 }
 
@@ -63,19 +72,34 @@ interface Layer {
   /** Names the layer in messages: the id, plus a marker for a local overlay. */
   label: string;
   profile: Profile;
-  origin: "synced" | "local";
+  origin: "synced" | "bundled" | "local";
   signed: boolean;
 }
 
 interface Node {
   id: string;
-  /** Synced document first, then the local overlay of it if there is one. */
+  /** Synced or bundled document first, then the local overlay of it if there is one. */
   layers: Layer[];
 }
 
 const has = (record: object | undefined, key: string): boolean => record !== undefined && Object.hasOwn(record, key);
 
-function parseLayer(id: string, yaml: string, origin: "synced" | "local", signed: boolean): Layer {
+function validateSources(sources: ResolutionSources): void {
+  for (const [id, source] of Object.entries(sources.profiles)) {
+    if (source.origin === "synced" && !source.signed) {
+      throw new ResolutionError("invalid_profile", `Profile '${id}' is synced content but unsigned; unsigned network content is refused`, [id]);
+    }
+  }
+  for (const [packId, versions] of Object.entries(sources.packs)) {
+    for (const v of versions) {
+      if (v.origin === "synced" && !v.signed) {
+        throw new ResolutionError("invalid_pack", `Rule pack '${packId}' ${v.version.slice(0, 40)} is synced content but unsigned; unsigned network content is refused`, [packId]);
+      }
+    }
+  }
+}
+
+function parseLayer(id: string, yaml: string, origin: Layer["origin"], signed: boolean): Layer {
   const label = origin === "local" ? `${id} (local overlay)` : id;
   const parsed = parseProfileYaml(yaml);
   if (!parsed.ok) {
@@ -99,10 +123,23 @@ function parseLayer(id: string, yaml: string, origin: "synced" | "local", signed
 
 function loadNode(id: string, sources: ResolutionSources, local: LocalOverlay | undefined, childId: string | null): Node {
   const layers: Layer[] = [];
-  const synced = has(sources.profiles, id) ? sources.profiles[id] : undefined;
-  if (synced !== undefined) layers.push(parseLayer(id, synced.yaml, "synced", synced.signed));
+  const base = has(sources.profiles, id) ? sources.profiles[id] : undefined;
+  if (base !== undefined) layers.push(parseLayer(id, base.yaml, base.origin, base.signed));
   const overlay = has(local?.profiles, id) ? local?.profiles?.[id] : undefined;
-  if (overlay !== undefined) layers.push(parseLayer(id, overlay.yaml, "local", false));
+  if (overlay !== undefined) {
+    const layer = parseLayer(id, overlay.yaml, "local", false);
+    // ADR-18: an overlay changes how the synced profile behaves, not where it sits in the tree.
+    const baseLayer = layers[0];
+    if (baseLayer !== undefined && layer.profile.extends !== baseLayer.profile.extends) {
+      throw new ResolutionError(
+        "invalid_profile",
+        `Local overlay of '${id}' must keep the synced profile's extends (${baseLayer.profile.extends ?? "none"})`,
+        [id],
+        [{ path: "extends", message: "a local overlay cannot change extends" }],
+      );
+    }
+    layers.push(layer);
+  }
   if (layers.length === 0) {
     throw new ResolutionError(
       "missing_parent",
@@ -126,39 +163,70 @@ function checkLocalPacks(sources: ResolutionSources, local: LocalOverlay | undef
   }
 }
 
-interface PackPin {
+interface Pin {
   range: string;
+  /** The profile id whose rule_packs entry this is. */
   pinnedBy: string;
   label: string;
+  /** A pin from a signed layer may only resolve to signed or bundled pack versions (ADR-19). */
+  signedLayer: boolean;
+}
+
+/** Whether some version satisfies every range at once (each may be an `||` union). */
+function haveCommonVersion(ranges: readonly string[]): boolean {
+  const sets = ranges.map((r) => r.split("||"));
+  const go = (i: number, acc: string | null): boolean => {
+    const options = sets[i];
+    if (options === undefined) return true;
+    return options.some((option) => {
+      if (acc === null) return go(i + 1, option);
+      return semver.intersects(acc, option) && go(i + 1, `${acc} ${option}`);
+    });
+  };
+  return go(0, null);
 }
 
 type RuleState = {
-  enabled?: { value: boolean; origin: string };
-  severity?: { value: Severity; origin: string };
+  enabled?: { value: boolean; origin: string; layer: number };
+  severity?: { value: Severity; origin: string; layer: number };
 };
+
+type Provenance<T> = { value: T; origin: string; layer: number };
 
 /**
  * Resolves a leaf profile into one immutable snapshot (04 "Inheritance and resolution").
  *
  * Walks `extends` from the leaf to the root, then merges root-first so the child wins:
- *  - `rule_packs`: union by id; the child's range wins, but two ranges with no overlap are a
- *    `range_conflict`. The winning range is the child's own range, not the intersection. Each pack
- *    then resolves to the highest available version in that range.
- *  - `overrides.categories|rules|thresholds`: deep merge, child wins per key (a rule override's
- *    `enabled` and `severity` merge separately, each with its own origin).
+ *  - `rule_packs`: union by id; the child's range wins. Every pair of ranges for one pack, and all
+ *    of them together, must intersect, or it is a `range_conflict` naming the pair. The winning
+ *    range is the child's own, not the intersection. Each pack resolves to the highest available
+ *    version in that range; prereleases only when the range names one.
+ *  - `overrides.categories|rules|thresholds`: deep merge, child wins per key. A rule's effective
+ *    severity comes from the closest layer that sets a rule or category override for it (ADR-18);
+ *    see {@link effectiveRule}. `enabled` merges as its own key.
  *  - `allow_terms`: union. `reviewer.register`: whole-object replace.
  *  - `reviewer.enabled|categories`, `enforcement.*`, `trigger.*`: replaced when present.
  *
- * Local overlay (04 "Versioning, pinning and caching"): a local profile with the id of a synced
- * profile merges as a child of it (local wins) and counts as the same chain entry, so it does not
- * count toward the depth limit. A local pack with a synced pack's id is `pack_conflict_local_synced`
- * whether or not any profile uses it.
+ * Local overlay (04, ADR-18): a local profile with the id of a synced profile merges as a child of
+ * it (local wins), must keep its `extends`, and counts as the same chain entry (no depth cost). The
+ * snapshot's integer version is the synced leaf's; the hash covers the overlay. A local pack with a
+ * synced pack's id is `pack_conflict_local_synced` whether or not any profile uses it.
+ *
+ * Org policy (ADR-18): see {@link ResolveOptions.policy}. Under `required`, local overlays are
+ * ignored (the snapshot says so) and a leaf outside the policy's namespace is refused with
+ * `policy_requires_org_profile`.
  *
  * Throws {@link ResolutionError}. Pure: no I/O, no clock.
  */
 export function resolveProfile(leafId: string, sources: ResolutionSources, opts: ResolveOptions = {}): ResolvedProfile {
-  const local = opts.local;
-  const policy = parsePolicy(opts.policy);
+  validateSources(sources);
+  const policy = resolvePolicy(opts.policy);
+  const required = policy?.enforcement_default === "required";
+  if (policy !== null && required && leafId.split("/")[0] !== policy.namespace) {
+    throw new ResolutionError("policy_requires_org_profile", `Enforcement is required by ${policy.org_name}; ask an admin, or uninstall.`, [leafId]);
+  }
+  const overlaysIgnored = required && opts.local !== undefined && (Object.keys(opts.local.profiles ?? {}).length > 0 || Object.keys(opts.local.packs ?? {}).length > 0);
+  const local = required ? undefined : opts.local;
   checkLocalPacks(sources, local);
 
   // 1. Walk leaf to root.
@@ -178,8 +246,7 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
     const node = loadNode(next, sources, local, childId);
     walked.push(node);
     childId = next;
-    // An overlay's `extends` wins over the synced document's, like any other field.
-    next = [...node.layers].reverse().find((l) => l.profile.extends !== undefined)?.profile.extends;
+    next = node.layers[0]?.profile.extends;
   }
   if (walked.length > MAX_PROFILE_DEPTH) {
     const chain = walked.map((n) => n.id).join(" -> ");
@@ -195,19 +262,19 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
   // 2. Merge root-first.
   let name = "";
   const trigger: { description?: string; patterns?: string[]; harness_hints?: string[]; sticky?: boolean } = {};
-  const pins = new Map<string, PackPin>();
-  const categories = new Map<Category, { severity: Severity; origin: string }>();
+  const pins = new Map<string, Pin[]>();
+  const categories = new Map<Category, { severity: Severity; origin: string; layer: number }>();
   const rules = new Map<string, RuleState>();
   const allow = new Set<string>();
   const thresholds: { token_floor_words?: number; reviewer_floor_words?: number } = {};
-  let reviewerEnabled: boolean | undefined;
-  let reviewerCategories: readonly string[] | undefined;
-  let register: ResolvedProfile["reviewer"]["register"] | undefined;
+  let reviewerEnabled: Provenance<boolean> | undefined;
+  let reviewerCategories: Provenance<readonly string[]> | undefined;
+  let register: Provenance<ResolvedProfile["reviewer"]["register"]> | undefined;
   let mode: "enforce" | "advisory" | undefined;
   let passCap: 1 | 2 | undefined;
   let render: "diff" | "summary" | "none" | undefined;
 
-  for (const layer of layers) {
+  layers.forEach((layer, index) => {
     const p = layer.profile;
     name = p.name;
 
@@ -217,43 +284,55 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
     if (p.trigger?.sticky !== undefined) trigger.sticky = p.trigger.sticky;
 
     for (const ref of p.rule_packs ?? []) {
-      const prev = pins.get(ref.id);
-      if (prev !== undefined && !semver.intersects(prev.range, ref.version)) {
+      const previous = pins.get(ref.id) ?? [];
+      for (const earlier of previous) {
+        if (!semver.intersects(earlier.range, ref.version)) {
+          throw new ResolutionError(
+            "range_conflict",
+            `Rule pack '${ref.id}' has conflicting version ranges: '${earlier.label}' requires '${earlier.range}' but '${layer.label}' requires '${ref.version}', and the two do not overlap`,
+            [...new Set([earlier.pinnedBy, layer.id, ref.id])],
+          );
+        }
+      }
+      const pin: Pin = { range: ref.version, pinnedBy: layer.id, label: layer.label, signedLayer: layer.origin === "synced" && layer.signed };
+      const all = [...previous, pin];
+      if (!haveCommonVersion(all.map((x) => x.range))) {
         throw new ResolutionError(
           "range_conflict",
-          `Rule pack '${ref.id}' has conflicting version ranges: '${prev.label}' requires '${prev.range}' but '${layer.label}' requires '${ref.version}', and the two do not overlap`,
-          [prev.pinnedBy, layer.id, ref.id],
+          `Rule pack '${ref.id}' has version ranges with no version in common: ${all.map((x) => `'${x.label}' requires '${x.range}'`).join(", ")}`,
+          [...new Set([...all.map((x) => x.pinnedBy), ref.id])],
         );
       }
-      pins.set(ref.id, { range: ref.version, pinnedBy: layer.id, label: layer.label });
+      pins.set(ref.id, all);
     }
 
     for (const [category, override] of Object.entries(p.overrides?.categories ?? {})) {
-      categories.set(category as Category, { severity: override.severity, origin: layer.id });
+      categories.set(category as Category, { severity: override.severity, origin: layer.id, layer: index });
     }
     for (const [ruleId, override] of Object.entries(p.overrides?.rules ?? {})) {
       const state: RuleState = rules.get(ruleId) ?? {};
-      if (override.enabled !== undefined) state.enabled = { value: override.enabled, origin: layer.id };
-      if (override.severity !== undefined) state.severity = { value: override.severity, origin: layer.id };
+      if (override.enabled !== undefined) state.enabled = { value: override.enabled, origin: layer.id, layer: index };
+      if (override.severity !== undefined) state.severity = { value: override.severity, origin: layer.id, layer: index };
       rules.set(ruleId, state);
     }
     for (const term of p.overrides?.allow_terms ?? []) allow.add(term);
     if (p.overrides?.thresholds?.token_floor_words !== undefined) thresholds.token_floor_words = p.overrides.thresholds.token_floor_words;
     if (p.overrides?.thresholds?.reviewer_floor_words !== undefined) thresholds.reviewer_floor_words = p.overrides.thresholds.reviewer_floor_words;
 
-    if (p.reviewer?.enabled !== undefined) reviewerEnabled = p.reviewer.enabled;
-    if (p.reviewer?.categories !== undefined) reviewerCategories = p.reviewer.categories;
-    if (p.reviewer?.register !== undefined) register = { ...p.reviewer.register };
+    if (p.reviewer?.enabled !== undefined) reviewerEnabled = { value: p.reviewer.enabled, origin: layer.id, layer: index };
+    if (p.reviewer?.categories !== undefined) reviewerCategories = { value: p.reviewer.categories, origin: layer.id, layer: index };
+    if (p.reviewer?.register !== undefined) register = { value: { ...p.reviewer.register }, origin: layer.id, layer: index };
 
     if (p.enforcement?.mode !== undefined) mode = p.enforcement.mode;
     if (p.enforcement?.pass_cap !== undefined) passCap = p.enforcement.pass_cap;
     if (p.enforcement?.render !== undefined) render = p.enforcement.render;
-  }
+  });
 
   // 3. Pick the highest available pack version in each winning range.
   const packs: ResolvedProfile["packs"] = [...pins.keys()].sort().map((packId) => {
-    const pin = pins.get(packId) as PackPin;
-    const candidates = availablePackVersions(packId, sources, local);
+    const all = pins.get(packId) as Pin[];
+    const pin = all[all.length - 1] as Pin;
+    const candidates = availablePackVersions(packId, sources, local, pin.signedLayer);
     const best = semver.maxSatisfying(
       candidates.map((c) => c.version),
       pin.range,
@@ -263,7 +342,7 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
       const offered = candidates.map((c) => c.version).join(", ") || "none";
       throw new ResolutionError(
         "no_pack_version",
-        `Profile '${pin.pinnedBy}' pins rule pack '${packId}' at '${pin.range}', but no available version satisfies it (available: ${offered})`,
+        `Profile '${pin.pinnedBy}' pins rule pack '${packId}' at '${pin.range}', but no available version satisfies it (available: ${offered}${pin.signedLayer ? "; a signed profile only accepts signed or bundled versions" : ""}; prerelease versions are only considered when the range names one)`,
         [pin.pinnedBy, packId],
       );
     }
@@ -278,12 +357,18 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
   });
 
   // 4. Org policy, then defaults.
-  const required = policy?.enforcement_default === "required";
   const policyMode = policy?.enforcement_default === "advisory" || policy?.enforcement_default === "enforce" ? policy.enforcement_default : undefined;
   // `required` forces enforce whatever the profile says; enforce|advisory only fill a gap.
   const effectiveMode = required ? "enforce" : (mode ?? policyMode ?? "enforce");
 
-  const leaf = layers[layers.length - 1] as Layer;
+  // ADR-18: `enabled: true` with no categories means all three; an explicit empty list means off.
+  const explicitCategories = reviewerCategories?.value;
+  const categoryList = REVIEWER_CATEGORIES.filter((c) => (explicitCategories ?? REVIEWER_CATEGORIES).includes(c));
+  let reviewerOn = reviewerEnabled?.value ?? false;
+  if (explicitCategories !== undefined && categoryList.length === 0) reviewerOn = false;
+  if (policy?.allowed_providers?.length === 0) reviewerOn = false;
+
+  const leafNode = nodes[nodes.length - 1] as Node;
   const content: Omit<ResolvedProfile, "version"> = {
     schema: SNAPSHOT_SCHEMA,
     id: leafId,
@@ -303,53 +388,70 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
     allow_terms: [...allow].sort(),
     thresholds: { ...DEFAULT_THRESHOLDS, ...thresholds },
     reviewer: {
-      // No default is stated either; the reviewer sends the draft to a provider, so it is off
+      // No default is stated for `enabled`; the reviewer sends the draft to a provider, so it is off
       // unless some profile in the chain turns it on (the bundled `base` does).
-      enabled: reviewerEnabled ?? false,
-      categories: REVIEWER_CATEGORIES.filter((c) => (reviewerCategories ?? []).includes(c)),
-      register: register ?? {},
+      enabled: reviewerOn,
+      categories: reviewerOn || explicitCategories !== undefined ? categoryList : [],
+      register: register?.value ?? {},
+      origins: {
+        enabled: reviewerEnabled?.origin ?? null,
+        categories: reviewerCategories?.origin ?? null,
+        register: register?.origin ?? null,
+      },
     },
     enforcement: { mode: effectiveMode, pass_cap: passCap ?? 2, render: render ?? "diff", required },
     policy,
+    overlays_ignored: overlaysIgnored,
   };
 
-  return { ...content, version: `${leaf.profile.version}+${contentHash(content)}` };
+  // The integer is the synced leaf's (ADR-18); the hash covers everything, overlay included.
+  const leafVersion = (leafNode.layers[0] as Layer).profile.version;
+  return { ...content, version: `${leafVersion}+${contentHash(content)}` };
 }
 
+/** Candidate versions of a pack. With duplicates of one version, the most trusted wins (synced, bundled, local). */
 function availablePackVersions(
   packId: string,
   sources: ResolutionSources,
   local: LocalOverlay | undefined,
-): Array<{ version: string; signed: boolean; origin: "synced" | "local" }> {
-  const out: Array<{ version: string; signed: boolean; origin: "synced" | "local" }> = [];
-  const check = (version: string): string => {
+  signedOnly: boolean,
+): Array<{ version: string; signed: boolean; origin: "synced" | "bundled" | "local" }> {
+  const rank = { synced: 0, bundled: 1, local: 2 } as const;
+  const best = new Map<string, { version: string; signed: boolean; origin: "synced" | "bundled" | "local" }>();
+  const offer = (version: string, signed: boolean, origin: "synced" | "bundled" | "local"): void => {
     if (semver.valid(version) !== version) {
       throw new ResolutionError("invalid_pack", `Rule pack '${packId}' lists '${version.slice(0, 40)}', which is not a semver version`, [packId]);
     }
-    return version;
+    // ADR-19: a pin from a signed layer resolves to signed (or bundled) versions only.
+    if (signedOnly && origin === "local") return;
+    const current = best.get(version);
+    if (current === undefined || rank[origin] < rank[current.origin]) best.set(version, { version, signed, origin });
   };
   if (has(sources.packs, packId)) {
-    for (const v of sources.packs[packId] ?? []) out.push({ version: check(v.version), signed: v.signed, origin: "synced" });
+    for (const v of sources.packs[packId] ?? []) offer(v.version, v.signed, v.origin);
   }
   if (has(local?.packs, packId)) {
-    for (const v of local?.packs?.[packId] ?? []) out.push({ version: check(v), signed: false, origin: "local" });
+    for (const v of local?.packs?.[packId] ?? []) offer(v, false, "local");
   }
-  return out;
+  return [...best.values()];
 }
 
-function parsePolicy(policy: OrgPolicy | undefined): ResolvedProfile["policy"] {
-  if (policy === undefined) return null;
-  const parsed = OrgPolicySchema.safeParse(policy);
-  if (!parsed.success) {
-    const issues = zodToIssues(parsed.error);
-    throw new ResolutionError("invalid_profile", `Org policy is invalid: ${summariseIssues(issues)}`, [], issues);
+function resolvePolicy(input: OrgPolicyInput | null | undefined): ResolvedPolicy | null {
+  if (input === null || input === undefined) return null;
+  const clean = sanitizeInput(input);
+  const parsed = clean.issues.length > 0 ? null : OrgPolicyInputSchema.safeParse(clean.value);
+  if (parsed === null || !parsed.success) {
+    const issues = parsed === null ? clean.issues : zodToIssues(parsed.error);
+    throw new ResolutionError("invalid_policy", `Org policy is invalid: ${summariseIssues(issues)}`, [], issues);
   }
   const p = parsed.data;
   return {
-    org: p.org,
+    org_id: p.org_id,
+    org_name: p.org_name,
+    namespace: p.namespace,
     ...(p.enforcement_default !== undefined ? { enforcement_default: p.enforcement_default } : {}),
     ...(p.allowed_providers !== undefined ? { allowed_providers: [...new Set(p.allowed_providers)].sort() } : {}),
-    ...(p.byok_required !== undefined ? { byok_required: p.byok_required } : {}),
+    byok_required: p.byok_required ?? false,
     ...(p.sharing_allowed !== undefined ? { sharing_allowed: p.sharing_allowed } : {}),
   };
 }
@@ -364,11 +466,13 @@ export interface EffectiveRule {
 /**
  * The severity, enablement and provenance of one pack rule under a resolved profile.
  *
- * Severity precedence: rule override > category override > the pack rule's own severity.
+ * Severity (ADR-18): the closest layer, walking from the leaf to the root, that sets a rule
+ * override or a category override for the rule decides; within one layer the rule override beats
+ * the category override; with none, the pack rule's own severity applies. (A rule override that
+ * sets only `enabled` is not a severity override.)
  * Origin (feeds `Finding.profile_origin`, 03):
  *  - rule disabled: the profile that set `enabled: false`;
- *  - otherwise the profile that set the severity actually used (rule override, else category
- *    override);
+ *  - otherwise the profile that set the severity actually used;
  *  - otherwise the profile that explicitly set `enabled: true` on the rule, if any;
  *  - otherwise the profile whose `rule_packs` entry pinned the rule's pack.
  * Throws when the rule's pack is not pinned by the profile (a caller bug: the engine only loads
@@ -387,10 +491,43 @@ export function effectiveRule(
   const categoryOverride = resolved.categories[rule.category];
 
   const enabled = ruleOverride?.enabled?.value ?? true;
-  const severity = ruleOverride?.severity?.value ?? categoryOverride?.severity ?? rule.severity;
+  const fromRule = ruleOverride?.severity;
+  const winner: { value: Severity; origin: string } | undefined =
+    fromRule !== undefined && categoryOverride !== undefined
+      ? fromRule.layer >= categoryOverride.layer
+        ? fromRule
+        : { value: categoryOverride.severity, origin: categoryOverride.origin }
+      : (fromRule ?? (categoryOverride === undefined ? undefined : { value: categoryOverride.severity, origin: categoryOverride.origin }));
+  const severity = winner?.value ?? rule.severity;
   if (!enabled) {
     return { enabled, severity, origin: (ruleOverride?.enabled as { origin: string }).origin };
   }
-  const origin = ruleOverride?.severity?.origin ?? categoryOverride?.origin ?? ruleOverride?.enabled?.origin ?? pack.pinned_by;
-  return { enabled, severity, origin };
+  return { enabled, severity, origin: winner?.origin ?? ruleOverride?.enabled?.origin ?? pack.pinned_by };
+}
+
+export interface EffectiveReviewer {
+  enabled: boolean;
+  categories: readonly string[];
+  register: ResolvedProfile["reviewer"]["register"];
+  /** Profile id that set each; the leaf id when no profile in the chain set it (a default). */
+  origin: { enabled: string; categories: string; register: string };
+}
+
+/**
+ * The reviewer settings with provenance. For `Finding.profile_origin` on a reviewer finding (03),
+ * use the category override's origin from `resolved.categories` when one exists, else
+ * `origin.enabled`.
+ */
+export function effectiveReviewer(resolved: ResolvedProfile): EffectiveReviewer {
+  const o = resolved.reviewer.origins;
+  return {
+    enabled: resolved.reviewer.enabled,
+    categories: resolved.reviewer.categories,
+    register: resolved.reviewer.register,
+    origin: {
+      enabled: o.enabled ?? resolved.id,
+      categories: o.categories ?? resolved.id,
+      register: o.register ?? resolved.id,
+    },
+  };
 }

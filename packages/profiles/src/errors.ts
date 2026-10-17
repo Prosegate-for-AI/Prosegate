@@ -13,7 +13,9 @@ export type ResolutionErrorCode =
   | "pack_conflict_local_synced"
   | "invalid_profile"
   | "invalid_pack"
-  | "unsupported_findings_schema";
+  | "unsupported_findings_schema"
+  | "invalid_policy"
+  | "policy_requires_org_profile";
 
 /** One problem found in a document. `path` is "" for the document root. */
 export interface Issue {
@@ -26,7 +28,7 @@ const MAX_ISSUE_TEXT = 200;
 
 /** Shortens text that may contain user-supplied content; never lets one issue grow unbounded. */
 export function clip(text: string, max = MAX_ISSUE_TEXT): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+  return text.length <= max ? text : `${text.slice(0, max - 1)}\u{2026}`;
 }
 
 export class ResolutionError extends Error {

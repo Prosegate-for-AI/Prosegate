@@ -156,7 +156,7 @@ describe("profile schema: rejects", () => {
   });
 
   it("rejects duplicate keys and a second document", () => {
-    expect(issues(profileYaml("a/b", "reviewer:\n  enabled: true\nreviewer:\n  enabled: false"))[0]?.message).toMatch(/DUPLICATE_KEY/);
+    expect(issues(profileYaml("a/b", "reviewer:\n  enabled: true\nreviewer:\n  enabled: false"))[0]?.message).toMatch(/duplicate map key/);
     expect(issues(`${profileYaml("a/b")}---\nid: a/c\n`)[0]?.message).toMatch(/MULTIPLE_DOCS/);
   });
 
@@ -168,7 +168,7 @@ describe("profile schema: rejects", () => {
     const over = issues(padded(limit + 1));
     expect(over).toEqual([{ path: "", message: "document is larger than the 65536-byte limit" }]);
     // 3-byte characters: 30,000 of them is under the limit in characters, over it in bytes
-    expect(issues(`${base}#${"€".repeat(30_000)}\n`)[0]?.message).toMatch(/larger than/);
+    expect(issues(`${base}#${"\u{20ac}".repeat(30_000)}\n`)[0]?.message).toMatch(/larger than/);
     // four-byte characters count as four
     expect(issues(`${base}#${"\u{1f600}".repeat(20_000)}\n`)[0]?.message).toMatch(/larger than/);
   });

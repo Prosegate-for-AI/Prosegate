@@ -1,23 +1,24 @@
-import semver from "semver";
 import { z } from "zod";
 import { CATEGORIES, REVIEWER_CATEGORIES } from "@prosegate/schema";
 import { ResolutionError, summariseIssues, type Issue, type ParseResult } from "./errors.js";
-import { PackIdSchema, plainText, RuleIdSchema, SeveritySchema } from "./rulepack.js";
-import { MAX_PROFILE_BYTES, parseYamlStrict, zodToIssues } from "./yaml.js";
+import { injectedText, PackIdSchema, ProfileIdSchema, RangeSchema, RuleIdSchema, SeveritySchema } from "./fields.js";
+import { sanitizeInput } from "./sanitize.js";
+import { MAX_PROFILE_BYTES, MAX_PROFILE_NODES, parseYamlStrict, zodToIssues } from "./yaml.js";
+
+export { ProfileIdSchema };
 
 // Profile schema, prosegate.profile/1 (04 "Profile"). Every section except schema/id/version/name
 // is optional so a child can say little.
-
-export const ProfileIdSchema = z
-  .string()
-  .max(129)
-  .regex(/^[a-z0-9-]+\/[a-z0-9-]+$/, "must be <namespace>/<slug>, both [a-z0-9-]+");
+//
+// Integers: YAML 1.2 would read 0x10 as 16 and 1e3 as 1000. parseYamlStrict rejects every
+// non-decimal spelling, so a number reads one way only; this schema then checks integer-ness.
 
 const shortList = (item: z.ZodString) => z.array(item).max(50);
 
 const TriggerSchema = z.strictObject({
-  // The model reads this when choosing with select_profile, so it gets the plain-text filter too.
-  description: plainText(1, 200).optional(),
+  // The model reads this when choosing with select_profile, so it passes the injected-text filter.
+  description: injectedText(200).optional(),
+  // Never rendered to a model: matched against the user message and tool names by the adapter.
   patterns: shortList(z.string().min(1).max(100)).optional(),
   harness_hints: shortList(z.string().min(1).max(64)).optional(),
   sticky: z.boolean().optional(),
@@ -25,10 +26,7 @@ const TriggerSchema = z.strictObject({
 
 const RulePackRefSchema = z.strictObject({
   id: PackIdSchema,
-  version: z
-    .string()
-    .max(100)
-    .refine((range) => semver.validRange(range) !== null, "must be a semver range such as >=0.3.0 <1.0.0"),
+  version: RangeSchema,
 });
 
 // 04's example shows `{ enabled: false }` only. 08's starter profiles need rule-level severity
@@ -38,9 +36,18 @@ const RuleOverrideSchema = z
   .refine((o) => o.enabled !== undefined || o.severity !== undefined, "must set enabled, severity, or both");
 
 const OverridesSchema = z.strictObject({
-  categories: z.partialRecord(z.enum(CATEGORIES), z.strictObject({ severity: SeveritySchema })).optional(),
+  categories: z
+    .partialRecord(z.enum(CATEGORIES), z.strictObject({ severity: SeveritySchema }))
+    .superRefine((categories, ctx) => {
+      // 08: the reviewer's register findings are capped at warn whatever anything else says.
+      if (categories.register?.severity === "block") {
+        ctx.addIssue({ code: "custom", path: ["register", "severity"], message: "register findings are capped at warn" });
+      }
+    })
+    .optional(),
   rules: z.record(RuleIdSchema, RuleOverrideSchema).optional(),
-  allow_terms: z.array(z.string().min(1).max(80)).max(500).optional(),
+  // Never rendered to a model. Lowercased: vocab matching is case-insensitive (ADR-15).
+  allow_terms: z.array(z.string().min(1).max(80).transform((term) => term.toLowerCase())).max(500).optional(),
   thresholds: z
     .strictObject({
       token_floor_words: z.number().int().min(0).optional(),
@@ -49,12 +56,12 @@ const OverridesSchema = z.strictObject({
     .optional(),
 });
 
-// tone and format are injected into the model's context at session start (plan 6.5): same filter
-// as instruction text, with a slightly larger budget.
+// tone and format are injected into the model's context at session start (plan 6.5): they pass the
+// same filter as instruction text.
 export const RegisterSchema = z.strictObject({
   max_words: z.number().int().positive().max(100_000).optional(),
-  tone: plainText(1, 200).optional(),
-  format: plainText(1, 300).optional(),
+  tone: injectedText(200).optional(),
+  format: injectedText(300).optional(),
 });
 
 const ReviewerSchema = z.strictObject({
@@ -74,7 +81,7 @@ const ProfileSchema = z
     schema: z.literal("prosegate.profile/1"),
     id: ProfileIdSchema,
     version: z.number().int().positive(),
-    name: z.string().min(1).max(100),
+    name: injectedText(100),
     extends: ProfileIdSchema.optional(),
     trigger: TriggerSchema.optional(),
     rule_packs: z.array(RulePackRefSchema).max(50).optional(),
@@ -97,20 +104,31 @@ const ProfileSchema = z
 
 export type Profile = z.infer<typeof ProfileSchema>;
 
-function invalidProfile(issues: Issue[]): ResolutionError {
-  return new ResolutionError("invalid_profile", `Profile is invalid: ${summariseIssues(issues)}`, [], issues);
+function documentIds(input: unknown): string[] {
+  if (typeof input === "object" && input !== null && "id" in input) {
+    const id = (input as { id: unknown }).id;
+    if (typeof id === "string" && ProfileIdSchema.safeParse(id).success) return [id];
+  }
+  return [];
+}
+
+function invalidProfile(issues: Issue[], ids: string[] = []): ResolutionError {
+  return new ResolutionError("invalid_profile", `Profile is invalid: ${summariseIssues(issues)}`, ids, issues);
 }
 
 /** Validates an already-parsed value (for callers that hold JSON). */
 export function parseProfile(input: unknown): ParseResult<Profile> {
-  const result = ProfileSchema.safeParse(input);
-  if (!result.success) return { ok: false, error: invalidProfile(zodToIssues(result.error)) };
+  const clean = sanitizeInput(input);
+  const ids = documentIds(clean.value);
+  if (clean.issues.length > 0) return { ok: false, error: invalidProfile(clean.issues, ids) };
+  const result = ProfileSchema.safeParse(clean.value);
+  if (!result.success) return { ok: false, error: invalidProfile(zodToIssues(result.error), ids) };
   return { ok: true, value: result.data };
 }
 
 /** Parses and validates profile YAML (≤ 64 KB). Never throws; the error is a ResolutionError. */
-export function parseProfileYaml(text: string): ParseResult<Profile> {
-  const yaml = parseYamlStrict(text, MAX_PROFILE_BYTES);
+export function parseProfileYaml(text: unknown): ParseResult<Profile> {
+  const yaml = parseYamlStrict(text, MAX_PROFILE_BYTES, MAX_PROFILE_NODES);
   if (!yaml.ok) return { ok: false, error: invalidProfile(yaml.issues) };
   return parseProfile(yaml.value);
 }

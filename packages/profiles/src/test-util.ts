@@ -1,5 +1,6 @@
 // Shared test helpers. Not exported from index.ts.
 import type { ResolutionSources } from "./resolve.js";
+import type { OrgPolicyInput } from "./snapshot.js";
 
 /** A fixture `core` 0.1.0 pack: enough of the 08 catalogue to resolve the starter profiles against. */
 export const CORE_FIXTURE_YAML = String.raw`
@@ -35,7 +36,7 @@ rules:
   - id: core.hedge.002
     category: hedge
     severity: warn
-    match: { kind: regex, pattern: '\b(somewhat|fairly|relatively|rather)\s+(\w+)', flags: i }
+    match: { kind: regex, pattern: '\b(somewhat|fairly|relatively|rather)\s+(\w+)' }
     instruction: { action: specify, text: "Replace the qualifier with the measurement or the plain adjective." }
     examples:
       hit: ["The query is relatively slow."]
@@ -155,10 +156,18 @@ export function makeSources(
   profiles: Record<string, string>,
   packs: Record<string, string[]> = { core: ["0.1.0"] },
 ): ResolutionSources {
-  return {
-    profiles: Object.fromEntries(Object.entries(profiles).map(([id, yaml]) => [id, { yaml, signed: true }])),
-    packs: Object.fromEntries(Object.entries(packs).map(([id, versions]) => [id, versions.map((version) => ({ version, signed: true }))])),
-  };
+  const profileSources: ResolutionSources["profiles"] = Object.fromEntries(
+    Object.entries(profiles).map(([id, yaml]) => [id, { yaml, signed: true, origin: "synced" as const }]),
+  );
+  const packSources: ResolutionSources["packs"] = Object.fromEntries(
+    Object.entries(packs).map(([id, versions]) => [id, versions.map((version) => ({ version, signed: true, origin: "synced" as const }))]),
+  );
+  return { profiles: profileSources, packs: packSources };
+}
+
+/** An org policy input for resolver tests. */
+export function orgPolicy(extra: Partial<OrgPolicyInput> = {}): OrgPolicyInput {
+  return { org_id: "org_1", org_name: "Acme", namespace: "acme", ...extra };
 }
 
 export const CORE_PIN = "rule_packs:\n  - { id: core, version: \">=0.1.0 <1.0.0\" }";

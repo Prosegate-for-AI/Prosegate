@@ -9,7 +9,7 @@ export const profilesPlaceholder = {
   uses: [schemaPlaceholder.id] as readonly string[],
 } as const;
 
-export { bundledProfileSources, BUNDLED_PROFILE_YAML } from "./bundled.js";
+export { bundledPackSources, bundledProfileSources, BUNDLED_PACK_YAML, BUNDLED_PROFILE_YAML } from "./bundled.js";
 export { ResolutionError, type Issue, type ParseResult, type ResolutionErrorCode } from "./errors.js";
 export { parseProfile, parseProfileYaml, type Profile } from "./profile.js";
 export {
@@ -24,8 +24,10 @@ export {
 } from "./rulepack.js";
 export {
   MAX_PROFILE_DEPTH,
+  effectiveReviewer,
   effectiveRule,
   resolveProfile,
+  type EffectiveReviewer,
   type EffectiveRule,
   type LocalOverlay,
   type PackVersionSource,
@@ -34,14 +36,18 @@ export {
   type ResolveOptions,
 } from "./resolve.js";
 export {
-  OrgPolicySchema,
+  OrgPolicyBodySchema,
+  OrgPolicyInputSchema,
+  ResolvedPolicySchema,
   SNAPSHOT_SCHEMA,
   canonicalJson,
   contentHash,
   parseSnapshot,
   serializeSnapshot,
-  type OrgPolicy,
+  type OrgPolicyBody,
+  type OrgPolicyInput,
+  type ResolvedPolicy,
   type ResolvedProfile,
 } from "./snapshot.js";
-export { MAX_PACK_BYTES, MAX_PROFILE_BYTES } from "./yaml.js";
-export { findTextViolation, type TextViolation } from "./text.js";
+export { MAX_PACK_BYTES, MAX_PACK_NODES, MAX_PROFILE_BYTES, MAX_PROFILE_NODES } from "./yaml.js";
+export { injectedTextViolation } from "./text.js";
