@@ -17,3 +17,5 @@ Accepted should-fix findings, known gaps and parked ideas. Each has the phase th
 | D-11 | GitHub Actions workflow never executed (no remote); run it once a private remote exists | Phase 0 exit; HQ-6 | 3 | blocked on HQ-6 |
 | D-12 | macOS untested for keyring (ad-hoc signed binaries, upstream #149; keychain ACL tied to node binary) | S3 | 9 | open |
 | D-13 | Feedback block is user-visible in Claude Code (ADR-13): every `feedback_text` line needs UX review as user copy | S1 TUI | 3 | open |
+| D-14 | Idea: a per-rule escape hatch for the first false positive (e.g. `prosegate allow <rule_id>` writing a local overlay with `enabled: false`). Free tier, one-sentence explainable; decide in Phase 3 | W1.1 UX review | 3 | idea |
+| D-15 | The model can run `prosegate advisory`/`off` from its own shell tool. Commands must detect an agent-tool context (e.g. `CLAUDECODE` env, no TTY) and refuse or require the user. ADR-16 tells the model not to; that is not enforcement | ADR-16 | 3 | open |

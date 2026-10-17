@@ -69,7 +69,7 @@ eval/
 | --- | --- | --- | --- |
 | 1 | 0 Spikes and scaffold | S1–S4 answered; monorepo builds; CI green on an empty engine | §5 |
 | 1–2 | 1 Contracts | `schema`, `segmenter`, `profiles` resolver pass their suites; JSON Schema emitted | 03, 04 |
-| 2–3 | 2 Engine and `core` 0.1.0 | All 21 rules pass hit/miss; pack under 50 ms on 2,000 words; `eval:rules` runs | 08; 10 rules row |
+| 2–3 | 2 Engine and `core` 0.1.0 | All 23 rules pass hit/miss (ADR-15); pack under 50 ms on 2,000 words; `eval:rules` runs | 08; 10 rules row |
 | 3–4 | 3 Adapter and Claude Code shim | `npx prosegate init` works on the author's machine; a pass-1 revise seen live; override commands work; headless report written | 05, 09 |
 | 4–5 | 4 Reviewer | BYOK path returns reviewer findings inside 4 s; fork text enforced; span re-find ≥ 95% on a 30-draft smoke set | 08 rubric |
 | 5 | 5 MCP and selection | `select_profile`, `list_profiles`, `review_prose` served; hysteresis state machine passes scenario tests | 04, 05 |
@@ -216,7 +216,7 @@ Sequencing rules: the reviewer is not wired into `turn-end` until the rules path
 ## 10. Definition of done for v0
 
 - `npx prosegate init --harness claude-code` installs in under a minute on all three platforms.
-- All 21 `core` rules pass hit/miss; `eval:rules` is green against baseline; the pack runs under 50 ms on 2,000 words.
+- All 23 `core` rules pass hit/miss (ADR-15); `eval:rules` is green against baseline; the pack runs under 50 ms on 2,000 words.
 - The three 09 mock transcripts reproduce byte for byte in the fake-harness test and visually in a live Claude Code session.
 - The reviewer eval passes for one small OpenAI model and one small Anthropic model, named with version strings in the report.
 - The config service passes the unknown-field fuzz, the engine-absent graph check and the key-prefix grep.

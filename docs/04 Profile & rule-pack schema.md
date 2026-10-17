@@ -27,7 +27,7 @@ rules:
       hit:  ["It's important to note that the cache is per tenant."]
       miss: ["Note the cache is per tenant."]
 
-  - id: core.structure.003
+  - id: core.structure.002
     category: structure
     severity: warn
     match:
@@ -37,20 +37,21 @@ rules:
       min_sentences: 8
     instruction: { action: restructure, text: "Rewrite as prose; keep a list only where the items are parallel." }
     examples:
-      hit:  ["<eval corpus ref: core/structure-003-hit-01>"]
-      miss: ["<eval corpus ref: core/structure-003-miss-01>"]
+      hit:  ["<eval corpus ref: core/structure-002-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-002-miss-01>"]
 ```
 
 Match kinds, all deterministic and bounded in time:
 
 | Kind | Fields | Span it produces |
 | --- | --- | --- |
-| `phrase` | `phrases[]`, `boundary: word \| none`, `case_insensitive`, `position: any \| sentence_start \| closing` (closing = last two sentences), `max_doc_words` (rule inactive above it) | The matched phrase |
-| `regex` | `pattern` (RE2 syntax: no backreferences, no lookaround), `flags` | Group 1 if present, else the whole match |
+| `phrase` | `phrases[]`, `boundary: word \| none` (checked only at word-character edges), `case_insensitive` (must be `true` in v0), `position: any \| sentence_start \| closing` (closing = last two sentences), `max_doc_words` (rule inactive above it), `sentence_max_words`, `sentence_exclude` (RE2 pattern; a sentence containing a match is skipped) | The matched phrase |
+| `regex` | `pattern` (RE2 syntax, lowercase: no backreferences, no lookaround), plus the same `position`, `max_doc_words`, `sentence_max_words`, `sentence_exclude` | The named group `(?P<span>…)` if present, else the whole match |
+| `any` | `parts[]`: phrase or regex matches (no nesting), each with its own filters | Whichever part matched (ADR-15) |
 | `sentence_metric` | `metric`, `above` or `below`, optional `pattern` | The whole sentence |
 | `document_metric` | `metric`, `above` or `below`, `min_sentences` | The first sentence of the document |
 
-Sentence metrics in v0: `word_count`, `starts_with` (pattern), `comma_count`, similarity\_to\_prior (bag-of-words cosine to any earlier sentence in the turn). Document metrics in v0: `bullet_ratio`, `headers_per_100_words`, `sentence_length_cv` (coefficient of variation, low = uniform), `closing_similarity` (cosine similarity of last paragraph to first, bag of words), bold\_per\_100\_words. The engine rejects a pack that names a metric it does not implement.
+All matching is case-insensitive on the segmenter's normalised, ASCII-lowercased copy of the text (offsets unchanged); spans are sliced from the original (ADR-15). Sentence metrics in v0: `word_count`, `starts_with` (pattern), `comma_count`, similarity\_to\_prior (bag-of-words cosine over content words, using the engine's published stop-word list, to any earlier sentence in the turn; optional `min_words` on the later sentence). Document metrics in v0: `bullet_ratio` (optional `min_item_words`: only items with at least that many words count), `headers_per_100_words`, `sentence_length_cv` (coefficient of variation, low = uniform), `closing_similarity` (cosine similarity of last paragraph to first, bag of words), bold\_per\_100\_words. The engine rejects a pack that names a metric it does not implement.
 
 Every rule ships with at least one `hit` and one `miss` example. The eval harness (10) runs them on every pack change; a rule whose examples fail is not published. Long examples live in the eval corpus and are referenced by id.
 

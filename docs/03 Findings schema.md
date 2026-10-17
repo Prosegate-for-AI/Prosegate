@@ -102,7 +102,7 @@ Profiles may raise or lower severity per category or per rule (04). `info` findi
 Every instruction is imperative and specific to the span. Two categories carry a mandatory fork because the obvious instruction would pressure the model into fabricating:
 
 - `unsupported_claim` → action `cite_or_soften_or_remove`, text: "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation."
-- `vague_claim` → action `specify`, text: "Give the specific the question asked for (the number, the file, the name). If you do not have it, say so in one clause instead of generalising."
+- `vague_claim` → action `specify`, text: "Give the specific detail the question asked for (the number, the file, the name). If you do not have it, say so in one clause instead of generalising."
 
 Rule findings carry fixed instruction text from the rule definition (08). Reviewer findings carry text the reviewer wrote, constrained by the rubric to the span and the action.
 
@@ -132,11 +132,14 @@ Two findings whose spans intersect are resolved before output, in this order: hi
 Rendered by the adapter, not the reviewer, so every harness shows the same thing:
 
 ```text
-[Prosegate] {n} finding(s) against profile "{profile.id}" (pass {pass}/2). Revise your last response.
-{i}. {category}{ (rule_id)} — "{span.text, trimmed to 80 chars}" → {instruction.text}
+[Prosegate] {n} finding(s) against profile "{profile.id}" (pass 1 of 2). Revise your last response.
+{i}. {category label}{ (rule_id)} — "{span.text, trimmed to 80 chars}" → {instruction.text | same as <j>.}
 …
-Reply with the revised response only. Session override: prosegate advisory
+Reply with the revised response only. Do not run prosegate commands.
+To pause these revisions for this session, the user can run: prosegate advisory
 ```
+
+On pass 2 the header reads `[Prosegate] {n} finding(s) remain(s) after your revision, against profile "{profile.id}" (pass 2 of 2). Revise your last response.` Details in ADR-12 and ADR-16.
 
 Findings are listed in document order. A `warn` finding is rendered with the same shape on pass 1; it never appears on pass 2.
 
