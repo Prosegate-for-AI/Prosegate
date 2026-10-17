@@ -106,7 +106,7 @@ enforcement:
 Resolution walks `extends` from the leaf to the root, then merges root-first so the leaf wins:
 
 - `rule_packs`: union by `id`; on conflict the child's version range wins. Two ranges with no intersection → resolution error, profile unusable, user told which pair.
-- `overrides.categories`, `overrides.rules`, `overrides.thresholds`: deep merge, child wins per key.
+- `overrides.categories`, `overrides.rules`, `overrides.thresholds`: deep merge, child wins per key. A rule's effective severity comes from the closest layer (leaf first) that sets a rule or category override for it, rule beating category within a layer; with none, the pack's severity (ADR-18).
 - `overrides.allow_terms`: union.
 - `reviewer.register`: child replaces whole object if present.
 - `reviewer.enabled`, `reviewer.categories`, `enforcement.*`, `trigger.*`: child replaces if present.
@@ -133,5 +133,5 @@ Nothing is reviewed with no active profile; the fallback is always `<namespace>/
 - Rule packs are semver. A profile pins a range; the adapter resolves the highest cached version in range. A pack bumps its major version when it removes or renames a rule id or requires a newer findings schema.
 - Profiles are integer-versioned by the server on every save. The adapter fetches at session start with `If-None-Match`; mid-session server changes apply at the next session or on `prosegate reload`.
 - The adapter bundles `core` at a known version and `<namespace>/base` so the free tier and offline sessions work with no fetch.
-- Local YAML overlays sync: a local file with the same `id` as a synced profile is merged as a child of it (local wins); a local pack with the same `id` as a synced pack is a version conflict and is rejected with a message naming both.
+- Local YAML overlays sync: a local file with the same `id` as a synced profile is merged as a child of it (local wins), must keep the synced `extends`, and leaves the snapshot's integer version at the synced one; a local pack with the same `id` as a synced pack is a version conflict and is rejected with a message naming both. Under an org policy of `required`, overlays are ignored and only the org's own profiles are selectable (ADR-18).
 - Each resolved snapshot is written to `~/.prosegate/sessions/<session_id>/profile.json` so a turn-end hook in a fresh process reads the same profile the turn started with.

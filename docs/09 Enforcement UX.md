@@ -29,7 +29,7 @@ How the notice reaches the user depends on the harness. Where the shim has a use
 | `prosegate profile <id>` | Sets the active profile and clears candidate state | Session |
 | `PROSEGATE_MODE=advisory\|off` | Same as the commands, for CI and scripts | Process |
 
-The `feedback_text` sent to the model always ends by telling the model not to run prosegate commands and telling the user how to pause (`prosegate advisory`), and the first notice of a session names the override too (ADR-16). Org policy can set `enforcement_default` to `required`, which makes `advisory` and `off` refuse with `Enforcement is required by <org>; ask an admin, or uninstall.` That is an org admin's call, and the doc for admins says plainly that it costs them adoption.
+The `feedback_text` sent to the model always ends by telling the model not to run prosegate commands and telling the user how to pause (`prosegate advisory`), and the first notice of a session names the override too (ADR-16). Org policy can set `enforcement_default` to `required`, which makes `advisory` and `off` refuse with `Enforcement is required by <org>; ask an admin, or uninstall.` The same policy limits selection to the org's own profiles and ignores local overlays for the session (ADR-18). That is an org admin's call, and the doc for admins says plainly that it costs them adoption.
 
 ## Pass cap
 
