@@ -156,3 +156,11 @@ Consequence: 04 "Inheritance and resolution" and 09 "Override and modes" are upd
 - **Reserved namespaces.** `local`, `prosegate` and `core` cannot be account or org names.
 
 Consequence: 07 threat 3 and 06 (policy endpoint, `PUT /rule-packs`, namespaces) are updated.
+
+## ADR-20 · The injected-text filter lives in `@prosegate/schema`; feedback_text is canonical
+
+2026-10-17. Supersedes ADR-19 on where the filter lives; the filter's content stands. It moves from `@prosegate/profiles` to `@prosegate/schema`, the lowest package. The findings validator (reviewer instructions, the `vague_claim` parenthetical), the profile and pack loaders, and the reviewer client then share one implementation without a new dependency edge. The denylist also gains the via-model lead-in "Begin your revised response with this line", so injected text cannot make the model print attacker text as a notice. Separately, a `ReviewResult`'s `feedback_text` must equal the canonical rendering of its own findings, so the strict validator checks equality. Lenient consumers discard the producer's string and re-render from the findings they keep, because a hostile result could otherwise carry free text past every finding-level check (07 threat 4: "rendered by the adapter from fields, never from free text"). The via-model variant is assembled at output time and never stored. Consequence: integration item W1.4 moves the filter and wires it in after W1.1 and W1.3 merge.
+
+## ADR-21 · Bundled content satisfies signed pins; `core` is bundled-only in v0
+
+2026-10-17. Refines ADR-19. A pin from a signed layer may resolve to a bundled pack version. Bundled content ships inside the signed, provenance-attested adapter, so offline sessions and starter profiles keep working. It may not resolve to a local pack. The pack id `core` is reserved for the bundled pack: a synced `core` is refused, so whoever registers `core` on the service cannot rewrite every starter session. `core` updates ship as adapter releases. Rejected: publisher-qualified pack ids (`publisher/pack`) in v0. That would change the 04 id format and every rule id, and no third-party publisher exists yet; revisit before opening publishing to third parties.

@@ -19,3 +19,6 @@ Accepted should-fix findings, known gaps and parked ideas. Each has the phase th
 | D-13 | Feedback block is user-visible in Claude Code (ADR-13): every `feedback_text` line needs UX review as user copy | S1 TUI | 3 | open |
 | D-14 | Idea: a per-rule escape hatch for the first false positive (e.g. `prosegate allow <rule_id>` writing a local overlay with `enabled: false`). Free tier, one-sentence explainable; decide in Phase 3 | W1.1 UX review | 3 | idea |
 | D-15 | The model can run `prosegate advisory`/`off` from its own shell tool. Commands must detect an agent-tool context (e.g. `CLAUDECODE` env, no TTY) and refuse or require the user. ADR-16 tells the model not to; that is not enforcement | ADR-16 | 3 | open |
+| D-16 | Telemetry `reviewer.model` accepts lowercase whitespace-free text matching the model-id pattern; replace with an allowlist of supported reviewer model ids when Phase 4 fixes the supported pair | W1.1 cycle 1 | 4 | open |
+| D-17 | Adapter bundle crashes at runtime once it imports `yaml` ("Dynamic require of process"): add a `createRequire` banner in `packages/adapter/tsup.config.ts`, and make `check:bundle` also *execute* the bundle on a real resolve, not just scan specifiers | W1.3 cycle 1 | 3 | open |
+| D-18 | Adapter obligations checklist (`docs/notes/adapter-obligations.md`): every item is a Phase 3 test | W1.3 re-verify | 3 | open |
