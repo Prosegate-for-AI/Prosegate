@@ -10,8 +10,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@prosegate/profiles": "workspace:*",
     "@prosegate/schema": "workspace:*",
     "@prosegate/segmenter": "workspace:*",
-    "@prosegate/profiles": "workspace:*"
+    "re2js": "2.8.6"
   }
 }
