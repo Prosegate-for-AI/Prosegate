@@ -1,3 +1,6 @@
+// MOVING(W1.4): ADR-20 moves this filter to @prosegate/schema, where W1.4 fixes its known bypasses
+// and false positives. Do not change it here in the meantime.
+
 /**
  * The filter for model-injected text (ADR-19, 07 threat 3).
  *

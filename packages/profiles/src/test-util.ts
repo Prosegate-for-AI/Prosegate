@@ -160,7 +160,11 @@ export function makeSources(
     Object.entries(profiles).map(([id, yaml]) => [id, { yaml, signed: true, origin: "synced" as const }]),
   );
   const packSources: ResolutionSources["packs"] = Object.fromEntries(
-    Object.entries(packs).map(([id, versions]) => [id, versions.map((version) => ({ version, signed: true, origin: "synced" as const }))]),
+    Object.entries(packs).map(([id, versions]) => [
+      id,
+      // `core` exists only as bundled content in v0 (ADR-21); every other pack is synced and signed.
+      versions.map((version) => (id === "core" ? { version, signed: false, origin: "bundled" as const } : { version, signed: true, origin: "synced" as const })),
+    ]),
   );
   return { profiles: profileSources, packs: packSources };
 }

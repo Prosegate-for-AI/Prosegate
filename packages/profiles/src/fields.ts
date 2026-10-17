@@ -31,6 +31,11 @@ export function injectedText(max: number) {
     .string()
     .min(1)
     .superRefine((text, ctx) => {
+      // A combining mark with nothing to combine with renders as a stray mark in the model's context.
+      if (/^\p{M}/u.test(text)) {
+        ctx.addIssue({ code: "custom", message: "text must not start with a combining mark" });
+        return;
+      }
       const reason = injectedTextViolation(text, max);
       if (reason !== null) ctx.addIssue({ code: "custom", message: `text ${reason}` });
     });

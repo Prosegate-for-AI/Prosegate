@@ -12,6 +12,8 @@
 const FOLDED = /[\u{2018}\u{2019}\u{201c}\u{201d}\u{a0}\u{1680}\u{2000}-\u{200a}\u{202f}\u{205f}\u{3000}\u{2010}\u{2011}]/u;
 
 export const MAX_COUNTED_REPETITION = 1000;
+/** Cap on the sum of all counted repeats in one pattern (the product cap alone lets `\p{L}{1000}` repeat 8 times). */
+export const MAX_REPETITION_TOTAL = 5000;
 export const MAX_REGEX_RULES = 100;
 export const MAX_PATTERN_BYTES = 32 * 1024;
 
@@ -54,6 +56,7 @@ function scan(p: string): string | null {
   const stack: Frame[] = [{ inner: 1 }];
   const top = (): Frame => stack[stack.length - 1] as Frame;
   let atom: number | null = null; // repetition product of the atom a quantifier would apply to
+  let repeatTotal = 0; // sum of every counted repeat in the pattern
   let inClass = false;
   let i = 0;
   while (i < p.length) {
@@ -134,6 +137,9 @@ function scan(p: string): string | null {
         // An open upper bound ({n,}) counts as at least two, so it cannot hide a nested product.
         const product = atom * (Number.isFinite(max) ? max : Math.max(min, 2));
         if (product > MAX_COUNTED_REPETITION) return `nested counted repetition multiplies to more than ${MAX_COUNTED_REPETITION}`;
+        // Sequential repeats do not multiply, but each one still costs: cap the sum for the pattern.
+        repeatTotal += Number.isFinite(max) ? max : Math.max(min, 2);
+        if (repeatTotal > MAX_REPETITION_TOTAL) return `repeat counts total more than ${MAX_REPETITION_TOTAL}`;
         top().inner = Math.max(top().inner, product);
         atom = product;
         i += (m[0] as string).length;

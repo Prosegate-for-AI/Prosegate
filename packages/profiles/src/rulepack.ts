@@ -34,6 +34,15 @@ export const DOCUMENT_METRICS = [
 
 const threshold = z.number().finite().min(0);
 
+// Schema maxima, sized against the pack node cap (25,000 estimated nodes, yaml.ts). A rule written
+// at full width in block style (40 phrases, 10 hit and 10 miss examples) costs about 126 nodes, so
+// 150 of them use about 19,000: the maxima below can all be reached together. Measured in
+// rulepack.test.ts ("a pack of 150 full-width rules").
+export const MAX_RULES = 150;
+export const MAX_PHRASES = 40;
+export const MAX_EXAMPLES = 10;
+export const MAX_PARTS = 8;
+
 const patternField = z
   .string()
   .min(1)
@@ -64,7 +73,7 @@ const filters = {
 
 const PhraseMatch = z.strictObject({
   kind: z.literal("phrase"),
-  phrases: z.array(phraseField).min(1).max(500),
+  phrases: z.array(phraseField).min(1).max(MAX_PHRASES),
   boundary: z.enum(["word", "none"]).default("word"),
   // All matching is case-insensitive on the segmenter's lowercased copy (ADR-15): `false` is not v0.
   case_insensitive: z.literal(true).default(true),
@@ -80,7 +89,7 @@ const RegexMatch = z.strictObject({
 const AnyMatch = z.strictObject({
   kind: z.literal("any"),
   // No nesting: a part is a phrase or a regex, never another `any`.
-  parts: z.array(z.discriminatedUnion("kind", [PhraseMatch, RegexMatch])).min(1).max(20),
+  parts: z.array(z.discriminatedUnion("kind", [PhraseMatch, RegexMatch])).min(1).max(MAX_PARTS),
 });
 
 const SentenceMetricMatch = z
@@ -139,7 +148,31 @@ const DocumentMetricMatch = z
 
 const Match = z.discriminatedUnion("kind", [PhraseMatch, RegexMatch, AnyMatch, SentenceMetricMatch, DocumentMetricMatch]);
 
-const exampleList = z.array(z.string().min(1).max(4000)).min(1).max(50);
+const CORPUS_REF = /^<eval corpus ref: ([a-z0-9-]{1,31})\/(filler|hedge|vocab|triad|structure|repetition)-(\d{3})-(hit|miss)-(\d{2})>$/;
+
+/**
+ * A reference to an example kept in the eval corpus: `<eval corpus ref: core/structure-002-hit-01>`
+ * (04 "Long examples live in the eval corpus"). Anything else is a literal example sentence.
+ */
+export function isCorpusRef(example: string): boolean {
+  return CORPUS_REF.test(example);
+}
+
+/**
+ * An example is either a literal sentence or a corpus reference. A string that starts like a
+ * reference but is not exactly one (a typo) is rejected, so it is never read as a literal sentence.
+ */
+const exampleField = z
+  .string()
+  .min(1)
+  .max(4000)
+  .superRefine((example, ctx) => {
+    if (example.startsWith("<eval corpus ref:") && !isCorpusRef(example)) {
+      ctx.addIssue({ code: "custom", message: "looks like a corpus reference but is malformed; expected <eval corpus ref: core/<category>-<nnn>-hit|miss-NN>" });
+    }
+  });
+
+const exampleList = z.array(exampleField).min(1).max(MAX_EXAMPLES);
 
 const RuleSchema = z.strictObject({
   id: RuleIdSchema,
@@ -158,13 +191,19 @@ const RuleSchema = z.strictObject({
 type ParsedMatch = z.infer<typeof Match>;
 type ParsedPart = Extract<ParsedMatch, { kind: "phrase" | "regex" }>;
 
-/** The regex-like work in one match: compiled regex rules, and every pattern string. */
+/**
+ * The regex-like work in one match: the number of patterns the engine compiles, and every pattern
+ * string. A `sentence_exclude` and a `starts_with` pattern are compiled like a regex rule, so they
+ * count toward the regex cap as well as the byte total.
+ */
 function patternsOf(match: ParsedMatch): { regexes: number; patterns: string[] } {
   switch (match.kind) {
     case "phrase":
-      return { regexes: 0, patterns: match.sentence_exclude === undefined ? [] : [match.sentence_exclude] };
+      return match.sentence_exclude === undefined ? { regexes: 0, patterns: [] } : { regexes: 1, patterns: [match.sentence_exclude] };
     case "regex":
-      return { regexes: 1, patterns: match.sentence_exclude === undefined ? [match.pattern] : [match.pattern, match.sentence_exclude] };
+      return match.sentence_exclude === undefined
+        ? { regexes: 1, patterns: [match.pattern] }
+        : { regexes: 2, patterns: [match.pattern, match.sentence_exclude] };
     case "any": {
       let regexes = 0;
       const patterns: string[] = [];
@@ -176,7 +215,7 @@ function patternsOf(match: ParsedMatch): { regexes: number; patterns: string[] }
       return { regexes, patterns };
     }
     case "sentence_metric":
-      return { regexes: 0, patterns: match.pattern === undefined ? [] : [match.pattern] };
+      return match.pattern === undefined ? { regexes: 0, patterns: [] } : { regexes: 1, patterns: [match.pattern] };
     case "document_metric":
       return { regexes: 0, patterns: [] };
   }
@@ -188,7 +227,7 @@ const RulePackSchema = z
     id: PackIdSchema,
     version: z.string().refine((v) => semver.valid(v) === v, "must be a semver version such as 0.3.0"),
     findings_schema: z.number().int().positive(),
-    rules: z.array(RuleSchema).min(1).max(500),
+    rules: z.array(RuleSchema).min(1).max(MAX_RULES),
   })
   .superRefine((pack, ctx) => {
     const seen = new Set<string>();
@@ -206,13 +245,23 @@ const RulePackSchema = z
         ctx.addIssue({ code: "custom", path: ["rules", index, "id"], message: "duplicate rule id in this pack" });
       }
       seen.add(rule.id);
+      for (const kind of ["hit", "miss"] as const) {
+        rule.examples[kind].forEach((example, at) => {
+          const ref = CORPUS_REF.exec(example);
+          if (ref === null) return;
+          const expected = `${pack.id}/${rule.id.split(".").slice(1).join("-")}-${kind}-`;
+          if (`${ref[1]}/${ref[2]}-${ref[3]}-${ref[4]}-` !== expected) {
+            ctx.addIssue({ code: "custom", path: ["rules", index, "examples", kind, at], message: `corpus reference must name this rule and list: ${expected}NN` });
+          }
+        });
+      }
       const work = patternsOf(rule.match);
       regexRules += work.regexes;
       for (const p of work.patterns) patternBytes += utf8Length(p);
     });
     // ADR-19 work caps, checked in the Worker without an engine.
     if (regexRules > MAX_REGEX_RULES) {
-      ctx.addIssue({ code: "custom", path: ["rules"], message: `more than ${MAX_REGEX_RULES} regex rules (parts of an any match count)` });
+      ctx.addIssue({ code: "custom", path: ["rules"], message: `more than ${MAX_REGEX_RULES} compiled patterns (regex rules and parts, sentence_exclude and starts_with patterns all count)` });
     }
     if (patternBytes > MAX_PATTERN_BYTES) {
       ctx.addIssue({ code: "custom", path: ["rules"], message: `patterns total more than ${MAX_PATTERN_BYTES} bytes` });

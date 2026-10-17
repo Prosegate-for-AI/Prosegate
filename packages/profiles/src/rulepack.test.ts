@@ -191,8 +191,8 @@ describe("phrase match (ADR-15)", () => {
     expect(parseRulePack(pack([rule({ match: { kind: "phrase", phrases: ["ab"] } })])).ok).toBe(true);
     expect(parseRulePack(pack([rule({ match: { kind: "phrase", phrases: ["x".repeat(80)] } })])).ok).toBe(true);
     expect(phrase({ phrases: ["x".repeat(81)] })).toContain("rules[0].match.phrases[0]");
-    expect(parseRulePack(pack([rule({ match: { kind: "phrase", phrases: Array.from({ length: 500 }, (_, i) => `ph${i}`) } })])).ok).toBe(true);
-    expect(phrase({ phrases: Array.from({ length: 501 }, (_, i) => `ph${i}`) })).toContain("rules[0].match.phrases");
+    expect(parseRulePack(pack([rule({ match: { kind: "phrase", phrases: Array.from({ length: 40 }, (_, i) => `ph${i}`) } })])).ok).toBe(true);
+    expect(phrase({ phrases: Array.from({ length: 41 }, (_, i) => `ph${i}`) })).toContain("rules[0].match.phrases");
   });
 
   it("a phrase must contain a letter: whitespace-only and punctuation-only are rejected", () => {
@@ -319,10 +319,10 @@ describe("any match (ADR-15)", () => {
     expect(any([{ kind: "sentence_metric", metric: "word_count", above: 1 }])).toContain("rules[0].match.parts[0].kind");
   });
 
-  it("needs 1-20 parts", () => {
+  it("needs 1-8 parts", () => {
     expect(any([])).toContain("rules[0].match.parts");
-    expect(any(Array.from({ length: 20 }, () => ({ kind: "phrase", phrases: ["ab"] })))).toEqual([]);
-    expect(any(Array.from({ length: 21 }, () => ({ kind: "phrase", phrases: ["ab"] })))).toContain("rules[0].match.parts");
+    expect(any(Array.from({ length: 8 }, () => ({ kind: "phrase", phrases: ["ab"] })))).toEqual([]);
+    expect(any(Array.from({ length: 9 }, () => ({ kind: "phrase", phrases: ["ab"] })))).toContain("rules[0].match.parts");
   });
 
   it("applies the phrase and pattern lints to every part", () => {
@@ -411,7 +411,8 @@ describe("pack work caps (ADR-19): at the limit passes, one over fails", () => {
   it("100 regex rules pass; 101 fail", () => {
     expect(parseRulePack(pack(regexRules(100))).ok).toBe(true);
     const e = errorOf(pack(regexRules(101)));
-    expect(e.issues).toContainEqual({ path: "rules", message: "more than 100 regex rules (parts of an any match count)" });
+    expect(e.issues.map((i) => i.path)).toContain("rules");
+    expect(e.issues[0]?.message).toMatch(/more than 100 compiled patterns/);
   });
 
   it("regex parts of an any match count toward the 100", () => {
@@ -420,14 +421,53 @@ describe("pack work caps (ADR-19): at the limit passes, one over fails", () => {
         id: `core.hedge.${String(i).padStart(3, "0")}`,
         match: { kind: "any", parts: Array.from({ length: parts }, () => ({ kind: "regex", pattern: "x+" })) },
       });
-    const ok = [anyRule(1, 20), anyRule(2, 20), anyRule(3, 20), anyRule(4, 20), anyRule(5, 20)];
+    const ok = Array.from({ length: 12 }, (_, i) => anyRule(i + 1, 8)).concat([anyRule(13, 4)]); // 12*8 + 4 = 100
     expect(parseRulePack(pack(ok)).ok).toBe(true);
-    expect(paths(pack([...ok, rule({ id: "core.hedge.006", match: { kind: "regex", pattern: "x+" } })]))).toContain("rules");
+    expect(paths(pack([...ok, rule({ id: "core.hedge.014", match: { kind: "regex", pattern: "x+" } })]))).toContain("rules");
   });
 
-  it("phrase rules and metrics do not count toward the regex cap", () => {
-    const phrases = Array.from({ length: 200 }, (_, i) => rule({ id: `core.hedge.${String(i).padStart(3, "0")}` }));
-    expect(parseRulePack(pack([...phrases, ...regexRules(100).map((r, i) => ({ ...r, id: `core.vocab.${String(i).padStart(3, "0")}`, category: "vocab" }))])).ok).toBe(true);
+  it("plain phrase rules and document metrics do not count toward the cap", () => {
+    const phrases = Array.from({ length: 50 }, (_, i) => rule({ id: `core.hedge.${String(i).padStart(3, "0")}` }));
+    const regexes = regexRules(100).map((r, i) => ({ ...r, id: `core.vocab.${String(i).padStart(3, "0")}`, category: "vocab" }));
+    expect(parseRulePack(pack([...phrases, ...regexes])).ok).toBe(true); // 150 rules, 100 compiled patterns
+  });
+
+  describe("sentence_exclude and starts_with patterns are compiled too, so they count", () => {
+    const phraseWithExclude = (i: number, extra: Obj = {}) =>
+      rule({ id: `core.hedge.${String(i).padStart(3, "0")}`, match: { kind: "phrase", phrases: ["xx"], sentence_exclude: "\\d", ...extra } });
+    const withExcludes = (n: number) => Array.from({ length: n }, (_, i) => phraseWithExclude(i));
+
+    it("100 phrase rules each with a sentence_exclude pass; 101 fail", () => {
+      expect(parseRulePack(pack(withExcludes(100))).ok).toBe(true);
+      expect(paths(pack(withExcludes(101)))).toContain("rules");
+      expect(errorOf(pack(withExcludes(101))).issues[0]?.message).toMatch(/more than 100 compiled patterns/);
+    });
+
+    it("every rule of a full pack carrying a sentence_exclude is rejected", () => {
+      // 150 rules is the most a pack may hold; 150 compiled sentence_exclude patterns is 50 too many
+      const e = errorOf(pack(withExcludes(150)));
+      expect(e.issues[0]?.message).toMatch(/more than 100 compiled patterns/);
+    });
+
+    it("a regex with a sentence_exclude counts as two", () => {
+      const rules = Array.from({ length: 50 }, () => regexRule("x+", { sentence_exclude: "\\d" })).map((r, i) => ({ ...r, id: `core.vocab.${String(i).padStart(3, "0")}`, category: "vocab" }));
+      expect(parseRulePack(pack(rules)).ok).toBe(true);
+      expect(paths(pack([...rules, { ...rules[0], id: "core.vocab.900" }]))).toContain("rules");
+    });
+
+    it("sentence_exclude on a part of an any match counts", () => {
+      const anyRule = rule({ match: { kind: "any", parts: Array.from({ length: 8 }, () => ({ kind: "phrase", phrases: ["xx"], sentence_exclude: "\\d" })) } });
+      const others = withExcludes(93).map((r, i) => ({ ...r, id: `core.vocab.${String(i).padStart(3, "0")}`, category: "vocab" }));
+      expect(parseRulePack(pack([anyRule, ...others])).ok).toBe(false); // 8 + 93 = 101
+      expect(parseRulePack(pack([anyRule, ...others.slice(1)])).ok).toBe(true); // 8 + 92 = 100
+    });
+
+    it("a starts_with pattern counts", () => {
+      const starts = (i: number) =>
+        rule({ id: `core.vocab.${String(i).padStart(3, "0")}`, category: "vocab", match: { kind: "sentence_metric", metric: "starts_with", above: 0, pattern: "^however" } });
+      expect(parseRulePack(pack(Array.from({ length: 100 }, (_, i) => starts(i)))).ok).toBe(true);
+      expect(paths(pack(Array.from({ length: 101 }, (_, i) => starts(i))))).toContain("rules");
+    });
   });
 
   it("pattern bytes: 32768 pass; 32769 fail (counted in UTF-8 bytes, across regex, starts_with and sentence_exclude)", () => {
@@ -448,17 +488,17 @@ describe("pack work caps (ADR-19): at the limit passes, one over fails", () => {
     expect(paths(pack(starts))).toContain("rules");
   });
 
-  it("500 rules pass; 501 fail", () => {
+  it("150 rules pass; 151 fail", () => {
     const phrases = (n: number) =>
       Array.from({ length: n }, (_, i) => rule({ id: `core.${(["filler", "hedge", "vocab", "triad", "structure", "repetition"] as const)[i % 6]}.${String(Math.floor(i / 6)).padStart(3, "0")}`, category: (["filler", "hedge", "vocab", "triad", "structure", "repetition"] as const)[i % 6] }));
-    expect(parseRulePack(pack(phrases(500))).ok).toBe(true);
-    expect(paths(pack(phrases(501)))).toContain("rules");
+    expect(parseRulePack(pack(phrases(150))).ok).toBe(true);
+    expect(paths(pack(phrases(151)))).toContain("rules");
   });
 
-  it("examples: 50 per list pass; 51 fail; 4000 characters pass; 4001 fail", () => {
+  it("examples: 10 per list pass; 11 fail; 4000 characters pass; 4001 fail", () => {
     const examples = (n: number, len = 3) => ({ hit: Array.from({ length: n }, () => "x".repeat(len)), miss: ["y"] });
-    expect(parseRulePack(pack([rule({ examples: examples(50) })])).ok).toBe(true);
-    expect(paths(pack([rule({ examples: examples(51) })]))).toContain("rules[0].examples.hit");
+    expect(parseRulePack(pack([rule({ examples: examples(10) })])).ok).toBe(true);
+    expect(paths(pack([rule({ examples: examples(11) })]))).toContain("rules[0].examples.hit");
     expect(parseRulePack(pack([rule({ examples: examples(1, 4000) })])).ok).toBe(true);
     expect(paths(pack([rule({ examples: examples(1, 4001) })]))).toContain("rules[0].examples.hit[0]");
   });

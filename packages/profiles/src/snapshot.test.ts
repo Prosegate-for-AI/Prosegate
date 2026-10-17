@@ -146,9 +146,9 @@ rule_packs:
     const r = resolveBody(CORE_PIN);
     const content = Object.fromEntries(Object.entries(r).filter(([k]) => k !== "version"));
     expect(canonicalJson(content)).toBe(
-      '{"allow_terms":[],"categories":{},"enforcement":{"mode":"enforce","pass_cap":2,"render":"diff","required":false},"id":"t/a","name":"t/a","overlays_ignored":false,"packs":[{"id":"core","origin":"synced","pinned_by":"t/a","range":">=0.1.0 <1.0.0","signed":true,"version":"0.1.0"}],"policy":null,"resolved_from":["t/a"],"reviewer":{"categories":[],"enabled":false,"origins":{"categories":null,"enabled":null,"register":null},"register":{}},"rules":{},"schema":"prosegate.resolved/1","sources":[{"id":"t/a","origin":"synced","signed":true,"version":3}],"thresholds":{"reviewer_floor_words":150,"token_floor_words":60},"trigger":{"description":null,"harness_hints":[],"patterns":[],"sticky":true}}',
+      '{"allow_terms":[],"categories":{},"enforcement":{"mode":"enforce","pass_cap":2,"render":"diff","required":false},"id":"t/a","name":"t/a","overlays_ignored":false,"packs":[{"id":"core","origin":"bundled","pinned_by":"t/a","range":">=0.1.0 <1.0.0","signed":false,"version":"0.1.0"}],"policy":null,"resolved_from":["t/a"],"reviewer":{"categories":[],"enabled":false,"origins":{"categories":null,"enabled":null,"register":null},"register":{}},"rules":{},"schema":"prosegate.resolved/1","sources":[{"id":"t/a","origin":"synced","signed":true,"version":3}],"thresholds":{"reviewer_floor_words":150,"token_floor_words":60},"trigger":{"description":null,"harness_hints":[],"patterns":[],"sticky":true}}',
     );
-    expect(r.version).toBe("3+6f67db5b");
+    expect(r.version).toBe("3+d878d0f4");
   });
 });
 
@@ -296,7 +296,7 @@ describe("parseSnapshot is strict", () => {
     expect(at((p) => { p.range = "*"; }).map((i) => i.path)).toContain("packs[0].range");
     expect(at((p) => { p.range = ">=1.0.0 <2.0.0-0"; }).map((i) => i.path)).toContain("packs[0].version");
     expect(at((p) => { p.pinned_by = "other/profile"; }).map((i) => i.path)).toContain("packs[0].pinned_by");
-    expect(at((p) => { p.signed = false; }).map((i) => i.path)).toContain("packs[0].signed");
+    expect(at((p) => { p.origin = "synced"; p.signed = false; }).map((i) => i.path)).toContain("packs[0].signed");
     const dup = reject(mutated((o) => { o.packs = [o.packs[0], { ...o.packs[0] }]; }));
     expect(dup.issues.map((i) => i.path)).toContain("packs[1].id");
   });

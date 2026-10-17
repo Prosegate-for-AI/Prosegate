@@ -36,10 +36,10 @@ export type YamlResult = { ok: true; value: unknown } | { ok: false; issues: Iss
 /**
  * Upper bound on the number of YAML nodes, from characters alone, so a hostile document is rejected
  * in one linear pass before the parser sees it. Every node is introduced by a line break, a comma, an
- * opening bracket or a colon; overcounting (those characters inside quoted text) only makes the bound
+ * opening bracket, a colon, or a `- ` / `? ` indicator; overcounting (those characters inside quoted text) only makes the bound
  * safer. Also bounds flow-collection depth, which the parser handles recursively.
  */
-function prescan(text: string, maxNodes: number): string | null {
+function scanNodes(text: string, maxNodes: number): { nodes: number; problem: string | null } {
   let nodes = 1;
   let depth = 0;
   for (let i = 0; i < text.length; i++) {
@@ -49,11 +49,18 @@ function prescan(text: string, maxNodes: number): string | null {
       case 58: // :
         nodes += 1;
         break;
+      case 45: // "- " sequence indicator: a single line of "- - - -" opens one node per indicator
+      case 63: {
+        // "? " complex-key indicator
+        const next = text.charCodeAt(i + 1);
+        if (next === 32 || next === 10 || next === 13 || i + 1 >= text.length) nodes += 1;
+        break;
+      }
       case 91: // [
       case 123: // {
         nodes += 1;
         depth += 1;
-        if (depth > MAX_FLOW_DEPTH) return "flow collections are nested too deeply";
+        if (depth > MAX_FLOW_DEPTH) return { nodes, problem: "flow collections are nested too deeply" };
         break;
       case 93: // ]
       case 125: // }
@@ -61,9 +68,18 @@ function prescan(text: string, maxNodes: number): string | null {
         break;
       default:
     }
-    if (nodes > maxNodes) return `document has more than ${maxNodes} nodes`;
+    if (nodes > maxNodes) return { nodes, problem: `document has more than ${maxNodes} nodes` };
   }
-  return null;
+  return { nodes, problem: null };
+}
+
+function prescan(text: string, maxNodes: number): string | null {
+  return scanNodes(text, maxNodes).problem;
+}
+
+/** The node estimate the pre-scan uses, for sizing documents against the caps (not a parse). */
+export function estimateNodes(text: string): number {
+  return scanNodes(text, Number.POSITIVE_INFINITY).nodes;
 }
 
 /**
@@ -133,7 +149,8 @@ export function parseYamlStrict(text: unknown, maxBytes: number, maxNodes: numbe
             add("map keys must be plain scalars", node.range);
             continue;
           }
-          const name = String(pair.key.value);
+          // `~`, `null` and an empty key are all the empty key; 1 and "1" are one key too.
+          const name = pair.key.value === null ? "" : String(pair.key.value);
           if (keys.has(name)) add("duplicate map key", pair.key.range);
           keys.add(name);
         }

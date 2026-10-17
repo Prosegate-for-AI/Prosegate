@@ -1,4 +1,5 @@
 import semver from "semver";
+import { z } from "zod";
 import {
   DEFAULT_THRESHOLDS,
   REVIEWER_CATEGORIES,
@@ -6,6 +7,7 @@ import {
   type Severity,
 } from "@prosegate/schema";
 import { ResolutionError, summariseIssues } from "./errors.js";
+import { PackIdSchema, ProfileIdSchema, RESERVED_NAMESPACES } from "./fields.js";
 import { parseProfileYaml, type Profile } from "./profile.js";
 import type { RulePack } from "./rulepack.js";
 import { sanitizeInput } from "./sanitize.js";
@@ -84,17 +86,84 @@ interface Node {
 
 const has = (record: object | undefined, key: string): boolean => record !== undefined && Object.hasOwn(record, key);
 
+/**
+ * Pack ids that exist only as bundled content in v0 (ADR-21). 04 says a pack id is "unique per
+ * publisher", and there is no publisher namespace yet; whoever registered `core` on the service could
+ * otherwise rewrite every starter session. A synced `core` is ignored, so the bundled one is used and
+ * `core` updates ship as adapter releases.
+ */
+const BUNDLED_ONLY_PACKS: ReadonlySet<string> = new Set(["core"]);
+
+const SourceOrigin = z.enum(["synced", "bundled"]);
+// Every source entry is checked at runtime, not trusted to its TypeScript type: the caller is the
+// adapter or the Worker, but the values come from a cache and a network.
+const ProfileSourceSchema = z
+  .strictObject({ yaml: z.string(), signed: z.boolean(), origin: SourceOrigin })
+  .refine((s) => s.origin !== "synced" || s.signed, { message: "synced content must be signed; unsigned network content is refused", path: ["signed"] });
+const PackVersionSourceSchema = z
+  .strictObject({ version: z.string().max(100), signed: z.boolean(), origin: SourceOrigin })
+  .refine((s) => s.origin !== "synced" || s.signed, { message: "synced content must be signed; unsigned network content is refused", path: ["signed"] });
+const LocalProfileSchema = z.strictObject({ yaml: z.string() });
+const LocalPackVersionsSchema = z.array(z.string().max(100)).max(1000);
+
+/** A plain object or null-prototype record; a Map, an array or a class instance is not one. */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const proto: unknown = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function sourceProblem(code: "invalid_profile" | "invalid_pack", subject: string, id: string, error: z.ZodError): ResolutionError {
+  const issues = zodToIssues(error);
+  return new ResolutionError(code, `${subject} '${id.slice(0, 80)}' is invalid: ${summariseIssues(issues)}`, [id.slice(0, 80)], issues);
+}
+
 function validateSources(sources: ResolutionSources): void {
+  if (!isPlainRecord(sources) || !isPlainRecord(sources.profiles) || !isPlainRecord(sources.packs)) {
+    throw new ResolutionError("invalid_profile", "Resolution sources must be { profiles, packs }, each a plain object");
+  }
   for (const [id, source] of Object.entries(sources.profiles)) {
-    if (source.origin === "synced" && !source.signed) {
-      throw new ResolutionError("invalid_profile", `Profile '${id}' is synced content but unsigned; unsigned network content is refused`, [id]);
+    const key = ProfileIdSchema.safeParse(id);
+    if (!key.success) throw sourceProblem("invalid_profile", "Profile source", id, key.error);
+    const parsed = ProfileSourceSchema.safeParse(source);
+    if (!parsed.success) throw sourceProblem("invalid_profile", "Profile source", id, parsed.error);
+    // `local`, `prosegate` and `core` are not account or org names (ADR-19); only content shipped in
+    // the adapter may live there, so network content cannot shadow a starter.
+    const namespace = id.split("/")[0] as string;
+    if (parsed.data.origin === "synced" && (RESERVED_NAMESPACES as readonly string[]).includes(namespace)) {
+      throw new ResolutionError("invalid_profile", `Profile '${id}' is synced content in the reserved namespace '${namespace}'; only bundled profiles may use it`, [id]);
     }
   }
   for (const [packId, versions] of Object.entries(sources.packs)) {
-    for (const v of versions) {
-      if (v.origin === "synced" && !v.signed) {
-        throw new ResolutionError("invalid_pack", `Rule pack '${packId}' ${v.version.slice(0, 40)} is synced content but unsigned; unsigned network content is refused`, [packId]);
-      }
+    const key = PackIdSchema.safeParse(packId);
+    if (!key.success) throw sourceProblem("invalid_pack", "Rule pack source", packId, key.error);
+    const parsed = z.array(PackVersionSourceSchema).max(1000).safeParse(versions);
+    if (!parsed.success) throw sourceProblem("invalid_pack", "Rule pack source", packId, parsed.error);
+  }
+}
+
+/** Overlays are unsigned-but-trusted and take their own path: shape only, no origin or signature. */
+function validateLocal(local: LocalOverlay | undefined): void {
+  if (local === undefined) return;
+  if (!isPlainRecord(local) || Object.keys(local).some((k) => k !== "profiles" && k !== "packs")) {
+    throw new ResolutionError("invalid_profile", "The local overlay must be { profiles?, packs? }");
+  }
+  if (local.profiles !== undefined) {
+    if (!isPlainRecord(local.profiles)) {
+      throw new ResolutionError("invalid_profile", "local.profiles must be a plain object keyed by profile id (a Map is not accepted)");
+    }
+    for (const [id, entry] of Object.entries(local.profiles)) {
+      const parsed = LocalProfileSchema.safeParse(entry);
+      if (!parsed.success) throw sourceProblem("invalid_profile", "Local profile", id, parsed.error);
+    }
+  }
+  if (local.packs !== undefined) {
+    if (!isPlainRecord(local.packs)) {
+      throw new ResolutionError("invalid_pack", "local.packs must be a plain object keyed by pack id (a Map is not accepted)");
+    }
+    for (const [id, versions] of Object.entries(local.packs)) {
+      const parsed = LocalPackVersionsSchema.safeParse(versions);
+      if (!parsed.success) throw sourceProblem("invalid_pack", "Local rule pack", id, parsed.error);
     }
   }
 }
@@ -220,11 +289,12 @@ type Provenance<T> = { value: T; origin: string; layer: number };
  */
 export function resolveProfile(leafId: string, sources: ResolutionSources, opts: ResolveOptions = {}): ResolvedProfile {
   validateSources(sources);
+  validateLocal(opts.local); // shape only; under `required` the content is then ignored
   const policy = resolvePolicy(opts.policy);
   const required = policy?.enforcement_default === "required";
-  if (policy !== null && required && leafId.split("/")[0] !== policy.namespace) {
-    throw new ResolutionError("policy_requires_org_profile", `Enforcement is required by ${policy.org_name}; ask an admin, or uninstall.`, [leafId]);
-  }
+  const refusal = (...ids: string[]): ResolutionError =>
+    new ResolutionError("policy_requires_org_profile", `Enforcement is required by ${policy?.org_name ?? ""}; ask an admin, or uninstall.`, ids);
+  if (policy !== null && required && leafId.split("/")[0] !== policy.namespace) throw refusal(leafId);
   const overlaysIgnored = required && opts.local !== undefined && (Object.keys(opts.local.profiles ?? {}).length > 0 || Object.keys(opts.local.packs ?? {}).length > 0);
   const local = required ? undefined : opts.local;
   checkLocalPacks(sources, local);
@@ -244,6 +314,11 @@ export function resolveProfile(leafId: string, sources: ResolutionSources, opts:
     }
     seen.add(next);
     const node = loadNode(next, sources, local, childId);
+    // Under `required` the whole chain must be the org's own or bundled; a parent in someone else's
+    // namespace would otherwise carry its overrides and pins into an enforced session.
+    if (policy !== null && required && node.layers[0]?.origin !== "bundled" && next.split("/")[0] !== policy.namespace) {
+      throw refusal(leafId, next);
+    }
     walked.push(node);
     childId = next;
     next = node.layers[0]?.profile.extends;
@@ -428,7 +503,10 @@ function availablePackVersions(
     if (current === undefined || rank[origin] < rank[current.origin]) best.set(version, { version, signed, origin });
   };
   if (has(sources.packs, packId)) {
-    for (const v of sources.packs[packId] ?? []) offer(v.version, v.signed, v.origin);
+    for (const v of sources.packs[packId] ?? []) {
+      if (v.origin === "synced" && BUNDLED_ONLY_PACKS.has(packId)) continue; // ADR-21: `core` is bundled-only
+      offer(v.version, v.signed, v.origin);
+    }
   }
   if (has(local?.packs, packId)) {
     for (const v of local?.packs?.[packId] ?? []) offer(v, false, "local");

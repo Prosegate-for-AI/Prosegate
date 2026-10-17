@@ -45,7 +45,12 @@ const OverridesSchema = z.strictObject({
       }
     })
     .optional(),
-  rules: z.record(RuleIdSchema, RuleOverrideSchema).optional(),
+  // 400 overrides at about 5 estimated nodes each, plus the other maxima below, stay under the
+  // profile node cap of 5,000 (measured in profile-fields.test.ts), so the maxima are reachable.
+  rules: z
+    .record(RuleIdSchema, RuleOverrideSchema)
+    .refine((rules) => Object.keys(rules).length <= 400, "at most 400 rule overrides")
+    .optional(),
   // Never rendered to a model. Lowercased: vocab matching is case-insensitive (ADR-15).
   allow_terms: z.array(z.string().min(1).max(80).transform((term) => term.toLowerCase())).max(500).optional(),
   thresholds: z

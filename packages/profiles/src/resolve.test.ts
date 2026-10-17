@@ -49,7 +49,7 @@ describe("merge rules (04 'Inheritance and resolution')", () => {
 
     it("on conflict the child's range wins, and that range is the child's own (normalised), not the intersection", () => {
       const r = pair("", 'rule_packs:\n  - { id: core, version: "0.1.x" }', { core: ["0.1.0", "0.1.7", "0.2.0", "0.9.0"] });
-      expect(r.packs).toEqual([{ id: "core", range: ">=0.1.0 <0.2.0-0", version: "0.1.7", pinned_by: "t/child", signed: true, origin: "synced" }]);
+      expect(r.packs).toEqual([{ id: "core", range: ">=0.1.0 <0.2.0-0", version: "0.1.7", pinned_by: "t/child", signed: false, origin: "bundled" }]);
       // a child range wider than the parent's still wins, as long as the two overlap
       const wide = pair('rule_packs:\n  - { id: eng, version: "<0.5.0" }', 'rule_packs:\n  - { id: eng, version: ">=0.1.0" }', { core: ["0.1.0"], eng: ["0.4.0", "0.9.0"] });
       expect(wide.packs.find((p) => p.id === "eng")).toMatchObject({ range: ">=0.1.0", version: "0.9.0", pinned_by: "t/child" });
@@ -529,23 +529,242 @@ describe("signed and bundled sources (ADR-19)", () => {
   it("with duplicate pack versions, the signed one wins whatever the input order", () => {
     const synced = { version: "0.1.0", signed: true, origin: "synced" as const };
     const bundled = { version: "0.1.0", signed: false, origin: "bundled" as const };
-    const profiles = makeSources({ "t/a": profileYaml("t/a", CORE_PIN) }).profiles;
+    const profiles = makeSources({ "t/a": profileYaml("t/a", 'rule_packs:\n  - { id: eng, version: ">=0.1.0 <1.0.0" }') }).profiles;
     for (const list of [[synced, bundled], [bundled, synced]]) {
-      const r = resolveProfile("t/a", { profiles, packs: { core: list } });
+      const r = resolveProfile("t/a", { profiles, packs: { eng: list } });
       expect(r.packs[0]).toMatchObject({ signed: true, origin: "synced" });
     }
   });
 
-  it("a layer-pin from a bundled profile may resolve to a synced version, and the chain can mix origins", () => {
-    const r = resolveProfile(
-      "t/org",
-      {
-        profiles: { ...bundledProfileSources(), ...makeSources({ "t/org": profileYaml("t/org", "", { extends: "local/base" }) }).profiles },
-        packs: { core: [{ version: "0.1.0", signed: true, origin: "synced" }] },
-      },
-    );
-    expect(r.packs[0]).toMatchObject({ origin: "synced", signed: true, pinned_by: "local/base" });
+  it("the chain can mix bundled and synced profiles", () => {
+    const r = resolveProfile("t/org", {
+      profiles: { ...bundledProfileSources(), ...makeSources({ "t/org": profileYaml("t/org", "", { extends: "local/base" }) }).profiles },
+      packs: bundledPackSources(),
+    });
+    expect(r.packs[0]).toMatchObject({ origin: "bundled", pinned_by: "local/base" });
     expect(r.sources.map((s) => s.origin)).toEqual(["bundled", "synced"]);
+  });
+});
+
+describe("strict source shape (cycle 2)", () => {
+  const goodProfile = { yaml: profileYaml("t/a", CORE_PIN), signed: true, origin: "synced" };
+  const run = (profiles: unknown, packs: unknown = { core: [{ version: "0.1.0", signed: false, origin: "bundled" }] }) =>
+    failure(() => resolveProfile("t/a", { profiles, packs } as never));
+
+  it("a good source resolves", () => {
+    expect(resolveProfile("t/a", { profiles: { "t/a": goodProfile }, packs: { core: [{ version: "0.1.0", signed: false, origin: "bundled" }] } } as never).id).toBe("t/a");
+  });
+
+  it("profile origin must be exactly synced or bundled", () => {
+    for (const origin of ["network", "cdn", "local", "SYNCED", "", undefined, null, 1]) {
+      const e = run({ "t/a": { ...goodProfile, origin } });
+      expect(e.code, String(origin)).toBe("invalid_profile");
+      expect(e.issues.map((i) => i.path), String(origin)).toContain("origin");
+    }
+  });
+
+  it("signed must be a boolean: the string 'false' and other truthy values are rejected", () => {
+    for (const signed of ["false", "true", "", 0, 1, null, undefined]) {
+      const e = run({ "t/a": { ...goodProfile, signed } });
+      expect(e.code, String(signed)).toBe("invalid_profile");
+      expect(e.issues.map((i) => i.path), String(signed)).toContain("signed");
+    }
+  });
+
+  it("synced requires signed === true", () => {
+    const e = run({ "t/a": { ...goodProfile, signed: false } });
+    expect(e.code).toBe("invalid_profile");
+    expect(e.issues).toContainEqual({ path: "signed", message: "synced content must be signed; unsigned network content is refused" });
+    // bundled may be unsigned
+    expect(resolveProfile("t/a", { profiles: { "t/a": { ...goodProfile, origin: "bundled", signed: false } }, packs: { core: [{ version: "0.1.0", signed: false, origin: "bundled" }] } } as never).id).toBe("t/a");
+  });
+
+  it("unknown fields and a missing yaml are rejected", () => {
+    expect(run({ "t/a": { ...goodProfile, extra: 1 } }).issues).toContainEqual({ path: "extra", message: "unknown field" });
+    expect(run({ "t/a": { signed: true, origin: "synced" } }).issues.map((i) => i.path)).toContain("yaml");
+    expect(run({ "t/a": "yaml text" }).code).toBe("invalid_profile");
+    expect(run({ "t/a": null }).code).toBe("invalid_profile");
+  });
+
+  it("pack version origin must be exactly synced or bundled; cdn and network are rejected", () => {
+    for (const origin of ["cdn", "network", "local", undefined, 5]) {
+      const e = run({ "t/a": goodProfile }, { core: [{ version: "0.1.0", signed: true, origin }] });
+      expect(e.code, String(origin)).toBe("invalid_pack");
+      expect(e.issues.map((i) => i.path), String(origin)).toContain("[0].origin");
+    }
+  });
+
+  it("pack version signed must be a boolean, and synced needs true", () => {
+    for (const signed of ["false", "true", 0, 1, null]) {
+      expect(run({ "t/a": goodProfile }, { core: [{ version: "0.1.0", signed, origin: "synced" }] }).code, String(signed)).toBe("invalid_pack");
+    }
+    expect(run({ "t/a": goodProfile }, { core: [{ version: "0.1.0", signed: false, origin: "synced" }] }).code).toBe("invalid_pack");
+    expect(run({ "t/a": goodProfile }, { core: [{ version: "0.1.0", signed: true, origin: "synced", extra: 1 }] }).code).toBe("invalid_pack");
+    expect(run({ "t/a": goodProfile }, { core: [{ signed: true, origin: "synced" }] }).code).toBe("invalid_pack");
+    expect(run({ "t/a": goodProfile }, { core: "0.1.0" }).code).toBe("invalid_pack");
+  });
+
+  it("bad profile and pack ids as keys, and non-record sources, are rejected", () => {
+    expect(run({ "Bad Id": goodProfile }).code).toBe("invalid_profile");
+    expect(run({ "t/a": goodProfile }, { "Bad Pack": [] }).code).toBe("invalid_pack");
+    expect(failure(() => resolveProfile("t/a", { profiles: new Map(), packs: {} } as never)).code).toBe("invalid_profile");
+    expect(failure(() => resolveProfile("t/a", { profiles: [], packs: {} } as never)).code).toBe("invalid_profile");
+    expect(failure(() => resolveProfile("t/a", null as never)).code).toBe("invalid_profile");
+  });
+
+  it("local overlays keep their own path: no origin or signed field, shape only", () => {
+    const sources = makeSources({ "t/a": profileYaml("t/a", CORE_PIN) });
+    const overlay = (yaml: unknown) => ({ profiles: { "t/a": yaml } } as never);
+    expect(resolveProfile("t/a", sources, { local: overlay({ yaml: profileYaml("t/a", "") }) }).sources.at(-1)).toMatchObject({ origin: "local", signed: false });
+    expect(failure(() => resolveProfile("t/a", sources, { local: overlay({ yaml: profileYaml("t/a", ""), signed: true, origin: "synced" }) })).code).toBe("invalid_profile");
+    expect(failure(() => resolveProfile("t/a", sources, { local: overlay("text") })).code).toBe("invalid_profile");
+    expect(failure(() => resolveProfile("t/a", sources, { local: { packs: { mine: "1.0.0" } } as never })).code).toBe("invalid_pack");
+  });
+});
+
+describe("local overlay containers are plain records (cycle 2)", () => {
+  const sources = makeSources({ "acme/a": profileYaml("acme/a", CORE_PIN) });
+  const required = orgPolicy({ enforcement_default: "required" });
+
+  it("a Map for local.profiles or local.packs is rejected, so overlays_ignored cannot be dodged", () => {
+    const mapProfiles = new Map([["acme/a", { yaml: profileYaml("acme/a", "") }]]);
+    const e = failure(() => resolveProfile("acme/a", sources, { policy: required, local: { profiles: mapProfiles as never } }));
+    expect(e.code).toBe("invalid_profile");
+    expect(e.message).toContain("a Map is not accepted");
+    const e2 = failure(() => resolveProfile("acme/a", sources, { policy: required, local: { packs: new Map([["x", ["1.0.0"]]]) as never } }));
+    expect(e2.code).toBe("invalid_pack");
+    // and without a policy as well
+    expect(failure(() => resolveProfile("acme/a", sources, { local: { profiles: mapProfiles as never } })).code).toBe("invalid_profile");
+  });
+
+  it("a record under required sets overlays_ignored; a null-prototype record counts as a record", () => {
+    const record = Object.assign(Object.create(null) as object, { "acme/a": { yaml: profileYaml("acme/a", "") } });
+    expect(resolveProfile("acme/a", sources, { policy: required, local: { profiles: record as never } }).overlays_ignored).toBe(true);
+    expect(resolveProfile("acme/a", sources, { policy: required, local: { profiles: { "acme/a": { yaml: profileYaml("acme/a", "") } } } }).overlays_ignored).toBe(true);
+  });
+
+  it("an array or an unknown key in local is rejected", () => {
+    expect(failure(() => resolveProfile("acme/a", sources, { local: { profiles: [] as never } })).code).toBe("invalid_profile");
+    expect(failure(() => resolveProfile("acme/a", sources, { local: { extra: {} } as never })).code).toBe("invalid_profile");
+  });
+});
+
+describe("reserved namespaces (cycle 2)", () => {
+  it("refuses synced profiles in local, prosegate and core, naming the profile", () => {
+    for (const ns of ["local", "prosegate", "core"]) {
+      const sources = makeSources({ [`${ns}/base`]: profileYaml(`${ns}/base`, CORE_PIN) });
+      const e = failure(() => resolveProfile(`${ns}/base`, sources));
+      expect(e.code, ns).toBe("invalid_profile");
+      expect(e.message).toContain(`reserved namespace '${ns}'`);
+      expect(e.ids).toEqual([`${ns}/base`]);
+    }
+  });
+
+  it("refuses it even when the reserved profile is only a parent", () => {
+    const sources = makeSources({
+      "t/a": profileYaml("t/a", "", { extends: "local/base" }),
+      "local/base": profileYaml("local/base", CORE_PIN),
+    });
+    expect(failure(() => resolveProfile("t/a", sources)).code).toBe("invalid_profile");
+  });
+
+  it("bundled profiles live in local", () => {
+    expect(resolveProfile("local/base", { profiles: bundledProfileSources(), packs: bundledPackSources() }).id).toBe("local/base");
+  });
+
+  it("a synced profile in local cannot shadow a starter: the sources are rejected before anything resolves", () => {
+    const profiles = { ...bundledProfileSources(), "local/base": { yaml: profileYaml("local/base", CORE_PIN), signed: true, origin: "synced" as const } };
+    expect(failure(() => resolveProfile("local/pr-description", { profiles, packs: bundledPackSources() })).code).toBe("invalid_profile");
+  });
+
+  it("a local overlay may overlay a bundled starter", () => {
+    const local: LocalOverlay = { profiles: { "local/base": { yaml: profileYaml("local/base", "overrides:\n  allow_terms: [mine]") } } };
+    expect(resolveProfile("local/base", { profiles: bundledProfileSources(), packs: bundledPackSources() }, { local }).allow_terms).toEqual(["mine"]);
+  });
+});
+
+describe("core is bundled-only in v0 (ADR-21, cycle 2)", () => {
+  // 04 says a pack id is "unique per publisher"; there is no publisher namespace yet, so `core` is
+  // reserved for the bundled pack and a synced `core` (signed or not) is not used.
+  const profiles = makeSources({ "t/a": profileYaml("t/a", CORE_PIN) }).profiles;
+  const bundled = { version: "0.1.0", signed: false, origin: "bundled" as const };
+  const syncedCore = { version: "0.9.0", signed: true, origin: "synced" as const };
+
+  it("a synced signed core 0.9.0 is refused and the bundled 0.1.0 is used", () => {
+    for (const list of [[bundled, syncedCore], [syncedCore, bundled]]) {
+      const r = resolveProfile("t/a", { profiles, packs: { core: list } });
+      expect(r.packs[0]).toMatchObject({ id: "core", version: "0.1.0", origin: "bundled", signed: false });
+    }
+  });
+
+  it("a pin only the synced core could satisfy is a no_pack_version, not a silent upgrade", () => {
+    const sources = { profiles: makeSources({ "t/a": profileYaml("t/a", 'rule_packs:\n  - { id: core, version: ">=0.5.0 <1.0.0" }') }).profiles, packs: { core: [bundled, syncedCore] } };
+    const e = failure(() => resolveProfile("t/a", sources));
+    expect(e.code).toBe("no_pack_version");
+    expect(e.message).toContain("available: 0.1.0;");
+    expect(e.message).not.toContain("0.9.0");
+  });
+
+  it("with no bundled core at all, a synced core is not used", () => {
+    expect(failure(() => resolveProfile("t/a", { profiles, packs: { core: [syncedCore] } })).code).toBe("no_pack_version");
+  });
+
+  it("other pack ids may be synced", () => {
+    const sources = { profiles: makeSources({ "t/a": profileYaml("t/a", 'rule_packs:\n  - { id: eng, version: ">=0.5.0" }') }).profiles, packs: { eng: [syncedCore] } };
+    expect(resolveProfile("t/a", sources).packs[0]).toMatchObject({ id: "eng", version: "0.9.0", origin: "synced" });
+  });
+
+  it("a signed pin may resolve to the bundled core (ADR-21)", () => {
+    expect(resolveProfile("t/a", { profiles, packs: { core: [bundled] } }).packs[0]?.origin).toBe("bundled");
+  });
+});
+
+describe("the whole chain under required (cycle 2)", () => {
+  const required = orgPolicy({ enforcement_default: "required" });
+  const packs = { core: [{ version: "0.1.0", signed: false, origin: "bundled" as const }] };
+  const sources = (profiles: Record<string, string>) => ({ profiles: makeSources(profiles).profiles, packs });
+
+  it("acme/x extending alice/lax is refused with policy_requires_org_profile", () => {
+    const s = sources({
+      "acme/x": profileYaml("acme/x", "", { extends: "alice/lax" }),
+      "alice/lax": profileYaml("alice/lax", `${CORE_PIN}\noverrides:\n  categories:\n    structure: { severity: info }`),
+    });
+    const e = failure(() => resolveProfile("acme/x", s, { policy: required }));
+    expect(e.code).toBe("policy_requires_org_profile");
+    expect(e.message).toBe("Enforcement is required by Acme; ask an admin, or uninstall.");
+    expect(e.ids).toEqual(["acme/x", "alice/lax"]);
+  });
+
+  it("a stranger in the middle of the chain is refused too", () => {
+    const s = sources({
+      "acme/a": profileYaml("acme/a", "", { extends: "bob/mid" }),
+      "bob/mid": profileYaml("bob/mid", "", { extends: "acme/base" }),
+      "acme/base": profileYaml("acme/base", CORE_PIN),
+    });
+    expect(failure(() => resolveProfile("acme/a", s, { policy: required })).code).toBe("policy_requires_org_profile");
+  });
+
+  it("an org chain entirely in the org's namespace resolves", () => {
+    const s = sources({
+      "acme/a": profileYaml("acme/a", "", { extends: "acme/base" }),
+      "acme/base": profileYaml("acme/base", CORE_PIN),
+    });
+    expect(resolveProfile("acme/a", s, { policy: required }).resolved_from).toEqual(["acme/base", "acme/a"]);
+  });
+
+  it("a bundled parent is allowed (the starters ship with the signed adapter)", () => {
+    const s = { profiles: { ...bundledProfileSources(), ...makeSources({ "acme/x": profileYaml("acme/x", "", { extends: "local/base" }) }).profiles }, packs };
+    const r = resolveProfile("acme/x", s, { policy: required });
+    expect(r.resolved_from).toEqual(["local/base", "acme/x"]);
+    expect(r.enforcement.required).toBe(true);
+  });
+
+  it("without required, the same chain resolves", () => {
+    const s = sources({
+      "acme/x": profileYaml("acme/x", "", { extends: "alice/lax" }),
+      "alice/lax": profileYaml("alice/lax", CORE_PIN),
+    });
+    expect(resolveProfile("acme/x", s, { policy: orgPolicy({ enforcement_default: "advisory" }) }).resolved_from).toEqual(["alice/lax", "acme/x"]);
   });
 });
 
@@ -721,7 +940,7 @@ describe("org policy (06 /orgs/{id}/policy, ADR-18)", () => {
         expect(e.ids).toEqual([leaf]);
       }
       // the org's own profile resolves, even though its chain is the org's
-      expect(resolveProfile("acme/pr", { ...sources, packs: { core: [{ version: "0.1.0", signed: true, origin: "synced" }] } }, { policy: required }).id).toBe("acme/pr");
+      expect(resolveProfile("acme/pr", sources, { policy: required }).id).toBe("acme/pr");
     });
 
     it("a namespace that only starts with the org's is not the org's", () => {
