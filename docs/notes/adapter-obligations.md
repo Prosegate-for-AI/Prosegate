@@ -19,3 +19,5 @@ Collected from the W1.3 security re-verification (2026-10-17). The Phase 3 adapt
 15. Under `required`, the engine loads only `snapshot.packs`.
 16. The adapter bundle needs a `createRequire` banner, and `check:bundle` must execute the bundle on a real resolve (D-17).
 17. `encodeTelemetryBatch` is the only telemetry send path, called with the session's synced profile and pack id sets (ADR-20, 07).
+18. Filter the assembled session-start inject block (profile name + register tone + format + description) as one string, or separate the fields with fixed labels, so a word split across adjacent fields cannot pass (W1.4 verify #9).
+19. If `turn-end` re-resolution re-validates pack text, measure it: a 100-rule hostile pack costs about 240 ms of filter CPU. Cache validated pack bodies by content hash, so turn-end does not re-filter unchanged packs.
