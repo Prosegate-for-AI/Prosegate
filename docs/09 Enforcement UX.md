@@ -16,7 +16,7 @@ The model receives `feedback_text` (03). The user receives a notice. They are di
 
 Notice line format: `Prosegate · profile pr-description · 3 findings (hedge 1, unsupported claim 1, triad 1) · revising, pass 1 of 2`.
 
-How the notice reaches the user depends on the harness. Where the shim has a user-visible channel separate from the model's output, it uses that. In Claude Code that channel is the Stop hook's `systemMessage` field (ADR-9; live confirmation pending, `docs/spikes/S1.md`). Where a harness has no such channel, `feedback_text` ends with an instruction to begin the revised response with the notice line verbatim, so the model carries it. The second route is less reliable and is logged as `notice_via_model` in telemetry so its failure rate is known.
+How the notice reaches the user depends on the harness. Where the shim has a user-visible channel separate from the model's output, it uses that. In Claude Code that channel is the Stop hook's `systemMessage` field (ADR-9, ADR-11), which the harness displays prefixed with "Stop says: "; golden tests compare the `systemMessage` string. Rendering details (order, columns, trimming, the first-notice override line, the pass-cap check) are fixed in ADR-12. Where a harness has no such channel, `feedback_text` ends with an instruction to begin the revised response with the notice line verbatim, so the model carries it. The second route is less reliable and is logged as `notice_via_model` in telemetry so its failure rate is known.
 
 ## Override and modes
 

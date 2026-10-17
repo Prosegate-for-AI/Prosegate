@@ -1,0 +1,11 @@
+{
+  "name": "prosegate-spike",
+  "version": "0.0.1",
+  "private": false,
+  "description": "S3 spike: single-file JS bundle with @napi-rs/keyring as an optional native dependency",
+  "license": "UNLICENSED",
+  "bin": { "prosegate-spike": "dist/cli.js" },
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "optionalDependencies": { "@napi-rs/keyring": "2.1.1" }
+}

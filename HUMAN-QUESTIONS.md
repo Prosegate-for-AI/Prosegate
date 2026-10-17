@@ -58,4 +58,4 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Options:** (1, recommended) Re-login and run the script; it is headless, uses Haiku, costs a few cents of your plan. (2) I proceed doc-only and verify live at the end of Phase 3, when `init` is first run on your machine.
 - **Default I'm proceeding on:** Option 2 — documentation evidence, plus a shim that supports both render paths behind one switch. Reversal cost: none; S1's live answer only flips the switch's default.
 - **Needed by:** Phase 3 exit (target week 4).
-- **Answer:** _pending_
+- **Answer:** Partly answered 2026-10-17: Murray re-logged in; the headless S1 run completed (ADR-11). The interactive TUI check is waiting on the workspace-trust prompt in the S1 terminal tab.

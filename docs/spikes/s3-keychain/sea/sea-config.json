@@ -1,0 +1,7 @@
+{
+  "main": "sea/cli.cjs",
+  "output": "sea/sea-prep.blob",
+  "disableExperimentalSEAWarning": true,
+  "useCodeCache": false,
+  "assets": { "keyring.node": "node_modules/@napi-rs/keyring-win32-x64-msvc/keyring.win32-x64-msvc.node" }
+}

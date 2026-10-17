@@ -69,7 +69,7 @@ Hooks are registered in `.claude/settings.json` (project) or `~/.claude/settings
 | --- | --- | --- |
 | `SessionStart` | Read stdin; stdout is added to context | `session-start`; print `inject` |
 | `UserPromptSubmit` | Read `prompt` from stdin; stdout is added to context | `turn-start`; print `inject` if non-null |
-| `Stop` | Read `last_assistant_message` as the turn text, `stop_hook_active`, and `prompt_id` (used as `turn_id` when present); read the transcript only for the turn's tool-use names, best-effort, tolerating lag | `turn-end`; on `continue`, print `{"decision":"block","reason":feedback_text,"systemMessage":notice}` and exit `0` (fallback: `feedback_text` on stderr, exit `2`) |
+| `Stop` | Read `last_assistant_message` as the turn text, `stop_hook_active`, and `prompt_id` (used as `turn_id` when present); read the transcript only for the turn's tool-use names, best-effort, tolerating lag | `turn-end`; on `continue`, print `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":feedback_text},"systemMessage":notice}` and exit `0` (ADR-11; fallback: `feedback_text` on stderr, exit `2`) |
 
 `stop_hook_active` is `true` when the Stop hook is running because a previous Stop hook already continued the model. The shim passes it as `continuation`; the adapter uses its own per-`turn_id` pass count as the source of truth and `continuation` only as a cross-check, because the flag does not distinguish Prosegate's continuation from another hook's.
 

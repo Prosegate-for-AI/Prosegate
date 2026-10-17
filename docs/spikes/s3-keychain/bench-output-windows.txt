@@ -1,0 +1,13 @@
+node v22.23.3 win32-x64; cli=<spike>\dist\cli.js; runs=20
+baseline node empty.js wall       p50=52.8ms p95=60.5ms max=62.5ms (n=20)
+cold get (sync)  process wall      p50=77.0ms p95=83.5ms max=85.1ms (n=20)
+cold get (sync)  module load       p50=13.7ms p95=15.5ms max=16.5ms (n=20)
+cold get (sync)  first getPassword p50=0.9ms p95=1.1ms max=3.2ms (n=20)
+cold get (sync)  in-process total  p50=15.3ms p95=16.8ms max=17.8ms (n=20)
+cold get (async) process wall      p50=76.8ms p95=80.1ms max=81.8ms (n=20)
+cold get (async) first getPassword p50=1.3ms p95=1.7ms max=1.9ms (n=20)
+warm get (sync)  getPassword       p50=0.1ms p95=0.4ms max=0.4ms (n=19)
+warm get (async) getPassword       p50=0.1ms p95=0.6ms max=0.6ms (n=19)
+delete -> {"ok":true,"deleted":true}
+get after delete -> {"ok":true,"got":null}
+cleanup confirmed: prosegate-spike/device-key absent

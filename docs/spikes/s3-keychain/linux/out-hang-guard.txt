@@ -1,0 +1,8 @@
+worker guard 1500ms (default store)
+{"mode":"worker","ok":false,"timeout":1500,"ms":1507.4}
+    -> exit=124 wall=200010ms
+child guard 1500ms (default store)
+{"mode":"child","ok":false,"timeout":1500,"ms":1510.3}
+    -> exit=4 wall=1574ms
+how long does an unguarded get hang? (cap 200 s)
+    -> exit=124 wall=200001ms

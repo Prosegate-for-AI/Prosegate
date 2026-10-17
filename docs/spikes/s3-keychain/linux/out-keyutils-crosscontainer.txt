@@ -1,0 +1,2 @@
+fresh container, keyutils get (key set by a previous, now-removed container):
+{"cmd":"get","platform":"linux","arch":"x64","ok":true,"service":"prosegate-spike","account":"device-key","store":"keyutils","async":false,"loadMs":15.99,"timings":{"construct":0.17,"get":0.05},"got":null,"totalMs":16.67}

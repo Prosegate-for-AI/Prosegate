@@ -1,0 +1,25 @@
+{
+  "name": "s3-keychain-spike",
+  "version": "1.0.0",
+  "description": "S3 spike: @napi-rs/keyring in a tsup bundle (Windows/Linux measurements). Dummy values only.",
+  "scripts": {
+    "build": "tsup --config tsup.external.config.ts",
+    "bench:win": "npm run build && node bench-windows.mjs 20",
+    "pack": "npm run build && node -e \"const f=require('fs');f.mkdirSync('pkg/dist',{recursive:true});f.copyFileSync('dist/cli.js','pkg/dist/cli.js')\" && cd pkg && npm pack --pack-destination ..",
+    "build:inline": "tsup --config tsup.inline.config.ts",
+    "build:inline-copy": "tsup --config tsup.inline-copy.config.ts"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@napi-rs/keyring": "2.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "postject": "1.0.0-alpha.6",
+    "tsup": "9.0.0",
+    "typescript": "5.9.3"
+  },
+  "private": true
+}

@@ -1,0 +1,7 @@
+{"label":"writeFileSync(mode 0o600)","mode":"666","attrib":"A","acl":["<file> <HOST>\\CodexSandboxUsers:(I)(M)","<SID>:(I)(M)","NT AUTHORITY\\SYSTEM:(I)(F)","BUILTIN\\Administrators:(I)(F)","<HOST>\\<user>:(I)(F)"]}
+{"label":"default writeFileSync","mode":"666","attrib":"A","acl":["<file> <HOST>\\CodexSandboxUsers:(I)(M)","<SID>:(I)(M)","NT AUTHORITY\\SYSTEM:(I)(F)","BUILTIN\\Administrators:(I)(F)","<HOST>\\<user>:(I)(F)"]}
+{"label":"after chmodSync(0o600)","mode":"666","attrib":"A","acl":["<file> <HOST>\\CodexSandboxUsers:(I)(M)","<SID>:(I)(M)","NT AUTHORITY\\SYSTEM:(I)(F)","BUILTIN\\Administrators:(I)(F)","<HOST>\\<user>:(I)(F)"]}
+{"label":"after chmodSync(0o400)","mode":"444","attrib":"A    R","acl":["<file> <HOST>\\CodexSandboxUsers:(I)(M)","<SID>:(I)(M)","NT AUTHORITY\\SYSTEM:(I)(F)","BUILTIN\\Administrators:(I)(F)","<HOST>\\<user>:(I)(F)"]}
+icacls hardening took 16ms
+{"label":"after icacls /inheritance:r /grant:r <user SID>:F SYSTEM:F","mode":"666","attrib":"A","acl":["<file> NT AUTHORITY\\SYSTEM:(F)","<HOST>\\<user>:(F)"]}
+read back ok: true
