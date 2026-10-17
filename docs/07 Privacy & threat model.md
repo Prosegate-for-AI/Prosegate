@@ -62,10 +62,15 @@ type Event =
       cleared_categories: Category[] }
   | { t: 'enforcement'; decision: 'allow' | 'continue'; enforcement_unavailable: boolean; override_used: boolean; notice_via_model: boolean }
   | { t: 'profile_select'; from: string; to: string; by: 'model' | 'heuristic' | 'user' }
-  | { t: 'error'; code: string };   // code from a fixed list; no messages
+  | { t: 'error'; code: ErrorCode };   // fixed list below; no messages
+
+type ErrorCode =
+  | 'adapter_error' | 'reviewer_timeout' | 'reviewer_http_error' | 'reviewer_schema_invalid' | 'reviewer_key_missing'
+  | 'profile_resolution_failed' | 'pack_rejected' | 'signature_invalid' | 'snapshot_missing' | 'turn_budget_exceeded'
+  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped';
 ```
 
-Every event carries `account_id`, `device_id`, `ts`. No event carries a session or turn id; sequences cannot be reassembled across events.
+Every stored event carries `account_id`, `device_id` and `ts` (integer epoch milliseconds). The adapter sends `ts`; the service stamps `account_id` and `device_id` from the authenticated device key, so a client cannot attribute events to another account (ADR-17). Every string field is at most 64 visible ASCII characters with no whitespace. No event carries a session or turn id; sequences cannot be reassembled across events.
 
 ## Opt-in samples
 

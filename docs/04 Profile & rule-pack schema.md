@@ -10,7 +10,7 @@ Free-tier users keep both kinds of file under `~/.prosegate/`; signed-in users g
 
 ```yaml
 schema: prosegate.rulepack/1
-id: core                         # lowercase, [a-z0-9-], unique per publisher
+id: core                         # [a-z0-9-]{1,31}, unique per publisher
 version: 0.3.0                   # semver
 findings_schema: 1               # the findings version its instructions target (03)
 rules:
@@ -59,7 +59,7 @@ Every rule ships with at least one `hit` and one `miss` example. The eval harnes
 
 ```yaml
 schema: prosegate.profile/1
-id: org-default/pr-description   # <namespace>/<slug>; namespace = account or org
+id: org-default/pr-description   # <namespace>/<slug>, each [a-z0-9-]{1,31}; namespace = account or org
 version: 4                       # integer, server-assigned on save
 name: PR description
 extends: org-default/base        # single parent; chain depth ≤ 3 (base → domain → project)

@@ -109,3 +109,16 @@ Consequence: the catalogue stays 23 rules. 04 gains one match kind and four filt
 - **Wording.** The `vague_claim` fork becomes "Give the specific detail the question asked for (…)". hedge.004's instruction becomes "Pick one: say whether it does, and under what condition." The advisory confirmation becomes "… Run prosegate enforce to restore."
 
 Rejected: capping the findings in `feedback_text` (the model must see every finding it is asked to fix, and 03's pass-2 subset property depends on it); dropping rule ids (needed for bug reports and future per-rule allow commands). Consequence: 03, 08 and 09 are updated; the W1.1 renderers and golden tests follow. The model running `prosegate advisory` or `off` from its own shell tool is a new enforcement-bypass case; Phase 3 must decide how the commands detect and refuse it (DEBT D-15).
+
+## ADR-17 · Contract clarifications from the W1.1 conformance review
+
+2026-10-17. Each of these was ambiguous or self-contradictory in 03, 04 or 07 and is now fixed in those docs:
+- **Finding ids are not unique within a result.** The 03 formula has no offset, so two hits of the same phrase in one segment share an id. That is kept, because ids must survive revision, and an occurrence index shifts when earlier text changes. Pass semantics treat ids as a set; a shared id counts as cleared only when every occurrence is gone. Rejected: adding the offset (every edit above a span would make it "cleared").
+- **Nesting is allowed.** After overlap resolution, a reviewer finding may fully contain a rule finding of a different category. All other intersections are resolved away. When two findings have equal starts, they are ordered by end descending: the container comes first.
+- **Spans are non-empty.**
+- **Telemetry envelope.** The adapter sends events without `account_id` and `device_id`; the service stamps both from the authenticated device key, so a client cannot attribute events to another account. `ts` is integer epoch milliseconds.
+- **`error.code` list.** The list is now fixed in 07, and adding a code is a change to 07 (plan 11 §7).
+- **Profile id format.** Profile ids are `<namespace>/<slug>`, each `[a-z0-9-]{1,31}`, so every id fits the 64-character telemetry token rule; pack ids are `[a-z0-9-]{1,31}`.
+- **Published JSON Schemas.** The emitted JSON Schemas are the producer (strict) form. Consumers follow 03 "Versioning" and tolerate unknown optional fields and enum values.
+
+Consequence: `@prosegate/schema` validators and the telemetry schema change accordingly; the server telemetry validator accepts the wire form and writes the stamped form.
