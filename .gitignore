@@ -16,3 +16,6 @@ docs/spikes/s1-stop-hook/events.jsonl
 docs/spikes/s1-stop-hook/stopcount
 docs/spikes/s1-stop-hook/transcript-at-stop-*.jsonl
 docs/spikes/s2-openai-vending/s2-report.json
+
+# Agent worktrees
+.claude/worktrees/

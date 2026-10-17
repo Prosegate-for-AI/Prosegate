@@ -16,7 +16,7 @@ The model receives `feedback_text` (03). The user receives a notice. They are di
 
 Notice line format: `Prosegate · profile pr-description · 3 findings (hedge 1, unsupported claim 1, triad 1) · revising, pass 1 of 2`.
 
-How the notice reaches the user depends on the harness. Where the shim has a user-visible channel separate from the model's output, it uses that. In Claude Code that channel is the Stop hook's `systemMessage` field (ADR-9, ADR-11), which the harness displays prefixed with "Stop says: "; golden tests compare the `systemMessage` string. Rendering details (order, columns, trimming, the first-notice override line, the pass-cap check) are fixed in ADR-12. Where a harness has no such channel, `feedback_text` ends with an instruction to begin the revised response with the notice line verbatim, so the model carries it. The second route is less reliable and is logged as `notice_via_model` in telemetry so its failure rate is known.
+How the notice reaches the user depends on the harness. Where the shim has a user-visible channel separate from the model's output, it uses that. In Claude Code the harness always shows the user the continuation feedback itself ("Stop hook feedback: …"), so on a continuing turn `feedback_text` is the notice and no second notice is sent; the 09 notice line goes through `systemMessage` (displayed as "Stop says: …") only on turns that end without a continuation: advisory, "shipped as is", and the once-per-session key notice (ADR-11, ADR-13). Rendering details (order, columns, trimming, the first-notice override line, the pass-cap check) are fixed in ADR-12. Where a harness has no such channel, `feedback_text` ends with an instruction to begin the revised response with the notice line verbatim, so the model carries it. The second route is less reliable and is logged as `notice_via_model` in telemetry so its failure rate is known.
 
 ## Override and modes
 
@@ -29,7 +29,7 @@ How the notice reaches the user depends on the harness. Where the shim has a use
 | `prosegate profile <id>` | Sets the active profile and clears candidate state | Session |
 | `PROSEGATE_MODE=advisory\|off` | Same as the commands, for CI and scripts | Process |
 
-The `feedback_text` sent to the model always ends with `Session override: prosegate advisory`, and the first notice of a session says it too. Org policy can set `enforcement_default` to `required`, which makes `advisory` and `off` refuse with `Enforcement is required by <org>; ask an admin, or uninstall.` That is an org admin's call, and the doc for admins says plainly that it costs them adoption.
+The `feedback_text` sent to the model always ends by telling the model not to run prosegate commands and telling the user how to pause (`prosegate advisory`), and the first notice of a session names the override too (ADR-16). Org policy can set `enforcement_default` to `required`, which makes `advisory` and `off` refuse with `Enforcement is required by <org>; ask an admin, or uninstall.` The same policy limits selection to the org's own profiles and ignores local overlays for the session (ADR-18). That is an org admin's call, and the doc for admins says plainly that it costs them adoption.
 
 ## Pass cap
 
@@ -88,7 +88,7 @@ Advisory mode:
 
 ```text
 $ prosegate advisory
-Prosegate: advisory for this session. Findings will be shown, not enforced. prosegate enforce to restore.
+Prosegate: advisory for this session. Findings will be shown, not enforced. Run prosegate enforce to restore.
 
 > summarise the incident
 
