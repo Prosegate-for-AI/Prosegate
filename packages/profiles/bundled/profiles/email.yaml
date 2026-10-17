@@ -1,0 +1,22 @@
+schema: prosegate.profile/1
+id: local/email
+version: 1
+name: Email
+extends: local/base
+
+trigger:
+  description: "Writing an email or a note to a colleague, customer or other correspondent."
+  patterns: ["email", "e-mail", "draft a reply", "cover note"]
+  harness_hints: []
+  sticky: true
+
+overrides:
+  rules:
+    core.filler.002: { severity: info }
+    core.structure.001: { severity: block }
+
+reviewer:
+  register:
+    max_words: 200
+    tone: "Courteous and brief; lead with the request or the answer."
+    format: "Short paragraphs with no headings, and a single closing line."

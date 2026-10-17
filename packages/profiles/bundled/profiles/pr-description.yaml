@@ -1,0 +1,22 @@
+schema: prosegate.profile/1
+id: local/pr-description
+version: 1
+name: PR description
+extends: local/base
+
+trigger:
+  description: "Writing a pull request title or description, a commit message, or a changelog entry."
+  patterns: ["pull request", "PR description", "commit message", "changelog"]
+  harness_hints: ["git_commit", "gh_pr_create"]
+  sticky: true
+
+overrides:
+  categories:
+    triad: { severity: info }
+    structure: { severity: block }
+
+reviewer:
+  register:
+    max_words: 300
+    tone: "Terse and imperative, with no pleasantries."
+    format: "A title line, a blank line, then the body, with a bulleted list only for the list of changes."

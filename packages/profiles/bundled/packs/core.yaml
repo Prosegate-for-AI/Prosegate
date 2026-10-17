@@ -1,0 +1,358 @@
+# Rule pack `core` 0.1.0: the 23 deterministic rules of docs/08, written against the extended
+# match kinds of ADR-15. Patterns are RE2, lowercase, and use `(?P<span>...)` to mark the span.
+# Examples written as <eval corpus ref: ...> describe a whole document; Phase 2 authors those
+# corpus files, and the engine verifies every example (each hit must fire, each miss must not).
+schema: prosegate.rulepack/1
+id: core
+version: 0.1.0
+findings_schema: 1
+rules:
+  # ---- filler -------------------------------------------------------------------------------
+  - id: core.filler.001
+    category: filler
+    severity: block
+    match:
+      kind: phrase
+      position: sentence_start
+      phrases:
+        - "let's dive in"
+        - "let's dive into"
+        - "let's explore"
+        - "great question"
+        - "certainly!"
+        - "absolutely!"
+        - "sure thing"
+        - "i'd be happy to"
+        - "i'd be glad to"
+    instruction: { action: remove, text: "Remove. Start with the answer." }
+    examples:
+      hit: ["Great question! Let's dive into the cache layer."]
+      miss: ["The cache layer is per tenant."]
+
+  - id: core.filler.002
+    category: filler
+    severity: block
+    match:
+      kind: phrase
+      position: closing
+      phrases:
+        - "i hope this helps"
+        - "hope this helps"
+        - "feel free to reach out"
+        - "let me know if you have any questions"
+        - "happy to help"
+        - "don't hesitate to"
+    instruction: { action: remove, text: "Remove. End on the last substantive point." }
+    examples:
+      hit: ["Let me know if you have any questions!"]
+      miss: ["Reply by Thursday if the dates don't work."]
+
+  - id: core.filler.003
+    category: filler
+    severity: block
+    match:
+      kind: phrase
+      phrases:
+        - "as an ai"
+        - "as a language model"
+        - "this document outlines"
+        - "in this section we will"
+        - "in this response"
+        - "the following is"
+    instruction: { action: remove, text: "Remove the meta-commentary; state the content directly." }
+    examples:
+      hit: ["This document outlines the migration plan."]
+      miss: ["The migration runs in three phases."]
+
+  - id: core.filler.004
+    category: filler
+    severity: warn
+    match:
+      kind: phrase
+      position: sentence_start
+      max_doc_words: 399
+      phrases:
+        - "in conclusion"
+        - "to summarize"
+        - "in summary"
+        - "overall,"
+    instruction: { action: remove, text: "Remove; a reply this short needs no summary." }
+    examples:
+      hit: ["In summary, the fix is safe."]
+      miss: ["<eval corpus ref: core/filler-004-miss-01>"]
+
+  # ---- hedge --------------------------------------------------------------------------------
+  - id: core.hedge.001
+    category: hedge
+    severity: block
+    match:
+      kind: any
+      parts:
+        - kind: regex
+          pattern: '\b(?:it''s|it is) (?:important to note|worth noting|worth mentioning)(?: that)?,?'
+        - kind: regex
+          pattern: '\bit should be noted(?: that)?,?'
+        - kind: phrase
+          phrases: ["note that"]
+          position: sentence_start
+    instruction: { action: remove, text: "Remove the preamble; keep the clause after it." }
+    examples:
+      hit: ["It's worth noting that the index is unique."]
+      miss: ["The index is unique."]
+
+  - id: core.hedge.002
+    category: hedge
+    severity: warn
+    match:
+      kind: regex
+      pattern: '\b(?P<span>somewhat|fairly|relatively)\s+[a-z]+'
+    instruction: { action: specify, text: "Replace the qualifier with the measurement or the plain adjective." }
+    examples:
+      hit: ["The query is relatively slow."]
+      miss: ["The query takes 400 ms."]
+
+  - id: core.hedge.003
+    category: hedge
+    severity: warn
+    match:
+      kind: phrase
+      phrases:
+        - "arguably"
+        - "generally speaking"
+        - "in many cases"
+        - "it could be argued"
+        - "to some extent"
+        - "in a sense"
+    instruction: { action: remove, text: "Remove the hedge or state who argues it and why." }
+    examples:
+      hit: ["Arguably, the retry is unnecessary."]
+      miss: ["The retry is unnecessary."]
+
+  - id: core.hedge.004
+    category: hedge
+    severity: block
+    match:
+      kind: regex
+      pattern: '\b(may or may not|could potentially|might possibly|can possibly)\b'
+    instruction: { action: replace, text: "Pick one: say whether it does, and under what condition." }
+    examples:
+      hit: ["This could potentially break the build."]
+      miss: ["This breaks the build when X."]
+
+  - id: core.hedge.005
+    category: hedge
+    severity: warn
+    match:
+      kind: regex
+      pattern: '\bit depends[.!]'
+    instruction: { action: specify, text: "Say what it depends on, in the same sentence." }
+    examples:
+      hit: ["It depends."]
+      miss: ["It depends on whether the table is partitioned."]
+
+  # ---- vocab --------------------------------------------------------------------------------
+  - id: core.vocab.001
+    category: vocab
+    severity: warn
+    match:
+      kind: any
+      parts:
+        - kind: phrase
+          phrases:
+            - delve
+            - delves
+            - delved
+            - delving
+            - leverages
+            - leveraged
+            - leveraging
+            - utilize
+            - utilizes
+            - utilized
+            - utilizing
+            - utilise
+            - utilises
+            - utilised
+            - utilising
+            - foster
+            - fosters
+            - fostered
+            - fostering
+            - streamline
+            - streamlines
+            - streamlined
+            - streamlining
+            - bolster
+            - bolsters
+            - bolstered
+            - elevate
+            - elevates
+            - elevated
+            - elevating
+        - kind: regex
+          pattern: '\b(?:to|can|could|should|will|would|we|you|they|i|us) (?P<span>leverage)\b'
+        - kind: regex
+          pattern: '\b(?P<span>underscore[sd]) (?:the|that|how|why|a|an|our|its|this)\b'
+    instruction: { action: replace, text: "Use the plain verb (use, build, support, speed up)." }
+    examples:
+      hit: ["We can leverage the existing cache."]
+      miss: ["We can use the existing cache."]
+
+  - id: core.vocab.002
+    category: vocab
+    severity: warn
+    match:
+      kind: any
+      parts:
+        - kind: phrase
+          phrases: [tapestry, realm, testament, synergy, "paradigm shift", game-changer, cornerstone]
+        - kind: regex
+          pattern: '\b(?:the|this|today''s) (?:current |modern |evolving |changing )?landscape\b'
+    instruction: { action: replace, text: "Name the concrete thing instead of the abstraction." }
+    examples:
+      hit: ["The current landscape of auth libraries…"]
+      miss: ["Three auth libraries fit: …"]
+
+  - id: core.vocab.003
+    category: vocab
+    severity: warn
+    match:
+      kind: phrase
+      phrases:
+        - robust
+        - seamless
+        - seamlessly
+        - crucial
+        - pivotal
+        - nuanced
+        - holistic
+        - cutting-edge
+        - comprehensive
+        - meticulous
+        - ever-evolving
+    instruction: { action: specify, text: "Replace with the property that makes it so, or remove." }
+    examples:
+      hit: ["A robust and seamless integration."]
+      miss: ["The integration retries on 5xx and is idempotent."]
+
+  - id: core.vocab.004
+    category: vocab
+    severity: warn
+    match:
+      kind: any
+      parts:
+        - kind: phrase
+          phrases: [truly, genuinely, incredibly, remarkably, extremely]
+        - kind: regex
+          pattern: '\b(?P<span>highly) (?:effective|efficient|scalable|recommended|likely|unlikely)\b'
+    instruction: { action: remove, text: "Remove the intensifier." }
+    examples:
+      hit: ["This is incredibly useful."]
+      miss: ["This saves 20 minutes per deploy."]
+
+  - id: core.vocab.005
+    category: vocab
+    severity: warn
+    match:
+      kind: phrase
+      phrases: ["a wide range of", "a variety of", "a plethora of", "a myriad of", "a number of", "various"]
+    instruction: { action: specify, text: "Give the count or the items." }
+    examples:
+      hit: ["There are a number of options."]
+      miss: ["There are three options."]
+
+  # ---- triad --------------------------------------------------------------------------------
+  - id: core.triad.001
+    category: triad
+    severity: warn
+    match:
+      kind: regex
+      pattern: '\b[a-z]{1,12}, [a-z]{1,12},? and [a-z]{1,12}\b'
+      sentence_exclude: '\d'
+      sentence_max_words: 25
+    instruction: { action: shorten, text: "Keep the one that matters, or give evidence for each." }
+    examples:
+      hit: ["It is fast, simple, and reliable."]
+      miss: ["It is fast, simple, and reliable on 3 runners."]
+
+  - id: core.triad.002
+    category: triad
+    severity: warn
+    match:
+      kind: regex
+      pattern: '\bnot (?:just|only|merely|about) .{3,80}?, (?:but|it''s about|it is about)\b'
+    instruction: { action: rephrase, text: "State the point directly without the contrast." }
+    examples:
+      hit: ["It's not just about speed, it's about trust."]
+      miss: ["Not only did the test fail, the build did too."]
+
+  - id: core.triad.003
+    category: triad
+    severity: info
+    match:
+      kind: any
+      parts:
+        - kind: phrase
+          phrases: ["whether it's", "whether you're"]
+        - kind: regex
+          pattern: '\bfrom [a-z]+ to [a-z]+, (?:and )?[a-z]+'
+    instruction: { action: rephrase, text: "Name the actual case instead of the range." }
+    examples:
+      hit: ["Whether it's a startup or an enterprise…"]
+      miss: ["Whether the flag is set decides the path."]
+
+  # ---- structure ----------------------------------------------------------------------------
+  - id: core.structure.001
+    category: structure
+    severity: warn
+    match: { kind: document_metric, metric: headers_per_100_words, above: 1.5, min_sentences: 8 }
+    instruction: { action: restructure, text: "Remove headings; this is short enough to read as prose." }
+    examples:
+      hit: ["<eval corpus ref: core/structure-001-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-001-miss-01>"]
+
+  - id: core.structure.002
+    category: structure
+    severity: warn
+    match: { kind: document_metric, metric: bullet_ratio, above: 0.6, min_sentences: 8, min_item_words: 6 }
+    instruction: { action: restructure, text: "Rewrite as prose; keep a list only where the items are parallel." }
+    examples:
+      hit: ["<eval corpus ref: core/structure-002-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-002-miss-01>"]
+
+  - id: core.structure.003
+    category: structure
+    severity: warn
+    match: { kind: document_metric, metric: sentence_length_cv, below: 0.25, min_sentences: 10 }
+    instruction: { action: rephrase, text: "Vary sentence length; combine or split so the rhythm is uneven." }
+    examples:
+      hit: ["<eval corpus ref: core/structure-003-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-003-miss-01>"]
+
+  - id: core.structure.004
+    category: structure
+    severity: block
+    match: { kind: document_metric, metric: closing_similarity, above: 0.6, min_sentences: 6 }
+    instruction: { action: remove, text: "Remove the closing paragraph; it restates the opening." }
+    examples:
+      hit: ["<eval corpus ref: core/structure-004-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-004-miss-01>"]
+
+  - id: core.structure.005
+    category: structure
+    severity: warn
+    match: { kind: document_metric, metric: bold_per_100_words, above: 3, min_sentences: 6 }
+    instruction: { action: remove, text: "Remove bold except for the one thing a reader must not miss." }
+    examples:
+      hit: ["<eval corpus ref: core/structure-005-hit-01>"]
+      miss: ["<eval corpus ref: core/structure-005-miss-01>"]
+
+  # ---- repetition ---------------------------------------------------------------------------
+  - id: core.repetition.001
+    category: repetition
+    severity: warn
+    match: { kind: sentence_metric, metric: similarity_to_prior, above: 0.7, min_words: 6 }
+    instruction: { action: merge, text: "Remove this sentence or merge it with the earlier one that says the same thing." }
+    examples:
+      hit: ["The cache is per tenant. Each tenant has its own cache."]
+      miss: ["<eval corpus ref: core/repetition-001-miss-01>"]
