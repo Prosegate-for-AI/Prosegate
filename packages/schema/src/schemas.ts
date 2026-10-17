@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { ACTIONS, CATEGORIES, FORK_TEXT, REVIEWER_CATEGORIES, RULE_CATEGORIES, SKIPPED_REASONS } from './types.js';
 import type { Category, Severity } from './types.js';
 import { renderFeedbackText } from './render.js';
+import { idDenylistViolation, injectedTextDenylistViolation, injectedTextViolation } from './injected-text.js';
 
 // ---- shared leaf schemas ------------------------------------------------------------------
 
@@ -30,8 +31,21 @@ export const RULE_ID_RE = new RegExp(`^[a-z0-9-]{1,31}\\.(${RULE_CATEGORIES.join
 export const FINDING_ID_RE = /^[0-9a-f]{10}$/;
 export const SEGMENT_ID_RE = /^s[0-9]+$/;
 
-export const ProfileIdSchema = z.string().regex(PROFILE_ID_RE, 'profile id must be <namespace>/<slug>, each [a-z0-9-]{1,31}');
-export const PackIdSchema = z.string().regex(PACK_ID_RE, 'pack id must be [a-z0-9-]{1,31}');
+/** Ids reach the model (session banner, findings), so they also pass the id denylist (ADR-20). */
+function idDenylistRefine(label: string) {
+  return (id: string, ctx: z.core.$RefinementCtx): void => {
+    const reason = idDenylistViolation(id);
+    if (reason !== null) ctx.addIssue({ code: 'custom', message: `${label} ${reason}` });
+  };
+}
+
+/** Format only; for a finding's profile_origin, whose denylist check runs in findingProblems so a bad one drops the finding, not the document. */
+export const ProfileIdFormatSchema = z.string().regex(PROFILE_ID_RE, 'profile id must be <namespace>/<slug>, each [a-z0-9-]{1,31}');
+export const ProfileIdSchema = ProfileIdFormatSchema.superRefine(idDenylistRefine('profile id'));
+export const PackIdSchema = z
+  .string()
+  .regex(PACK_ID_RE, 'pack id must be [a-z0-9-]{1,31}')
+  .superRefine(idDenylistRefine('pack id'));
 export const FindingIdSchema = z.string().regex(FINDING_ID_RE, 'finding id must be 10 lowercase hex characters');
 export const SegmentIdSchema = z.string().regex(SEGMENT_ID_RE, "segment id must look like 's1', 's2', \u2026");
 export const OffsetSchema = z.number().int().nonnegative();
@@ -86,6 +100,8 @@ export interface FindingShape {
   evidence: string | null;
   span: { start: number; end: number; text: string };
   instruction: { action: string; text: string };
+  /** Checked against the id denylist when present (the strict and lenient parsers always pass it). */
+  profile_origin?: string;
 }
 
 /** What 03 and 07 state about a single finding that a field-level schema cannot express. */
@@ -109,6 +125,9 @@ export function findingProblems(f: FindingShape): Problem[] {
       add(['rule_id'], 'rule_id must match <pack>.<category>.<nnn>');
     } else if (f.rule_id.split('.')[1] !== f.category) {
       add(['rule_id'], 'the category segment of rule_id must equal the finding category');
+    } else {
+      const why = idDenylistViolation(f.rule_id);
+      if (why !== null) add(['rule_id'], `rule_id ${why}`);
     }
     if (!(RULE_CATEGORIES as readonly string[]).includes(f.category)) {
       add(['category'], "source 'rule' requires a deterministic category");
@@ -120,11 +139,22 @@ export function findingProblems(f: FindingShape): Problem[] {
     }
   }
 
-  // Injection limits on text that reaches the model (07 threat 3 and 4) and the 03 forks.
+  if (f.profile_origin !== undefined) {
+    const why = idDenylistViolation(f.profile_origin);
+    if (why !== null) add(['profile_origin'], `profile_origin ${why}`);
+  }
+
+  // Injection limits on text that reaches the model (07 threat 3 and 4) and the 03 forks. A rule finding's
+  // text must pass the same filter as at pack load (ADR-19/20); a register instruction passes it with the
+  // tighter cap; the vague_claim middle gets the denylist only, because it carries the user's own words;
+  // unsupported_claim is fixed text, compared exactly below.
   const { action, text } = f.instruction;
-  // TODO(W1.4): injectedTextViolation(text) - the ADR-19 allowlist/denylist moves here from @prosegate/profiles.
-  if (codePointLength(text) > MAX_INSTRUCTION_CODEPOINTS) {
+  const tooLong = codePointLength(text) > MAX_INSTRUCTION_CODEPOINTS;
+  if (tooLong) {
     add(['instruction', 'text'], `instruction text must be at most ${MAX_INSTRUCTION_CODEPOINTS} code points`);
+  } else if (f.source === 'rule') {
+    const why = injectedTextViolation(text, MAX_INSTRUCTION_CODEPOINTS);
+    if (why !== null) add(['instruction', 'text'], `instruction text ${why}`);
   }
   if (f.category === 'unsupported_claim') {
     if (action !== 'cite_or_soften_or_remove') add(['instruction', 'action'], 'unsupported_claim requires action cite_or_soften_or_remove');
@@ -138,13 +168,21 @@ export function findingProblems(f: FindingShape): Problem[] {
       text.length > VAGUE_CLAIM_PREFIX.length + VAGUE_CLAIM_SUFFIX.length &&
       codePointLength(middle) <= MAX_VAGUE_PARENTHETICAL_CODEPOINTS &&
       // Any bracket (ASCII, fullwidth, superscript, small, ornate...) or line break would let the
-      // parenthetical close early or start a new line; the full ADR-19 filter arrives with W1.4.
+      // parenthetical close early or start a new line; the denylist then runs on the middle (below).
       !/[\p{Ps}\p{Pe}\r\n]/u.test(middle);
-    if (!shaped) add(['instruction', 'text'], 'vague_claim requires the fork template with a short parenthetical (no brackets) filled in');
+    if (!shaped) {
+      add(['instruction', 'text'], 'vague_claim requires the fork template with a short parenthetical (no brackets) filled in');
+    } else {
+      const why = injectedTextDenylistViolation(middle);
+      if (why !== null) add(['instruction', 'text'], `vague_claim parenthetical ${why}`);
+    }
   } else if (f.category === 'register') {
     if (f.severity === 'block') add(['severity'], 'register findings are capped at warn');
     if (codePointLength(text) > MAX_REGISTER_INSTRUCTION_CODEPOINTS) {
       add(['instruction', 'text'], `register instruction text must be at most ${MAX_REGISTER_INSTRUCTION_CODEPOINTS} code points`);
+    } else if (!tooLong) {
+      const why = injectedTextViolation(text, MAX_REGISTER_INSTRUCTION_CODEPOINTS);
+      if (why !== null) add(['instruction', 'text'], `register instruction text ${why}`);
     }
   }
   return out;
@@ -263,7 +301,7 @@ export const FindingSchema = z
     confidence: z.number().min(0).max(1),
     instruction: z.strictObject({ action: ActionSchema, text: z.string() }),
     evidence: z.string().nullable(),
-    profile_origin: ProfileIdSchema,
+    profile_origin: ProfileIdFormatSchema, // the id denylist runs in findingProblems
   })
   .superRefine((f, ctx) => {
     emit(ctx, findingProblems(f));

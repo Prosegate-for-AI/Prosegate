@@ -1,20 +1,40 @@
 import semver from "semver";
 import { z } from "zod";
-import { RULE_CATEGORIES } from "@prosegate/schema";
-import { injectedTextViolation } from "./text.js";
+import { idDenylistViolation, injectedTextViolation, RULE_CATEGORIES } from "@prosegate/schema";
 
 // Field schemas shared by the pack, profile and snapshot schemas.
 
 /** ADR-17: namespace, slug and pack id are each [a-z0-9-]{1,31}, so ids fit the telemetry token rule. */
 const ID_PART = "[a-z0-9-]{1,31}";
-export const PackIdSchema = z.string().regex(new RegExp(`^${ID_PART}$`), "must match [a-z0-9-]{1,31}");
-export const ProfileIdSchema = z.string().regex(new RegExp(`^${ID_PART}/${ID_PART}$`), "must be <namespace>/<slug>, each [a-z0-9-]{1,31}");
+
+/**
+ * Ids reach the model (session banner, findings), so profile ids, pack ids and rule ids also pass the id
+ * denylist (ADR-20): product and tool tokens, injection phrasing and URL forms, with `-` read as a space.
+ * Shell words are not checked, so `acme/ssh-guide` stays legal. A namespace alone is not checked: the
+ * reserved names (`local`, `prosegate`, `core`) have their own rule.
+ */
+function idDenylist(label: string) {
+  return (id: string, ctx: z.core.$RefinementCtx): void => {
+    const reason = idDenylistViolation(id);
+    if (reason !== null) ctx.addIssue({ code: "custom", message: `${label} ${reason}` });
+  };
+}
+
+export const PackIdSchema = z
+  .string()
+  .regex(new RegExp(`^${ID_PART}$`), "must match [a-z0-9-]{1,31}")
+  .superRefine(idDenylist("pack id"));
+export const ProfileIdSchema = z
+  .string()
+  .regex(new RegExp(`^${ID_PART}/${ID_PART}$`), "must be <namespace>/<slug>, each [a-z0-9-]{1,31}")
+  .superRefine(idDenylist("profile id"));
 export const NamespaceSchema = z.string().regex(new RegExp(`^${ID_PART}$`), "must match [a-z0-9-]{1,31}");
 
 /** Any rule id in any pack: `<pack>.<category>.<nnn>`. */
 export const RuleIdSchema = z
   .string()
-  .regex(new RegExp(`^${ID_PART}\\.(${RULE_CATEGORIES.join("|")})\\.\\d{3}$`), "must look like <pack>.<category>.<nnn>, e.g. core.hedge.001");
+  .regex(new RegExp(`^${ID_PART}\\.(${RULE_CATEGORIES.join("|")})\\.\\d{3}$`), "must look like <pack>.<category>.<nnn>, e.g. core.hedge.001")
+  .superRefine(idDenylist("rule id"));
 
 export const SeveritySchema = z.enum(["block", "warn", "info"]);
 

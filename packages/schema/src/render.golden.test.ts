@@ -4,7 +4,7 @@
 // imports. Fixtures are built with makeResult(), which runs them through the strict validator.
 
 import { describe, expect, it } from 'vitest';
-import { makeResult, type FixtureFinding } from './fixtures.js';
+import { makeRawResult, makeResult, type FixtureFinding } from './fixtures.js';
 import { renderFeedbackText, renderNotice, trimSpan, type NoticeContext } from './render.js';
 import { ReviewResultSchema } from './schemas.js';
 import type { ReviewResult } from './types.js';
@@ -658,7 +658,8 @@ describe('trimming counts code points, never splits a surrogate pair, and prefer
 
   it('feedback_text collapses line breaks in spans and instructions so each finding stays on one line', () => {
     const text = 'first line\nsecond line';
-    const r = makeResult({
+    // Raw: the strict validator refuses a line break in the instruction; the renderer collapses it anyway.
+    const r = makeRawResult({
       text,
       profileId: 'local/chat-reply',
       verdict: 'revise',

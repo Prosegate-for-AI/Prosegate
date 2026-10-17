@@ -3,7 +3,7 @@
 // line, forge a protocol line, or drive the terminal.
 
 import { describe, expect, it } from 'vitest';
-import { makeResult } from './fixtures.js';
+import { makeRawResult, makeResult } from './fixtures.js';
 import { renderFeedbackText, renderNotice, safeInline, type NoticeContext } from './render.js';
 import type { ReviewResult } from './types.js';
 
@@ -159,7 +159,8 @@ describe('terminal control sequences are neutralised', () => {
 
   it.each(cases)('%s: no control or bidi character reaches either string', (_name, payload) => {
     const text = `lead ${payload} tail`;
-    const base = makeResult({
+    // The strict validator refuses these instructions; the renderer must neutralise them on its own.
+    const base = makeRawResult({
       text,
       profileId: 'local/pr-description',
       verdict: 'revise',
