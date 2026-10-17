@@ -68,7 +68,7 @@ Starter profiles ship with the adapter. Cells show the category severity each pr
 | filler |  |  |  | 002 → info (sign-offs allowed) |  |
 | hedge |  |  | 003 → info (positions argued) |  |  |
 | vocab |  |  | `comprehensive` allowed |  |  |
-| triad |  | info |  |  |  |
+| triad |  |  |  |  |  |
 | structure |  | block | 001, 002 → info (headings expected) | 001 → block | 005 → block |
 | repetition |  |  |  |  |  |
 | reviewer `register.max_words` | 600 | 300 | 2,500 | 200 | 250 |

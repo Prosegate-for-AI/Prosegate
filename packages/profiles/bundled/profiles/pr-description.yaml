@@ -12,7 +12,6 @@ trigger:
 
 overrides:
   categories:
-    triad: { severity: info }
     structure: { severity: block }
 
 reviewer:
