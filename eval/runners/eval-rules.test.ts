@@ -16,7 +16,7 @@ import type { Report, RunOptions } from "./rules-run.js";
 import { validateGold } from "./rules-corpus.js";
 import { compareToBaseline, confirms, gateFalsePositive, gatePrecision, gateRecall, percentile, spansOverlap, type MetricResult } from "./rules-gates.js";
 import { realisticDoc } from "./rules-perf-doc.js";
-import { FixtureCorpora, baselineFile, doc, HUMAN_META } from "./test-fixtures/build.js";
+import { FixtureCorpora, baselineFile, coreExampleCount, doc, HUMAN_META } from "./test-fixtures/build.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..");
@@ -100,8 +100,8 @@ describe("eval:rules gates (subprocess, fixture corpora)", { timeout: 180_000 },
     // Precision and recall are unmeasured here, so the headline is partial, not pass.
     expect(run.report?.result).toBe("partial");
     expect(run.stdout).toContain("RESULT: PARTIAL");
-    expect(run.report?.fp_source).toBe("post_overlap");
-    expect(run.report?.notes.join("\n")).toContain("fp_source: post_overlap");
+    expect(run.report?.fp_source).toBe("raw_candidates");
+    expect(run.report?.notes.join(" ")).not.toContain("fp_source: post_overlap");
     const rules = run.report?.packs[0]?.rules ?? [];
     expect(rules).toHaveLength(23);
     // Not vacuous: 40 documents reached every rule, zero findings, status pass (not n/a).
@@ -482,7 +482,7 @@ describe("eval:rules gates (subprocess, fixture corpora)", { timeout: 180_000 },
     const rep = run.report as Report;
     expect(rep.exit_code).toBe(0);
     expect(rep.result).toBe("partial");
-    expect(rep.packs[0]?.examples).toMatchObject({ rules_pass: 23, rules_total: 23, pass: 46, total: 46 });
+    expect(rep.packs[0]?.examples).toMatchObject({ rules_pass: 23, rules_total: 23, pass: coreExampleCount(), total: coreExampleCount() });
     expect(rep.metric_coverage.false_positive).toEqual({ "n/a": 23 });
     expect(rep.packs[0]?.latency.source).toBe("engine-fixture");
     expect(rep.packs[0]?.latency.note).toContain("fallback");
@@ -521,7 +521,9 @@ function longAi(n: number): FixtureCorpora {
 describe("latency gate (in process, injected clock; no wall-clock dependence)", () => {
   it("a clock that makes the pack take > 200 ms per review fails the gate and names the pack", () => {
     let t = 0;
-    const out = inProcess(new FixtureCorpora(), { clock: () => (t += 30) }); // every engine clock read advances 30 ms
+    // Every engine clock read advances 150 ms. The engine's budget runs from the start of the review, so the
+    // rules stop at their first deadline check and rules_latency_ms is then two reads (check + end) = 300 ms > 200.
+    const out = inProcess(new FixtureCorpora(), { clock: () => (t += 150) });
     expect(out.exitCode).toBe(1);
     const lat = out.report?.failures.filter((f) => f.metric === "latency") ?? [];
     expect(lat.map((f) => [f.scope, f.id])).toEqual([["pack", "core"]]);
@@ -552,7 +554,7 @@ describe("latency gate (in process, injected clock; no wall-clock dependence)", 
 
   it("the AI-corpus branch gates too: slow injected timings fail it", () => {
     let t = 0;
-    const out = inProcess(longAi(10), { clock: () => (t += 30) });
+    const out = inProcess(longAi(10), { clock: () => (t += 150) });
     expect(out.report?.packs[0]?.latency).toMatchObject({ source: "ai-corpus", status: "fail" });
     expect(out.report?.failures.some((f) => f.metric === "latency")).toBe(true);
   });
@@ -592,6 +594,7 @@ describe("hidden false positives (in process)", () => {
     const blind = inProcess(new FixtureCorpora().humanSet(30, HEDGE, [4]), {
       review: (input) => {
         const r = reviewRulesDetailed(input);
+        (r.diagnostics as unknown as { candidates?: unknown }).candidates = undefined; // an engine without candidates
         if (input.request.text.includes("Ticket 1004 ")) r.diagnostics.all_findings = r.diagnostics.all_findings.filter((f) => f.rule_id !== "core.hedge.001");
         return r;
       },
@@ -600,7 +603,17 @@ describe("hidden false positives (in process)", () => {
     expect(blind.report?.packs[0]?.rules.find((x) => x.id === "core.hedge.001")?.false_positive).toMatchObject({ num: 0, status: "pass" });
     const plain = inProcess(new FixtureCorpora().humanSet(30));
     expect(plain.exitCode, plain.text).toBe(0);
-    expect(plain.report?.fp_source).toBe("post_overlap");
+    expect(plain.report?.fp_source).toBe("raw_candidates"); // the real engine now supplies them
+    expect(plain.report?.notes.join(" ")).not.toContain("fp_source: post_overlap");
+    const stripped = inProcess(new FixtureCorpora().humanSet(30), {
+      review: (input) => {
+        const r = reviewRulesDetailed(input);
+        (r.diagnostics as unknown as { candidates?: unknown }).candidates = undefined;
+        return r;
+      },
+    });
+    expect(stripped.report?.fp_source).toBe("post_overlap");
+    expect(stripped.report?.notes.join(" ")).toContain("fp_source: post_overlap");
   });
 
   it("a candidates value that is not an array is a harness error (exit 2)", () => {

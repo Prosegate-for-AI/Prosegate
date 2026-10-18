@@ -11,7 +11,7 @@ import {
   type ResolvedProfile,
   type RulePack,
 } from "@prosegate/profiles";
-import { compilePack, reviewRulesDetailed, type CompiledPack, type DetailedReview, type ReviewRulesInput } from "@prosegate/engine";
+import { compilePack, reviewRulesDetailed, type CompiledPack, type DetailedReview, type ReviewRulesInput, type RuleCandidate } from "@prosegate/engine";
 import type { Category, Finding, ReviewRequest } from "@prosegate/schema";
 import { analyse } from "@prosegate/segmenter";
 import { HarnessError, isCorpusRef, readExampleRef, type Corpora, type CorpusDoc } from "./rules-corpus.js";
@@ -234,21 +234,6 @@ function review(env: Env, pack: LoadedPack, resolved: ResolvedProfile, text: str
   const r = env.reviewFn({ request: request(text), resolved, packs: [pack.compiled], enforce: true, now: env.clock });
   env.dropped += r.diagnostics.invalid_findings_dropped;
   return r;
-}
-
-/**
- * One raw rule match, as the engine will emit it in `diagnostics.candidates`: before overlap resolution
- * and before caps, at the rule's effective severity under the resolved profile, info included, sorted by
- * start then rule_id. A local copy of the engine's `RuleCandidate` type until the engine exports it; swap
- * this for the import then.
- */
-export interface RuleCandidate {
-  rule_id: string;
-  category: Category;
-  severity: Severity;
-  start: number;
-  end: number;
-  scope: "span" | "document";
 }
 
 /**
