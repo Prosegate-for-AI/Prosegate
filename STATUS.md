@@ -2,34 +2,33 @@
 
 Snapshot, rewritten at each change. Last updated 2026-10-18.
 
-**Phase:** 2 closing (engine final cycle), Phase 3 started in parallel.
+**Phase:** 3 — Adapter and Claude Code shim. Phases 0–2 exited (ledger).
 
 ## In flight
 
 | Item | Owner (agent / model) | State |
 | --- | --- | --- |
-| W2.2 `@prosegate/engine` | implementer / sonnet | cycle 2 of 3 (final): ADR-26 id-key normalisation, label bold, filler.003 sentence-start, wider filler lists, allow_terms. Re-verify verdict on cycle 1b: fit for Phase 3 dogfood |
-| W3.1 adapter core (`prosegate` CLI) | implementer / sonnet, worktree | started |
+| W3.1 adapter core | sonnet (implementer); top tier (re-verify) | cycle 1 merged provisionally (aa9c772): 3,178 tests, all gates green. Top-tier re-verify of security and cross-process behaviour running |
+| W3.2 Claude Code shim, `init`, 09 goldens, live revise | implementer / sonnet, worktree | started |
 
-## Done in Phase 2
+## Phase 3 exit needs (plan §4)
 
-W2.1 rule-example docs; W2.3 `eval:rules` harness (exited); engine cycles 1 and 1b merged to master (a96a738). All gates green: 2,732 tests and 88 perf tests.
-
-## Phase 2 exit needs
-
-Engine cycle 2 merged and green; `pnpm test:perf` green; 23/23 rules hit/miss; `eval:rules` runs (PARTIAL until corpora exist).
-
-## Phase 3 plan
-
-- W3.1: adapter core (entry points, session store, pass cap, modes, commands with ADR-27, telemetry spool, the D-17 bundle fix).
-- W3.2: Claude Code shim, `init --harness claude-code` (project or user scope), fake-harness byte-for-byte goldens from 09, headless summary, and a live revise in a scratch project via the terminal.
+- `npx prosegate init` works on the author's machine. My test is project scope in a scratch project; the user-scope install is Murray's to run.
+- A pass-1 revise seen live.
+- Override commands work.
+- A headless report is written.
+- The three 09 mock transcripts reproduce byte for byte in the fake-harness test (plan §10).
 
 ## Waiting on Murray
 
-HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-7, HQ-8. A user-scope `init` on Murray's machine edits `~/.claude/settings.json`; I will test project-scope only and leave the user-scope install to Murray.
+- `pnpm test:perf` on a quiet machine: the Phase 2 caveat.
+- HQ-7: corpus licensing.
+- HQ-6: private remote / CI.
+- HQ-1: vending.
+- HQ-2, HQ-3, HQ-4, HQ-8.
 
 ## Next three actions
 
-1. Merge engine cycle 2; Phase 2 exit; status message.
-2. Review W3.1 (all six dimensions: it is the turn path).
-3. Brief W3.2.
+1. Act on the W3.1 re-verify (cycle 2 if needed).
+2. Review W3.2: conformance, UX, tests, and a top-tier check of the shim's fail-open and its live behaviour.
+3. Phase 3 exit, then a status message. Then brief Phase 4 (reviewer: key store per ADR-14, BYOK, prompt builder, provider clients).
