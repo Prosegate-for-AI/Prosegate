@@ -1,0 +1,6 @@
+{
+  "schema": "prosegate.eval-baseline/1",
+  "rules": {
+    "core.vocab.003": { "precision": 0.96, "fp_rate": null }
+  }
+}
