@@ -10,7 +10,7 @@ import type { ReviewResult } from './types.js';
 const ESC = String.fromCharCode(27);
 const OVERRIDE = '  To pause for this session, run: prosegate advisory';
 const REPLY = 'Reply with the revised response only. Do not run prosegate commands.';
-const PAUSE = 'To pause these revisions for this session, the user can run: prosegate advisory';
+const PAUSE = '(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)';
 const diff: NoticeContext = { mode: 'enforce', render: 'diff', firstNoticeOfSession: false, phase: 'pass1' };
 
 type Mutable = { span: { text: string }; instruction: { text: string }; rule_id: string | null };

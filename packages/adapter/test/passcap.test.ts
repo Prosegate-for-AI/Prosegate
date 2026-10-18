@@ -148,9 +148,13 @@ describe("advisory", () => {
     expect(a.decision).toBe("allow");
     expect(a.feedback_text).toBe("");
     expect(a.result.verdict).toBe("pass");
-    expect(a.notice).toMatch(/^Prosegate · profile base · \d+ findings \(.*\) · advisory, not enforced\n {2}filler/);
-    // Still advisory on the next call for the same turn.
-    expect(end(home, TIC_TEXT, { continuation: true }).decision).toBe("allow");
+    // The lowered-enforcement line first (ADR-30), then the advisory notice with its findings (ADR-31).
+    expect(a.notice).toMatch(/^Prosegate · enforcement is lowered in this session \(advisory\) · prosegate status\nProsegate · profile base · \d+ findings \(.*\) · advisory, not enforced\n {2}filler/);
+    expect(state(home).first_notice_shown).toBe(false); // an advisory notice does not use up the first-notice override hint
+    // Still advisory on the next call for the same turn; the lowered line is once per session.
+    const again = end(home, TIC_TEXT, { continuation: true });
+    expect(again.decision).toBe("allow");
+    expect(again.notice).toMatch(/^Prosegate · profile base · \d+ findings/);
     expect(Object.values(state(home).turns).every((t) => t.count === 0)).toBe(true);
   });
 
@@ -159,7 +163,10 @@ describe("advisory", () => {
     command(home, "advisory");
     const r = command(home, "enforce");
     expect(r.stdout).toBe("Prosegate: enforcement restored for this session.\n");
-    expect(end(home, TIC_TEXT).decision).toBe("continue");
+    const a = end(home, TIC_TEXT);
+    expect(a.decision).toBe("continue");
+    // The override hint was not spent by an advisory turn.
+    expect(a.notice).toContain("To pause for this session, run: prosegate advisory");
   });
 });
 
@@ -186,11 +193,14 @@ describe("off", () => {
     command(home, "off");
     const before = spool(home).length;
     const a = end(home, TIC_TEXT);
-    expect(a).toMatchObject({ decision: "allow", feedback_text: "", notice: null, render: "none" });
+    // No review and no review notice; the user is told once that enforcement is lowered (ADR-30).
+    expect(a).toMatchObject({ decision: "allow", feedback_text: "", notice: "Prosegate · enforcement is lowered in this session (off) · prosegate status" });
     expect(a.result.verdict).toBe("skipped");
     expect(a.result.findings).toEqual([]);
+    expect(end(home, TIC_TEXT, { turn_id: "turn-2" }).notice).toBeNull();
     const added = spool(home).slice(before);
-    expect(added).toHaveLength(1);
+    expect(added).toHaveLength(2); // one override_used per turn-end, nothing else
+    expect(added.every((l) => l.includes('"override_used":true') && !l.includes('"t":"review"'))).toBe(true);
     expect(added[0]).toContain('"t":"enforcement"');
     expect(added[0]).toContain('"override_used":true');
     expect(added[0]).not.toContain('"t":"review"');
@@ -203,12 +213,13 @@ describe("PROSEGATE_MODE", () => {
     const a = end(home, TIC_TEXT, {}, { PROSEGATE_MODE: "advisory" });
     expect(a.decision).toBe("allow");
     expect(a.notice).toMatch(/advisory, not enforced/);
+    expect(a.notice).toContain("enforcement is lowered in this session (advisory)");
     expect(end(home, TIC_TEXT, { turn_id: "turn-9" }).decision).toBe("continue");
   });
   it("off in the environment reviews nothing", () => {
     const home = fresh();
     const a = end(home, TIC_TEXT, {}, { PROSEGATE_MODE: "off" });
-    expect(a).toMatchObject({ decision: "allow", notice: null });
+    expect(a).toMatchObject({ decision: "allow", notice: "Prosegate · enforcement is lowered in this session (off) · prosegate status" });
     expect(a.result.verdict).toBe("skipped");
   });
 });

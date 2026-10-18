@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, utimesSync,
 import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { sessionStart, turnEnd, turnStart } from "../src/hooks.js";
-import { SESSION_RETENTION_MS, SessionStore, listSessions, rememberCwdProfile, readCwdProfiles, sweepSessions, turnKey } from "../src/store.js";
+import { SESSION_RETENTION_MS, SessionStore, VALIDATED_KEEP, listSessions, pruneValidated, rememberCwdProfile, readCwdProfiles, sweepSessions, turnKey } from "../src/store.js";
 import { SPOOL_MAX_EVENTS, encodeBatch, readSpool, recordEvents, enforcementEvent } from "../src/telemetry.js";
 import { CLEAN_TEXT, SESSION, TIC_TEXT, buildBundle, pg, sessionStartInput, testCtx, tmpDir, turnEndInput } from "./helpers.js";
 
@@ -97,41 +97,77 @@ describe("store files are owner-only", () => {
   });
 });
 
-describe("retention (07)", () => {
-  function ageSession(home: string, id: string, ageMs: number): void {
+describe("retention (07, ADR-31)", () => {
+  /** Sets every file of a session (and the directory) to `when`. */
+  function setActivity(home: string, id: string, when: number): number {
     const dir = join(home, "sessions", id);
-    const when = new Date(Date.now() - ageMs);
-    for (const name of readdirSync(dir)) utimesSync(join(dir, name), when, when);
-    utimesSync(dir, when, when);
+    const d = new Date(when);
+    for (const name of readdirSync(dir)) utimesSync(join(dir, name), d, d);
+    utimesSync(dir, d, d);
+    return Math.max(...readdirSync(dir).map((n) => statSync(join(dir, n)).mtimeMs));
+  }
+  function make(home: string, id: string): void {
+    sessionStart({ harness: "claude-code", session_id: id, cwd: "/work/project", mode: "interactive" }, testCtx(home));
   }
 
-  it("session-start deletes session directories that have been idle past the window and keeps the rest", () => {
-    const home = tmpDir();
-    const ctx = testCtx(home);
-    for (const id of ["old-a", "old-b", "recent", "other"]) {
-      sessionStart({ harness: "claude-code", session_id: id, cwd: "/work/project", mode: "interactive" }, ctx);
-    }
-    ageSession(home, "old-a", 3 * 24 * 3600_000);
-    ageSession(home, "old-b", SESSION_RETENTION_MS + 60_000);
-    ageSession(home, "recent", 60_000);
-    sessionStart({ harness: "claude-code", session_id: "current", cwd: "/work/project", mode: "interactive" }, ctx);
-    expect(listSessions(ctx).map((s) => s.id).sort()).toEqual(["current", "other", "recent"]);
-    expect(existsSync(join(home, "sessions", "old-a"))).toBe(false);
+  it("keeps session state for 7 days idle", () => {
+    expect(SESSION_RETENTION_MS).toBe(7 * 24 * 3600 * 1000);
   });
 
-  it("never deletes the session that is starting, however old its directory looks", () => {
+  it("the boundary is exact: idle exactly 7 days is kept, one millisecond more is deleted", () => {
     const home = tmpDir();
-    const ctx = testCtx(home);
-    sessionStart({ harness: "claude-code", session_id: "me", cwd: "/work/project", mode: "interactive" }, ctx);
-    ageSession(home, "me", 10 * 24 * 3600_000);
-    expect(sweepSessions(ctx, "me")).toEqual([]);
+    make(home, "edge");
+    make(home, "past");
+    make(home, "current");
+    const edge = setActivity(home, "edge", Date.now() - 20 * 24 * 3600_000);
+    const past = setActivity(home, "past", Date.now() - 20 * 24 * 3600_000);
+    // `now` is chosen from the real mtimes, so file-system timestamp rounding cannot move the boundary.
+    expect(sweepSessions(testCtx(home, { now: () => edge + SESSION_RETENTION_MS }), "current")).toEqual([]);
+    expect(listSessions(testCtx(home)).map((s) => s.id).sort()).toEqual(["current", "edge", "past"]);
+    expect(sweepSessions(testCtx(home, { now: () => past + SESSION_RETENTION_MS + 1 }), "current").sort()).toEqual(["edge", "past"]);
+    expect(listSessions(testCtx(home)).map((s) => s.id)).toEqual(["current"]);
+  });
+
+  it("6.9 days idle survives a session start, 7.1 days does not", () => {
+    const home = tmpDir();
+    make(home, "young");
+    make(home, "old");
+    setActivity(home, "young", Date.now() - 6.9 * 24 * 3600_000);
+    setActivity(home, "old", Date.now() - 7.1 * 24 * 3600_000);
+    make(home, "current");
+    expect(listSessions(testCtx(home)).map((s) => s.id).sort()).toEqual(["current", "young"]);
+  });
+
+  it("idleness is the newest FILE mtime, not the directory's: a busy session in an old-looking directory is kept", () => {
+    const home = tmpDir();
+    make(home, "busy");
+    make(home, "stale");
+    const dir = join(home, "sessions", "busy");
+    for (const name of readdirSync(dir)) {
+      const fresh = new Date();
+      utimesSync(join(dir, name), fresh, fresh);
+    }
+    const ancient = new Date(Date.now() - 30 * 24 * 3600_000);
+    utimesSync(dir, ancient, ancient); // directory looks ancient, files are fresh
+    // The other way round: a directory touched just now over files that are 30 days idle.
+    setActivity(home, "stale", ancient.getTime());
+    utimesSync(join(home, "sessions", "stale"), new Date(), new Date());
+    make(home, "current");
+    expect(listSessions(testCtx(home)).map((s) => s.id).sort()).toEqual(["busy", "current"]);
+  });
+
+  it("never deletes the session that is starting, however old its files look", () => {
+    const home = tmpDir();
+    make(home, "me");
+    setActivity(home, "me", Date.now() - 10 * 24 * 3600_000);
+    expect(sweepSessions(testCtx(home), "me")).toEqual([]);
     expect(existsSync(join(home, "sessions", "me"))).toBe(true);
   });
 
   it("the built bundle does it too, in a fresh process", () => {
     const home = tmpDir();
     pg(bundle, ["session-start"], { home, input: sessionStartInput({ session_id: "old-one" }) });
-    ageSession(home, "old-one", 5 * 24 * 3600_000);
+    setActivity(home, "old-one", Date.now() - 9 * 24 * 3600_000);
     pg(bundle, ["session-start"], { home, input: sessionStartInput({ session_id: "new-one" }) });
     expect(readdirSync(join(home, "sessions"))).toEqual(["new-one"]);
   });
@@ -142,7 +178,48 @@ describe("retention (07)", () => {
     writeFileSync(join(home, "sessions", "stray.txt"), "x");
     expect(listSessions(testCtx(home))).toEqual([]);
   });
+
+  it("turn.json is deleted when the turn ends with allow, and kept while the model is being continued", () => {
+    const home = tmpDir();
+    const ctx = testCtx(home);
+    make(home, SESSION);
+    const turn = join(home, "sessions", SESSION, "turn.json");
+    turnStart({ session_id: SESSION, user_message: "SECRET-USER-WORDS", tool_calls_so_far: [] }, ctx);
+    expect(readFileSync(turn, "utf8")).toContain("SECRET-USER-WORDS");
+    const end = (text: string, continuation: boolean) => turnEnd({ session_id: SESSION, turn_id: "t", assistant_text: text, user_message: "", tool_calls: [], continuation }, ctx).output;
+    expect(end(TIC_TEXT, false).decision).toBe("continue");
+    expect(existsSync(turn)).toBe(true);
+    expect(end(CLEAN_TEXT, true).decision).toBe("allow");
+    expect(existsSync(turn)).toBe(false);
+  });
+
+  it("report.json is deleted at the next session start (any session's)", () => {
+    const home = tmpDir();
+    const ctx = testCtx(home, { env: { CI: "true" } });
+    make(home, "a");
+    turnEnd({ session_id: "a", turn_id: "t", assistant_text: TIC_TEXT, user_message: "", tool_calls: [], continuation: false }, ctx);
+    const report = join(home, "sessions", "a", "report.json");
+    expect(existsSync(report)).toBe(true);
+    make(home, "b");
+    expect(existsSync(report)).toBe(false);
+  });
+
+  it("session start sweeps temp files a killed hook left behind, and only old ones", () => {
+    const home = tmpDir();
+    make(home, "a");
+    const dir = join(home, "sessions", "a");
+    const old = join(dir, "state.json.123.abc.tmp");
+    const young = join(dir, "state.json.456.def.tmp");
+    writeFileSync(old, "x");
+    writeFileSync(young, "x");
+    const longAgo = new Date(Date.now() - 60_000);
+    utimesSync(old, longAgo, longAgo);
+    make(home, "b");
+    expect(existsSync(old)).toBe(false);
+    expect(existsSync(young)).toBe(true);
+  });
 });
+
 
 describe("the session store", () => {
   it("turn ids become 16-hex keys, so a hostile id cannot be a path or a prototype key", () => {
@@ -177,6 +254,23 @@ describe("the session store", () => {
     expect(Object.keys(new SessionStore(ctx, SESSION).readState()?.turns ?? {})).toHaveLength(1);
     turnStart({ session_id: SESSION, user_message: "next", tool_calls_so_far: [] }, ctx);
     expect(new SessionStore(ctx, SESSION).readState()?.turns).toEqual({});
+  });
+
+  it("keeps the newest 200 validated-content markers and drops the rest", () => {
+    const home = tmpDir();
+    const dir = join(home, "validated");
+    mkdirSync(dir, { recursive: true });
+    for (let i = 0; i < VALIDATED_KEEP + 5; i++) {
+      const file = join(dir, `m${String(i).padStart(3, "0")}.json`);
+      writeFileSync(file, "{}");
+      const when = new Date(Date.now() - (VALIDATED_KEEP + 5 - i) * 1000);
+      utimesSync(file, when, when);
+    }
+    expect(pruneValidated(testCtx(home))).toBe(5);
+    const left = readdirSync(dir).sort();
+    expect(left).toHaveLength(VALIDATED_KEEP);
+    expect(left[0]).toBe("m005.json"); // the five oldest went
+    expect(pruneValidated(testCtx(home))).toBe(0);
   });
 
   it("the cwd -> profile map is bounded and keyed by a normalised path", () => {

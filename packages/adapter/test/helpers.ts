@@ -22,25 +22,39 @@ export function tmpDir(prefix = "pg-adapter-"): string {
   return d;
 }
 
-let builtBundle: Promise<string> | undefined;
+const builtBundles = new Map<string, Promise<string>>();
 
-/** Builds the real tsup bundle (same config as `pnpm build`) into a temp directory, once per test file. */
-export function buildBundle(): Promise<string> {
-  builtBundle ??= (async () => {
-    const out = tmpDir("pg-bundle-");
-    const base = tsupConfig as unknown as Record<string, unknown>;
-    await build({
-      ...base,
-      entry: { prosegate: join(ADAPTER_DIR, "src", "cli.ts") },
-      tsconfig: join(ADAPTER_DIR, "tsconfig.json"),
-      outDir: out,
-      clean: false,
-      silent: true,
-      config: false,
-    });
-    return join(out, "prosegate.mjs");
-  })();
-  return builtBundle;
+/**
+ * Builds the real tsup bundle (same config as `pnpm build`) into a temp directory, once per test file.
+ * `release` is the published bundle, with no test lever in it (ADR-29): subprocess tests use it unless
+ * they need fault injection. `test` is the same build with `__PROSEGATE_TEST__` true, which honours PROSEGATE_TEST_HOOKS.
+ */
+export function buildBundle(kind: "release" | "test" = "release"): Promise<string> {
+  let built = builtBundles.get(kind);
+  if (built === undefined) {
+    built = (async () => {
+      const out = tmpDir(`pg-bundle-${kind}-`);
+      const base = tsupConfig as unknown as { define?: Record<string, string> } & Record<string, unknown>;
+      await build({
+        ...base,
+        define: { ...(base.define ?? {}), __PROSEGATE_TEST__: kind === "test" ? JSON.stringify("PROSEGATE_TEST_HOOKS") : "false" },
+        entry: { prosegate: join(ADAPTER_DIR, "src", "cli.ts") },
+        tsconfig: join(ADAPTER_DIR, "tsconfig.json"),
+        outDir: out,
+        clean: false,
+        silent: true,
+        config: false,
+      });
+      return join(out, "prosegate.mjs");
+    })();
+    builtBundles.set(kind, built);
+  }
+  return built;
+}
+
+/** The environment that drives a test build's fault injection (it does nothing in a release bundle). */
+export function testHooks(hooks: Record<string, unknown>): Record<string, string> {
+  return { PROSEGATE_TEST_HOOKS: JSON.stringify(hooks) };
 }
 
 export interface Proc {
@@ -59,14 +73,13 @@ export interface SpawnOpts {
   args?: string[];
 }
 
-const SCRUBBED = ["CLAUDECODE", "CI", "PROSEGATE_MODE", "PROSEGATE_SESSION", "PROSEGATE_DEBUG", "PROSEGATE_TEST_HOOKS", "PROSEGATE_TIMINGS"];
+const SCRUBBED = ["CLAUDECODE", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_ENTRYPOINT", "CI", "PROSEGATE_MODE", "PROSEGATE_SESSION", "PROSEGATE_DEBUG", "PROSEGATE_TEST_HOOKS", "PROSEGATE_TIMINGS"];
 
 /** The test process's environment without agent markers and Prosegate switches, plus what the test sets. */
 function cleanEnv(o: SpawnOpts): NodeJS.ProcessEnv {
   const kept = Object.entries(process.env).filter(([k]) => !SCRUBBED.includes(k.toUpperCase()));
   const extra = Object.entries(o.env ?? {}).filter((e): e is [string, string] => e[1] !== undefined);
-  // A busy test machine can take seconds to start a process; the 6 s turn-end guard is tested on its own.
-  return { ...Object.fromEntries(kept), PROSEGATE_HOME: o.home, PROSEGATE_TEST_HOOKS: JSON.stringify({ budgetMs: 120_000, engineBudgetMs: 10_000 }), ...Object.fromEntries(extra) };
+  return { ...Object.fromEntries(kept), PROSEGATE_HOME: o.home, ...Object.fromEntries(extra) };
 }
 
 /** Runs the built bundle in a fresh process with a temp HOME. The environment starts clean of agent markers. */
@@ -144,9 +157,8 @@ export function testCtx(home: string, over: Partial<Ctx> = {}): Ctx {
     cwd: "/work/project",
     platform: process.platform,
     stdinIsTTY: true,
-    // In process the clock would be the test worker's age, not a hook process's; and a busy machine must not trip the engine's 200 ms budget.
+    // In process the clock would be the test worker's age, not a hook process's.
     elapsedMs: () => 10,
-    testHooks: { engineBudgetMs: 10_000 },
     ...over,
   });
 }

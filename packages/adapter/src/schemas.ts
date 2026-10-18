@@ -10,16 +10,20 @@ import { SESSION_ID_RE } from "./ctx.js";
 const SessionId = z.string().regex(SESSION_ID_RE, "session_id must match [A-Za-z0-9_-]{1,128}");
 /** A tool name or similar short token from the harness. */
 const ShortString = z.string().max(300);
-/** Hook JSON is read whole; these caps are about shape, the 256 KB prose cap is applied by the pipeline. */
-const MAX_TEXT = 4_000_000;
+/** Hook JSON is read whole; this cap is about shape. The stdin cap (12 MB) bounds the bytes, the engine bounds the review (ADR-30). */
+export const MAX_TEXT = 12_000_000;
 
 export const HarnessModeSchema = z.enum(["interactive", "headless"]);
+
+export const SESSION_SOURCES = ["startup", "resume", "clear", "compact", "fork"] as const;
 
 export const SessionStartInputSchema = z.strictObject({
   harness: z.string().min(1).max(64),
   session_id: SessionId,
   cwd: z.string().min(1).max(4096),
   mode: HarnessModeSchema,
+  /** Why the session started (ADR-31). Absent means `startup`. */
+  source: z.enum(SESSION_SOURCES).optional(),
 });
 export type SessionStartInput = z.infer<typeof SessionStartInputSchema>;
 
@@ -38,6 +42,8 @@ export const TurnEndInputSchema = z.strictObject({
   user_message: z.string().max(MAX_TEXT).nullish(),
   tool_calls: z.array(ShortString).max(2000),
   continuation: z.boolean(),
+  /** False when the harness cannot continue the model, so `enforcement_unavailable` can be recorded (ADR-29). Default true. */
+  continue_supported: z.boolean().optional(),
 });
 export type TurnEndInput = z.infer<typeof TurnEndInputSchema>;
 
@@ -54,9 +60,26 @@ export const TurnRecordSchema = z.strictObject({
   /** Findings reported on pass 1 (ids and categories only; ids are hashes of span text and stay on this machine). */
   pass1: z.array(FindingRef).max(500),
   pass1_block_count: z.number().int().min(0),
+  /** The profile pass 1 used; pass 2 and the cap check use it too (ADR-31). */
+  profile_id: z.string().max(80),
+  profile_version: z.string().max(80),
+  /** The "shipped as is" notice was already shown for this turn (ADR-31). */
+  shipped_shown: z.boolean(),
   updated_at: z.number().int().min(0),
 });
 export type TurnRecord = z.infer<typeof TurnRecordSchema>;
+
+export const OUTCOMES = ["clean", "revised", "shipped", "advisory", "too_short", "no_prose", "budget", "truncated", "off"] as const;
+
+/** What `prosegate status` says about the last reviewed turn. */
+export const LastTurnSchema = z.strictObject({
+  outcome: z.enum(OUTCOMES),
+  findings: z.number().int().min(0),
+  fixed: z.number().int().min(0),
+  remaining: z.number().int().min(0),
+  revisions: z.number().int().min(0).max(2),
+});
+export type LastTurn = z.infer<typeof LastTurnSchema>;
 
 export const StateSchema = z.strictObject({
   v: z.literal(1),
@@ -77,6 +100,14 @@ export const StateSchema = z.strictObject({
   overlays_notice_shown: z.boolean(),
   resolution_notice_shown: z.boolean(),
   last_seen_profile_version: z.string().max(80).nullable(),
+  /** sha256 (16 hex) of every local profile and pack file at session start; a change is a lowering reason (ADR-30). */
+  local_hashes: z.record(z.string().max(400), z.string().max(40)),
+  /** The lowered-enforcement reason last shown to the user ('' when none); it shows again when it changes. */
+  lowered_shown: z.string().max(400),
+  debug_notice_shown: z.boolean(),
+  /** Reviewed turns so far, for the headless line's turn number. */
+  turn_ordinal: z.number().int().min(0),
+  last_turn: LastTurnSchema.nullable(),
   created_at: z.number().int().min(0),
   updated_at: z.number().int().min(0),
 });
@@ -92,6 +123,11 @@ export type TurnFile = z.infer<typeof TurnFileSchema>;
 export const CwdProfilesSchema = z.record(z.string().max(4096), z.strictObject({ profile: z.string().max(80), ts: z.number().int().min(0) }));
 export type CwdProfiles = z.infer<typeof CwdProfilesSchema>;
 
+/**
+ * Per profile: the integer version and what the profile pinned, as of the last session start. The
+ * "profile updated" line (ADR-28) fires only when the integer or a pinned pack moved, so the user's
+ * own `rule off` never triggers it. `summary` holds `pack:<id>` -> version and `rule:<id>` -> fingerprint.
+ */
 export const ProfileVersionsSchema = z.record(
   z.string().max(80),
   z.strictObject({ version: z.string().max(80), summary: z.record(z.string().max(120), z.string().max(80)) }),
@@ -108,10 +144,13 @@ const ReportFinding = z.strictObject({
 
 export const TurnReportSchema = z.strictObject({
   turn: z.string().regex(/^[0-9a-f]{16}$/),
+  /** 1-based ordinal of the reviewed turn in this session. */
+  ordinal: z.number().int().min(0),
   profile: z.string().max(80),
   /** Review passes run so far for this turn (1 or 2; the cap check after pass 2 does not count). */
   passes: z.number().int().min(0).max(3),
   verdict: z.enum(["pass", "revise", "skipped"]),
+  skipped_reason: z.string().max(40).optional(),
   findings: z.array(ReportFinding).max(200),
   /** Pass-1 findings no longer present at pass 2. */
   cleared: z.number().int().min(0),

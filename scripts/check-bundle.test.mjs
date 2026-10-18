@@ -64,7 +64,42 @@ describe("disallowedSpecifiers", () => {
   });
 });
 
+// A stand-in for the CLI that answers the three calls the way the real one does, with any part replaced.
+function fakeCli(over = {}) {
+  const answers = {
+    sessionStart: {
+      inject: "If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands.\nActive profile: Base.",
+      notice: null,
+      active_profile: "local/base",
+      offline: true,
+    },
+    revise: { decision: "continue", feedback_text: "[Prosegate] 2 findings", notice: null, result: { verdict: "revise" } },
+    pass: { decision: "allow", feedback_text: "", notice: null, result: { verdict: "pass" } },
+    // Run when each call starts, with the process environment; return text to exit 1 with that message.
+    guard: "",
+    ...over,
+  };
+  return [
+    'let input = "";',
+    'process.stdin.on("data", (d) => (input += d));',
+    'process.stdin.on("end", () => {',
+    `  ${answers.guard}`,
+    "  const name = process.argv[2];",
+    "  const body = input ? JSON.parse(input) : {};",
+    `  if (name === "session-start") return console.log(JSON.stringify(${JSON.stringify(answers.sessionStart)}));`,
+    `  console.log(JSON.stringify(body.turn_id === "t1" ? ${JSON.stringify(answers.revise)} : ${JSON.stringify(answers.pass)}));`,
+    "});",
+  ].join("\n");
+}
+
 describe("check-bundle execution step (DEBT D-17)", () => {
+  it("passes a stand-in that behaves like the real CLI", () => {
+    const res = checkExec(bundle(fakeCli()));
+    expect(res.err).toBe("");
+    expect(res.code).toBe(0);
+    expect(res.out).toContain("session-start and turn-end executed");
+  });
+
   it("fails a bundle that exits 0 but prints nothing a shim can read", () => {
     const res = checkExec(bundle('console.log("hello");\n'));
     expect(res.code).toBe(1);
@@ -79,18 +114,74 @@ describe("check-bundle execution step (DEBT D-17)", () => {
   });
 
   it("fails a bundle whose turn-end does not revise a text full of tics", () => {
-    const lazy = [
-      'let input = "";',
-      'process.stdin.on("data", (d) => (input += d));',
-      'process.stdin.on("end", () => {',
-      "  const name = process.argv[2];",
-      '  if (name === "session-start") console.log(JSON.stringify({ inject: "local/base", active_profile: "local/base", offline: true }));',
-      '  else console.log(JSON.stringify({ decision: "allow", feedback_text: "", notice: null, result: { verdict: "pass" } }));',
-      "});",
-    ].join("\n");
-    const res = checkExec(bundle(lazy));
+    const res = checkExec(bundle(fakeCli({ revise: { decision: "allow", feedback_text: "", notice: null, result: { verdict: "pass" } } })));
     expect(res.code).toBe(1);
     expect(res.err).toMatch(/execution: turn-end did not revise a text full of tics/);
+  });
+
+  it("fails a revision whose feedback does not start with [Prosegate] (K5)", () => {
+    const res = checkExec(bundle(fakeCli({ revise: { decision: "continue", feedback_text: "something else", notice: null, result: { verdict: "revise" } } })));
+    expect(res.code).toBe(1);
+    expect(res.err).toMatch(/did not revise a text full of tics/);
+  });
+
+  it("fails a revision whose verdict is not revise (K9)", () => {
+    const res = checkExec(bundle(fakeCli({ revise: { decision: "continue", feedback_text: "[Prosegate] x", notice: null, result: { verdict: "pass" } } })));
+    expect(res.code).toBe(1);
+    expect(res.err).toMatch(/did not revise a text full of tics/);
+  });
+
+  it("fails a clean turn that is not passed silently: each part is checked (K3)", () => {
+    for (const bad of [
+      { decision: "continue", feedback_text: "", notice: null, result: { verdict: "pass" } },
+      { decision: "allow", feedback_text: "[Prosegate] x", notice: null, result: { verdict: "pass" } },
+      { decision: "allow", feedback_text: "", notice: "Prosegate: something", result: { verdict: "pass" } },
+      { decision: "allow", feedback_text: "", notice: null, result: { verdict: "skipped" } },
+    ]) {
+      const res = checkExec(bundle(fakeCli({ pass: bad })));
+      expect(res.code, JSON.stringify(bad)).toBe(1);
+      expect(res.err, JSON.stringify(bad)).toMatch(/did not pass a clean text silently/);
+    }
+  });
+
+  it("fails a session-start payload that is wrong in any part (K4)", () => {
+    const good = {
+      inject: "If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands.\nActive profile: Base.",
+      notice: null,
+      active_profile: "local/base",
+      offline: true,
+    };
+    for (const bad of [
+      { ...good, active_profile: "local/other" },
+      { ...good, offline: false },
+      { ...good, inject: "Active profile: Base." },
+      { ...good, inject: "If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands." },
+      { ...good, notice: "Prosegate: something" },
+      { ...good, inject: 7 },
+    ]) {
+      const res = checkExec(bundle(fakeCli({ sessionStart: bad })));
+      expect(res.code, JSON.stringify(bad)).toBe(1);
+      expect(res.err, JSON.stringify(bad)).toMatch(/session-start returned an unexpected payload/);
+    }
+  });
+
+  it("scrubs the agent and CI environment before running the bundle (K8)", () => {
+    const guard = 'for (const k of Object.keys(process.env)) if (/^(CI|CLAUDECODE|CLAUDE_CODE_.*|PROSEGATE_(MODE|SESSION|DEBUG|TEST_HOOKS|TIMINGS))$/i.test(k)) { console.error("leaked " + k); process.exit(3); }';
+    const file = bundle(fakeCli({ guard }));
+    const dirty = { CI: "true", CLAUDECODE: "1", CLAUDE_CODE_SESSION_ID: "x", CLAUDE_CODE_ENTRYPOINT: "cli", CLAUDE_CODE_CHILD_SESSION: "1", PROSEGATE_MODE: "off", PROSEGATE_SESSION: "s", PROSEGATE_DEBUG: "1", PROSEGATE_TEST_HOOKS: "{}", PROSEGATE_TIMINGS: "1" };
+    const r = spawnSync(process.execPath, [SCRIPT, file], { encoding: "utf8", env: { ...process.env, ...dirty } });
+    expect(r.stderr).toBe("");
+    expect(r.status).toBe(0);
+  });
+
+  it("runs the bundle in a temp HOME, never the real one (K9)", () => {
+    const guard =
+      'const os = process.getBuiltinModule("os"); const real = process.env.REAL_HOME_FOR_TEST; const ph = process.env.PROSEGATE_HOME || ""; if (!ph.startsWith(os.tmpdir())) { console.error("home outside tmp: " + ph); process.exit(4); } if (process.env.HOME === real || process.env.USERPROFILE === real) { console.error("real home leaked"); process.exit(5); }';
+    const file = bundle(fakeCli({ guard }));
+    const real = process.env.USERPROFILE ?? process.env.HOME ?? "";
+    const r = spawnSync(process.execPath, [SCRIPT, file], { encoding: "utf8", env: { ...process.env, REAL_HOME_FOR_TEST: real } });
+    expect(r.stderr).toBe("");
+    expect(r.status).toBe(0);
   });
 
   it("skips the step with --no-exec", () => {
@@ -131,11 +222,13 @@ describe("check-bundle (subprocess)", () => {
   });
 
   it("fails when other JS files sit next to the bundle (code splitting)", () => {
-    const file = bundle("console.log(1);\n");
-    writeFileSync(join(dirname(file), "chunk-ABC.mjs"), "export {};\n");
-    const res = check(file);
-    expect(res.code).toBe(1);
-    expect(res.err).toContain("chunk-ABC.mjs");
+    for (const stray of ["chunk-ABC.mjs", "chunk-ABC.js", "chunk-ABC.cjs"]) {
+      const file = bundle("console.log(1);\n");
+      writeFileSync(join(dirname(file), stray), "export {};\n");
+      const res = check(file);
+      expect(res.code, stray).toBe(1);
+      expect(res.err, stray).toContain(stray);
+    }
   });
 
   it("exits 2 when the bundle does not exist", () => {

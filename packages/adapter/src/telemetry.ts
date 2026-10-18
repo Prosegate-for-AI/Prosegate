@@ -18,8 +18,8 @@ import {
   type SkippedReason,
   type TelemetryMaskContext,
 } from "@prosegate/schema";
-import type { Ctx } from "./ctx.js";
-import { appendLine, ensureDir, readFileOrNull, withLock, writeFileAtomic } from "./fs-secure.js";
+import { lockWaitMs, type Ctx } from "./ctx.js";
+import { LockTimeoutError, appendLine, ensureDirIn, readFileOrNull, withLock, writeFileAtomic } from "./fs-secure.js";
 import { log } from "./log.js";
 import { VERSION } from "./version.js";
 
@@ -129,40 +129,72 @@ function eventCount(line: string): number {
 
 /**
  * Appends one batch line to the spool, keeping at most SPOOL_MAX_EVENTS events (oldest dropped).
- * Never throws: a telemetry failure is logged and the turn goes on.
+ * Never throws: a telemetry failure is logged and the turn goes on. If the spool lock cannot be had
+ * in time (a planted or stuck lock), the batch is appended without the lock rather than dropped, so a
+ * lock file cannot suppress `override_used` (ADR-30); the bound is applied at the next locked write.
  */
 export function recordEvents(ctx: Ctx, drafts: readonly TelemetryDraft[]): void {
   if (drafts.length === 0) return;
+  let line: string;
   try {
-    const line = encodeBatch(drafts, ctx.now());
+    line = encodeBatch(drafts, ctx.now());
+  } catch {
+    log(ctx, "warn", "telemetry_dropped", "could not encode telemetry");
+    return;
+  }
+  try {
     const dir = join(ctx.home, "telemetry");
-    ensureDir(dir, ctx.platform);
+    ensureDirIn(ctx.home, dir, ctx.platform);
     const file = spoolPath(ctx);
-    withLock(`${file}.lock`, () => {
-      const existing = readFileOrNull(file);
-      if (existing === null || existing === "") {
-        appendLine(file, `${line}\n`);
-        return;
-      }
-      const lines = existing.split("\n").filter((l) => l !== "");
-      const added = eventCount(line);
-      let total = added;
-      const counts = lines.map(eventCount);
-      for (const c of counts) total += c;
-      if (total <= SPOOL_MAX_EVENTS) {
-        appendLine(file, `${line}\n`);
-        return;
-      }
-      // Over the bound: drop whole lines from the front until the new total fits.
-      let drop = 0;
-      while (drop < lines.length && total > SPOOL_MAX_EVENTS) {
-        total -= counts[drop] ?? 0;
-        drop++;
-      }
-      writeFileAtomic(file, `${[...lines.slice(drop), line].join("\n")}\n`);
-    });
+    try {
+      withLock(
+        `${file}.lock`,
+        () => {
+          const existing = readFileOrNull(file);
+          if (existing === null || existing === "") {
+            appendLine(file, `${line}\n`);
+            return;
+          }
+          const lines = existing.split("\n").filter((l) => l !== "");
+          const added = eventCount(line);
+          let total = added;
+          const counts = lines.map(eventCount);
+          for (const c of counts) total += c;
+          if (total <= SPOOL_MAX_EVENTS) {
+            appendLine(file, `${line}\n`);
+            return;
+          }
+          // Over the bound: drop whole lines from the front until the new total fits.
+          let drop = 0;
+          while (drop < lines.length && total > SPOOL_MAX_EVENTS) {
+            total -= counts[drop] ?? 0;
+            drop++;
+          }
+          writeFileAtomic(file, `${[...lines.slice(drop), line].join("\n")}\n`);
+        },
+        { timeoutMs: Math.min(500, lockWaitMs(ctx)) },
+      );
+    } catch (error) {
+      if (!(error instanceof LockTimeoutError)) throw error;
+      appendLine(file, `${line}\n`);
+      log(ctx, "warn", "telemetry_lock_skipped", "spool lock not acquired; appended without it");
+    }
   } catch {
     log(ctx, "warn", "telemetry_dropped", "could not spool telemetry");
+  }
+}
+
+/**
+ * The fail-open path's telemetry (ADR-30): an `adapter_error` event appended with no lock and no
+ * trimming, so nothing that failed earlier in the hook (a lock, a full state file) can stop it. Never throws.
+ */
+export function recordErrorLockFree(ctx: Ctx, code: ErrorCode): void {
+  try {
+    const dir = join(ctx.home, "telemetry");
+    ensureDirIn(ctx.home, dir, ctx.platform);
+    appendLine(spoolPath(ctx), `${encodeBatch([errorEvent(code)], ctx.now())}\n`);
+  } catch {
+    // The log line the caller writes is the last record.
   }
 }
 

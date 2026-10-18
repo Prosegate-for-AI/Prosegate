@@ -62,12 +62,11 @@ function clip(text, n = 600) {
  */
 export function executeRoundTrip(file, { timeoutMs = 60_000 } = {}) {
   const home = mkdtempSync(join(tmpdir(), "pg-check-bundle-"));
-  const scrubbed = new Set(["CLAUDECODE", "CI", "PROSEGATE_MODE", "PROSEGATE_SESSION", "PROSEGATE_DEBUG", "PROSEGATE_TEST_HOOKS"]);
+  // No CI, no agent marker, no Prosegate switch: the round trip must not change with where it runs.
+  const scrub = /^(CI|CLAUDECODE|CLAUDE_CODE_.*|PROSEGATE_.*)$/i;
   const env = {
-    ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !scrubbed.has(k.toUpperCase()))),
+    ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !scrub.test(k))),
     PROSEGATE_HOME: join(home, ".prosegate"),
-    // A busy CI runner can take seconds to start a process; this step is about whether the bundle runs, not how fast.
-    PROSEGATE_TEST_HOOKS: JSON.stringify({ budgetMs: 120_000, engineBudgetMs: 10_000 }),
     HOME: home,
     USERPROFILE: home,
   };
@@ -89,7 +88,7 @@ export function executeRoundTrip(file, { timeoutMs = 60_000 } = {}) {
     const session_id = "check-bundle";
     const started = call("session-start", { harness: "claude-code", session_id, cwd: home, mode: "interactive" });
     if (started !== null) {
-      if (started.active_profile !== "local/base" || started.offline !== true || typeof started.inject !== "string" || !started.inject.includes("local/base")) {
+      if (started.active_profile !== "local/base" || started.offline !== true || typeof started.inject !== "string" || !started.inject.startsWith("If a later message starts with [Prosegate]") || !started.inject.includes("Active profile: Base.") || started.notice !== null) {
         problems.push(`session-start returned an unexpected payload: ${clip(JSON.stringify(started), 300)}`);
       }
     }

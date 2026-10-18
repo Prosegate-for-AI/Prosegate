@@ -25,7 +25,8 @@ export default defineConfig({
   clean: true,
   noExternal: [/^(?!@napi-rs\/keyring(\/|$))/],
   external: [NATIVE],
-  define: { __PROSEGATE_VERSION__: JSON.stringify(pkg.version) },
+  // __PROSEGATE_TEST__ is false in the published bundle: no test lever can be reached there (ADR-29). Tests build with it true.
+  define: { __PROSEGATE_VERSION__: JSON.stringify(pkg.version), __PROSEGATE_TEST__: "false" },
   // The shebang, then a CommonJS `require` for the inlined dependencies that call it (`yaml` does:
   // without this the ESM bundle dies with "Dynamic require of process", DEBT D-17).
   banner: {

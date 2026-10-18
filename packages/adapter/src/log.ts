@@ -3,7 +3,7 @@
 // messages (Node's JSON.parse errors quote the input, for instance). Logging never throws.
 
 import { join } from "node:path";
-import { appendLine, ensureDir } from "./fs-secure.js";
+import { appendLine, ensureDirIn } from "./fs-secure.js";
 import type { Ctx } from "./ctx.js";
 
 export type LogLevel = "info" | "warn" | "error";
@@ -20,7 +20,7 @@ export function logLine(ctx: Ctx, level: LogLevel, code: string, message: string
 export function log(ctx: Ctx, level: LogLevel, code: string, message = ""): void {
   try {
     const dir = join(ctx.home, "logs");
-    ensureDir(dir, ctx.platform);
+    ensureDirIn(ctx.home, dir, ctx.platform);
     const day = new Date(ctx.now()).toISOString().slice(0, 10);
     appendLine(join(dir, `${day}.log`), logLine(ctx, level, code, message));
   } catch {

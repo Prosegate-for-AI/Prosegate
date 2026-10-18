@@ -35,7 +35,7 @@ describe("run", () => {
 
   it("lists every command in the help", async () => {
     const r = await exec(["--help"]);
-    for (const word of ["session-start", "turn-start", "turn-end", "advisory", "enforce", "quiet", "off", "profile <id>", "reload", "rule off <id>", "rule on <id>", "rule list", "status"]) {
+    for (const word of ["session-start", "turn-start", "turn-end", "advisory", "enforce", "quiet", "off", "profile [<id>]", "reload", "rule off <id>", "rule on <id>", "rule list", "status"]) {
       expect(r.out).toContain(word);
     }
   });
@@ -58,6 +58,6 @@ describe("run", () => {
     const r = await exec(["turn-end"], "{nope");
     expect(r.code).toBe(1);
     expect(r.out).toBe("");
-    expect(r.err).toMatch(/^prosegate: turn-end failed \(\w+\); failing open\.\n$/);
+    expect(r.err).toMatch(/^prosegate: could not review this turn \(turn-end failed: invalid hook input\); your reply was not held\. Details: .+\.log\n$/);
   });
 });
