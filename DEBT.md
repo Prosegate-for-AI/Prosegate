@@ -27,3 +27,4 @@ Accepted should-fix findings, known gaps and parked ideas. Each has the phase th
 | D-21 | Filler recall 53% on fresh tic text vs 10's 70% target; deterministic lists capped at ADR-26; Phase 4 reviewer and Phase 6 corpus measure and decide | W2.2 cycle 2 | 6 | open |
 | D-22 | `prosegate profile diff` (what changed between the last-seen and current profile), removed from the 09 notice until built | ADR-28 | 5 | open |
 | D-23 | A reply written entirely as a blockquote, as indented paragraphs or in an unclosed fence is never reviewed (no_prose). Blockquotes are excluded by design (03: users' words); measure how often models do this in the eval corpus | W3.1 security F15 | 6 | open |
+| D-24 | 'Fail closed' when re-resolution fails under an org `required` policy has no defined behaviour (hook fails open today). Decide with the config client | W3.1 conformance S5 | 7 | open |
