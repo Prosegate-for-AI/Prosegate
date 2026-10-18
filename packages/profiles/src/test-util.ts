@@ -175,3 +175,23 @@ export function orgPolicy(extra: Partial<OrgPolicyInput> = {}): OrgPolicyInput {
 }
 
 export const CORE_PIN = "rule_packs:\n  - { id: core, version: \">=0.1.0 <1.0.0\" }";
+
+// This package's tsconfig loads no Node types; tests that measure CPU time declare the one global they use.
+declare const process: { cpuUsage(previous?: { user: number; system: number }): { user: number; system: number } };
+
+/**
+ * Runs `fn` `runs` times and returns the best CPU time (user + system, in ms) with the last value. CPU time,
+ * not wall time: a wall-clock budget fails on a loaded machine (the workspace's tests run in parallel) for
+ * reasons that have nothing to do with the code under test.
+ */
+export function bestCpuMs<T>(fn: () => T, runs = 5): { ms: number; value: T } {
+  let best = Infinity;
+  let value!: T;
+  for (let i = 0; i < runs; i++) {
+    const before = process.cpuUsage();
+    value = fn();
+    const used = process.cpuUsage(before);
+    best = Math.min(best, (used.user + used.system) / 1000);
+  }
+  return { ms: best, value };
+}

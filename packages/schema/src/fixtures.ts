@@ -34,7 +34,12 @@ export function refeed<T extends ReviewResult>(r: T): T {
   return r;
 }
 
-export function makeResult(opts: FixtureOptions): ReviewResult {
+/**
+ * Builds the result and renders feedback_text but does NOT run the strict validator, for the renderer
+ * hardening tests that feed hostile instruction text the validator now refuses (the renderer must hold
+ * the line on its own). Everything else uses makeResult.
+ */
+export function makeRawResult(opts: FixtureOptions): ReviewResult {
   const findings: Finding[] = opts.findings.map((f) => {
     const start = opts.text.indexOf(f.span, f.after ?? 0);
     if (start === -1) throw new Error(`fixture span not in text: ${f.span}`);
@@ -73,5 +78,9 @@ export function makeResult(opts: FixtureOptions): ReviewResult {
     },
     feedback_text: '',
   };
-  return ReviewResultSchema.parse(refeed(result));
+  return refeed(result);
+}
+
+export function makeResult(opts: FixtureOptions): ReviewResult {
+  return ReviewResultSchema.parse(makeRawResult(opts));
 }

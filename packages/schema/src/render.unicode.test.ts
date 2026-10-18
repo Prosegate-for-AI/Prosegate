@@ -3,7 +3,7 @@
 // via_model bound. Code points are built with String.fromCodePoint so the source stays ASCII.
 
 import { describe, expect, it } from 'vitest';
-import { makeResult } from './fixtures.js';
+import { makeRawResult } from './fixtures.js';
 import { renderFeedbackText, renderNotice, safeInline, trimSpan, type NoticeContext } from './render.js';
 
 const u = (...cps: number[]) => String.fromCodePoint(...cps);
@@ -16,7 +16,8 @@ const E_ACUTE = u(0x65, 0x301); // e + combining acute
 const diff: NoticeContext = { mode: 'enforce', render: 'diff', firstNoticeOfSession: false, phase: 'pass1' };
 
 function single(span: string, instruction = 'Replace it.') {
-  return makeResult({
+  // Raw: some tests pass instructions the strict validator refuses; the renderer must cope on its own.
+  return makeRawResult({
     text: `${span} end`,
     profileId: 'local/chat-reply',
     verdict: 'revise',

@@ -50,4 +50,3 @@ export {
   type ResolvedProfile,
 } from "./snapshot.js";
 export { MAX_PACK_BYTES, MAX_PACK_NODES, MAX_PROFILE_BYTES, MAX_PROFILE_NODES } from "./yaml.js";
-export { injectedTextViolation } from "./text.js";

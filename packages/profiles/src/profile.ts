@@ -66,7 +66,7 @@ const OverridesSchema = z.strictObject({
 export const RegisterSchema = z.strictObject({
   max_words: z.number().int().positive().max(100_000).optional(),
   tone: injectedText(200).optional(),
-  format: injectedText(300).optional(),
+  format: injectedText(200).optional(),
 });
 
 const ReviewerSchema = z.strictObject({

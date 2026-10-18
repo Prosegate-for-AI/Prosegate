@@ -20,6 +20,7 @@ import {
   OffsetSchema,
   PackIdSchema,
   PassSchema,
+  ProfileIdFormatSchema,
   ProfileIdSchema,
   SegmentIdSchema,
   SegmentKindSchema,
@@ -64,7 +65,7 @@ const LenientFindingSchema = z.object({
   confidence: z.number().min(0).max(1),
   instruction: z.object({ action: z.string().min(1), text: z.string() }),
   evidence: z.string().nullable(),
-  profile_origin: ProfileIdSchema,
+  profile_origin: ProfileIdFormatSchema, // the id denylist runs per finding, in findingProblems
 });
 
 const LenientStatsSchema = z.object({

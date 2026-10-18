@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseProfileYaml } from "./profile.js";
 import { parseRulePackYaml } from "./rulepack.js";
-import { profileYaml } from "./test-util.js";
+import { bestCpuMs, profileYaml } from "./test-util.js";
 import { MAX_PACK_BYTES, MAX_PACK_NODES, MAX_PROFILE_BYTES, MAX_PROFILE_NODES, formatPath, parseYamlStrict } from "./yaml.js";
 
 const BIG = 1_000_000;
@@ -154,7 +154,8 @@ describe("YAML performance (ADR-19): hostile 256 KB documents parse or reject in
 
   it("a document just under the node cap (about 24k nodes of unique keys) parses with the O(n) duplicate check", () => {
     const text = Array.from({ length: 12_000 }, (_, i) => `k${i}: v`).join("\n");
-    const { ms, value } = timed(() => parseYamlStrict(text, MAX_PACK_BYTES, MAX_PACK_NODES));
+    // CPU time, best of 5 (a wall-clock budget fails on a loaded machine).
+    const { ms, value } = bestCpuMs(() => parseYamlStrict(text, MAX_PACK_BYTES, MAX_PACK_NODES));
     expect(value.ok).toBe(true);
     // The library alone needs 120-220 ms for 24k nodes (measured); the check adds under 30 ms. The
     // quadratic check it replaced took 20-80 s on a 256 KB pack.

@@ -10,6 +10,7 @@ export * from "./lenient.js";
 export * from "./finding-id.js";
 export * from "./spans.js";
 export * from "./render.js";
+export { idDenylistViolation, injectedTextDenylistViolation, injectedTextViolation } from "./injected-text.js";
 // Telemetry: the raw per-kind schemas (TELEMETRY_KINDS) stay internal; the wire schema, the server-only
 // stored schema and the one send path are the public surface.
 export {
