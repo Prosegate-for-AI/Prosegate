@@ -60,7 +60,7 @@ describe("09 mock transcript 1", () => {
         '2. hedge (core.hedge.001) — "It\'s worth noting that" → Remove the preamble; keep the clause after it.',
         '3. triad (core.triad.001) — "fast, simple, and reliable" → Keep the one that matters, or give evidence for each.',
         "Reply with the revised response only. Do not run prosegate commands.",
-        "To pause these revisions for this session, the user can run: prosegate advisory",
+        "(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)",
       ].join("\n"),
     );
   });

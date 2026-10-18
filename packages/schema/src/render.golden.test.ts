@@ -25,7 +25,7 @@ function seen<T extends string | null>(s: T): T {
 
 const LAST_LINES = [
   'Reply with the revised response only. Do not run prosegate commands.',
-  'To pause these revisions for this session, the user can run: prosegate advisory',
+  '(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)',
 ];
 
 // ---- 09 mock 1 ------------------------------------------------------------------------------

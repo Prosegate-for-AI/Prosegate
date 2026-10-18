@@ -11,7 +11,7 @@ import {
   type Severity,
   type SkippedReason,
 } from "@prosegate/schema";
-import { analyse, normalizeForMatching } from "@prosegate/segmenter";
+import { analyse, normalizeForMatching, type Analysis } from "@prosegate/segmenter";
 import type { CompiledPack, CompiledRule } from "./compile.js";
 import { DocContext } from "./context.js";
 import { runDocumentMetric, runSentenceMetric } from "./metrics.js";
@@ -42,8 +42,13 @@ export interface ReviewRulesInput {
   capCheck?: boolean | undefined;
   /** A millisecond clock (default performance.now); tests inject one. */
   now?: (() => number) | undefined;
-  /** Override of RULES_BUDGET_MS (tests). */
+  /** Override of RULES_BUDGET_MS (tests, and the adapter, which passes the time left under its cap: ADR-29). */
   budgetMs?: number | undefined;
+  /**
+   * ADR-30: review at most this many characters of prose. Longer text is cut at a unit boundary (code does
+   * not count toward the limit) and `diagnostics.truncated` says so. Absent means no limit.
+   */
+  maxProseChars?: number | undefined;
 }
 
 /** A compiled pack's version differs from the one the resolved profile pinned. */
@@ -88,6 +93,9 @@ export interface RulesDiagnostics {
   capped: { per_rule: Record<string, number>; per_turn: number };
   /** Findings dropped by the output self-check (a span that does not equal its slice); expected 0. */
   invalid_findings_dropped: number;
+  /** True when `maxProseChars` cut the text; only the first `reviewed_chars` characters were reviewed. */
+  truncated: boolean;
+  reviewed_chars: number;
 }
 
 export interface DetailedReview {
@@ -134,6 +142,56 @@ function defaultNow(): number {
   return performance.now();
 }
 
+/** Bound on the text analysed when a prose limit is set: code does not count, but analysis time does. */
+const ANALYSIS_WINDOW_FACTOR = 8;
+/** ...but never less than this: a long code block ahead of the prose must not hide the prose. */
+const ANALYSIS_WINDOW_MIN = 1_000_000;
+
+interface Cut {
+  analysis: Analysis;
+  truncated: boolean;
+  reviewedChars: number;
+}
+
+function safeEnd(text: string, end: number): number {
+  const c = text.charCodeAt(end - 1);
+  return c >= 0xd800 && c <= 0xdbff ? end - 1 : end;
+}
+
+/** ADR-30: analyse the text, or the unit-aligned prefix of it that holds `maxProseChars` of prose. */
+function truncateForReview(text: string, maxProseChars: number | undefined): Cut {
+  if (maxProseChars === undefined) return { analysis: analyse(text), truncated: false, reviewedChars: text.length };
+  let source = text;
+  let truncated = false;
+  const window = Math.max(maxProseChars * ANALYSIS_WINDOW_FACTOR, ANALYSIS_WINDOW_MIN);
+  if (text.length > window) {
+    const newline = text.lastIndexOf("\n", window);
+    source = text.slice(0, newline > 0 ? newline : safeEnd(text, window));
+    truncated = true;
+  }
+  let analysis = analyse(source);
+  let prose = 0;
+  for (const u of analysis.units) prose += u.end - u.start;
+  if (prose > maxProseChars) {
+    let used = 0;
+    let end = 0;
+    for (const u of analysis.units) {
+      const len = u.end - u.start;
+      if (used + len > maxProseChars) {
+        // A unit longer than the whole allowance is cut inside it.
+        if (end === 0) end = safeEnd(source, u.start + maxProseChars);
+        break;
+      }
+      used += len;
+      end = u.end;
+    }
+    source = source.slice(0, end);
+    analysis = analyse(source);
+    truncated = true;
+  }
+  return { analysis, truncated, reviewedChars: source.length };
+}
+
 /** Runs the deterministic rule pack(s) over `request.text` and returns the ReviewResult (03). */
 export function reviewRules(input: ReviewRulesInput): ReviewResult {
   return reviewRulesDetailed(input).result;
@@ -154,7 +212,8 @@ export function reviewRulesDetailed(input: ReviewRulesInput): DetailedReview {
   }
 
   const analyseStart = now();
-  const analysis = analyse(request.text);
+  const cut = truncateForReview(request.text, input.maxProseChars);
+  const analysis = cut.analysis;
   const analyseMs = now() - analyseStart;
   const doc = new DocContext(analysis);
 
@@ -188,6 +247,8 @@ export function reviewRulesDetailed(input: ReviewRulesInput): DetailedReview {
     candidates: [],
     capped: { per_rule: {}, per_turn: 0 },
     invalid_findings_dropped: 0,
+    truncated: cut.truncated,
+    reviewed_chars: cut.reviewedChars,
   };
   const uniquePrior = [...new Set(request.prior_findings)];
   const skipped = (reason: SkippedReason): DetailedReview => ({
@@ -206,8 +267,12 @@ export function reviewRulesDetailed(input: ReviewRulesInput): DetailedReview {
   });
 
   // Stage order (brief): non-English or nothing to lint -> no_prose; below the floor -> below_floor; else run.
-  if (analysis.language === "non_en" || analysis.units.length === 0) return skipped("no_prose");
-  if (analysis.prose_words < resolved.thresholds.token_floor_words) return skipped("below_floor");
+  // ADR-31: the floors apply on pass 1 only. A revision that shrinks below them is still reviewed, or a
+  // surviving block finding would ship silently and count as cleared.
+  if (pass === 1) {
+    if (analysis.language === "non_en" || analysis.units.length === 0) return skipped("no_prose");
+    if (analysis.prose_words < resolved.thresholds.token_floor_words) return skipped("below_floor");
+  }
 
   // ---- run the rules ---------------------------------------------------------------------------------
   const started = now();

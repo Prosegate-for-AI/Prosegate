@@ -29,7 +29,7 @@ export interface RenderableResult {
 export const OVERRIDE_LINE = 'To pause for this session, run: prosegate advisory';
 export const VIA_MODEL_CAP = 300;
 export const REPLY_LINE = 'Reply with the revised response only. Do not run prosegate commands.';
-export const PAUSE_LINE = 'To pause these revisions for this session, the user can run: prosegate advisory';
+export const PAUSE_LINE = '(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)';
 export const FEEDBACK_TRIM = 80;
 export const NOTICE_TRIM = 60;
 export const INSTRUCTION_CAP = 200;

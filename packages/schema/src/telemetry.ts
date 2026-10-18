@@ -51,6 +51,7 @@ export const ERROR_CODES = [
   'keychain_timeout',
   'transcript_unreadable',
   'telemetry_dropped',
+  'turn_truncated',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 

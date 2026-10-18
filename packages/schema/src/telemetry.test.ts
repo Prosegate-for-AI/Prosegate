@@ -24,7 +24,7 @@ import type { Category, SkippedReason } from './types.js';
 type ErrorCodeLiteral =
   | 'adapter_error' | 'reviewer_timeout' | 'reviewer_http_error' | 'reviewer_schema_invalid' | 'reviewer_key_missing'
   | 'profile_resolution_failed' | 'pack_rejected' | 'signature_invalid' | 'snapshot_missing' | 'turn_budget_exceeded'
-  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped';
+  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped' | 'turn_truncated';
 type Expected =
   | { ts: number; t: 'session_start'; harness: 'claude-code'; adapter_version: string; profile_count: number; offline: boolean }
   | {
@@ -132,7 +132,7 @@ describe('telemetry allowlist: valid events', () => {
     expect([...ERROR_CODES]).toEqual([
       'adapter_error', 'reviewer_timeout', 'reviewer_http_error', 'reviewer_schema_invalid', 'reviewer_key_missing',
       'profile_resolution_failed', 'pack_rejected', 'signature_invalid', 'snapshot_missing', 'turn_budget_exceeded',
-      'keychain_unavailable', 'keychain_timeout', 'transcript_unreadable', 'telemetry_dropped',
+      'keychain_unavailable', 'keychain_timeout', 'transcript_unreadable', 'telemetry_dropped', 'turn_truncated',
     ]);
     for (const code of ERROR_CODES) expect(wireOk({ ts: TS, t: 'error', code })).toBe(true);
   });

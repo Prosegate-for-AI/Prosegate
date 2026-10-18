@@ -135,14 +135,37 @@ describe("skipped results", () => {
   const p1 = review("It's worth noting that the cache is per tenant. The plan is robust and the rollout is seamless.");
   const prior = p1.findings.map((f) => f.id);
 
-  it("cleared is the unique prior ids when pass 2 is skipped (below_floor, no_prose)", () => {
-    const below = run("Short text.", { pass: 2, prior: [...prior, ...prior], keepFloor: true }).result;
-    expect(below.skipped_reason).toBe("below_floor");
-    expect(below.cleared).toEqual(prior);
+  it("floors apply on pass 1 only (ADR-31): a short pass-2 revision is reviewed, and clears the prior ids it no longer holds", () => {
+    const short = run("Short text.", { pass: 2, prior: [...prior, ...prior], keepFloor: true }).result;
+    expect(short.skipped_reason).toBeUndefined();
+    expect(short.verdict).toBe("pass");
+    expect(short.cleared).toEqual(prior);
     const none = review("```\ncode\n```", { pass: 2, prior });
-    expect(none.skipped_reason).toBe("no_prose");
+    expect(none.skipped_reason).toBeUndefined();
     expect(none.cleared).toEqual(prior);
-    expect(review("Short text.", { pass: 1, keepFloor: true }).cleared).toEqual([]);
+    // Pass 1 still skips them.
+    expect(review("Short text.", { pass: 1, keepFloor: true }).skipped_reason).toBe("below_floor");
+    expect(review("```\ncode\n```", { pass: 1 }).skipped_reason).toBe("no_prose");
+  });
+
+  it("a pass-2 revision under the floor that keeps a block finding is still revised (the shipped-silently bug)", () => {
+    const text1 =
+      "It's worth noting that the cache is per tenant, and each tenant gets its own index in the store. The plan could potentially fail when the index is rebuilt during a deploy window of the service.";
+    // Pass 1 runs with the floor bypassed (the text is short); the revisions keep the real 60-word floor, which used to skip them.
+    const first = run(text1).result;
+    const p = (t: string, over: Parameters<typeof run>[1]) => run(t, { keepFloor: true, ...over });
+    expect(first.verdict).toBe("revise");
+    const prior1 = first.findings.map((f) => f.id);
+    // The revision drops the first hedge but keeps "could potentially"; it is far under the 60-word floor.
+    const revised = "The cache is per tenant. The plan could potentially fail when the index is rebuilt.";
+    const second = p(revised, { pass: 2, prior: prior1 }).result;
+    expect(second.skipped_reason).toBeUndefined();
+    expect(second.verdict).toBe("revise");
+    expect(second.findings.map((f) => f.rule_id)).toEqual(["core.hedge.004"]);
+    expect(second.cleared).toHaveLength(prior1.length - 1);
+    const capped = p(revised, { pass: 2, prior: prior1, capCheck: true }).result;
+    expect(capped.skipped_reason).toBe("pass_cap");
+    expect(capped.findings.map((f) => f.rule_id)).toEqual(["core.hedge.004"]);
   });
 
   it("capCheck on text that is skipped is still verdict pass with pass_cap (ADR-12)", () => {
