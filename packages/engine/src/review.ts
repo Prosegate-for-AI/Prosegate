@@ -17,7 +17,7 @@ import { DocContext } from "./context.js";
 import { runDocumentMetric, runSentenceMetric } from "./metrics.js";
 import { resolveOverlaps } from "./overlap.js";
 import { overBudget, runSearchRule, type Candidate, type RunEnv } from "./search.js";
-import { makeAllowTerm } from "./text.js";
+import { makeAllowTerm, squashSpace } from "./text.js";
 
 /** ADR-10 / plan 11: one review may spend this long before the engine gives up (analysis, rules and resolution). */
 export const RULES_BUDGET_MS = 200;
@@ -119,6 +119,16 @@ interface Raw {
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { block: 0, warn: 1, info: 2 };
+
+/**
+ * The id key of a span (ADR-23, ADR-26): its text as matched, i.e. the engine's matching copy
+ * (ASCII-lowercased, typography folded, CR/LF/TAB as spaces) with whitespace runs collapsed to one
+ * space and trimmed. A tic that survives revision re-typed with other case, a curly apostrophe, a line
+ * wrap or a double space keeps its id; a genuine rewording does not. `span.text` stays the original slice.
+ */
+function spanKey(doc: DocContext, start: number, end: number): string {
+  return squashSpace(doc.match.slice(start, end));
+}
 
 function defaultNow(): number {
   return performance.now();
@@ -252,7 +262,7 @@ export function reviewRulesDetailed(input: ReviewRulesInput): DetailedReview {
         let id: string | null = null;
         if (pass === 2) {
           // Pass 2 (03): only block findings already reported on pass 1 keep their severity.
-          id = findingId(rule.category, rule.id, scope === "document" ? "" : request.text.slice(cand.start, cand.end));
+          id = findingId(rule.category, rule.id, scope === "document" ? "" : spanKey(doc, cand.start, cand.end));
           severity = severity === "block" && prior.has(id) ? "block" : "info";
         }
         raws.push({
@@ -286,7 +296,7 @@ export function reviewRulesDetailed(input: ReviewRulesInput): DetailedReview {
     const text = request.text.slice(r.span.start, r.span.end);
     const segmentId = r.cand.segment ?? (doc.units[r.cand.unit] as { segment_id: string }).segment_id;
     const finding: Finding = {
-      id: r.id ?? findingId(r.category, r.rule_id, r.scope === "document" ? "" : text),
+      id: r.id ?? findingId(r.category, r.rule_id, r.scope === "document" ? "" : spanKey(doc, r.span.start, r.span.end)),
       span: { segment_id: segmentId, start: r.span.start, end: r.span.end, text },
       category: r.category,
       source: "rule",

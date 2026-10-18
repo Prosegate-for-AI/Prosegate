@@ -28,6 +28,13 @@ rules:
         - "good question"
         - "certainly."
         - "absolutely."
+        - "excellent question"
+        - "really good question"
+        - "good catch"
+        - "you're absolutely right"
+        - "of course!"
+        - "sure!"
+        - "happy to help"
     instruction: { action: remove, text: "Remove. Start with the answer." }
     examples:
       hit:
@@ -36,10 +43,18 @@ rules:
         - "Good question! The cache layer is per tenant."
         - "Certainly. The cache layer is per tenant."
         - "Absolutely. The cache layer is per tenant."
+        - "Excellent question! The cache layer is per tenant."
+        - "Really good question! The cache layer is per tenant."
+        - "Good catch! You're absolutely right. The cache layer is per tenant."
+        - "Of course! Sure! Happy to help! The cache layer is per tenant."
       miss:
         - "The cache layer is per tenant."
         - "Certainly the cache layer is per tenant."
         - "The good question is who owns the cache layer."
+        - "Of course the cache layer is per tenant."
+        - "Sure enough, the cache layer is per tenant."
+        - "The reviewer caught a good catch rate of 90 percent."
+        - "I am happy with the cache layer."
 
   - id: core.filler.002
     category: filler
@@ -56,32 +71,56 @@ rules:
         - "don't hesitate to"
         - "let me know if you have any other questions"
         - "let me know if you'd like"
+        - "hope that helps"
+        - "i hope that helps"
+        - "hopefully this helps"
+        - "feel free to ask"
     instruction: { action: remove, text: "Remove. End on the last substantive point." }
     examples:
       hit:
         - "Let me know if you have any questions!"
         - "Let me know if you have any other questions."
         - "Let me know if you'd like the full diff."
+        - "Hope that helps!"
+        - "I hope that helps."
+        - "Hopefully this helps."
+        - "Feel free to ask."
       miss:
         - "Reply by Thursday if the dates don't work."
         - "Tell me which option you pick by Thursday."
+        - "Ask the owner of the cache layer."
 
   - id: core.filler.003
     category: filler
     severity: block
     match:
-      kind: phrase
-      phrases:
-        - "as an ai"
-        - "as a language model"
-        - "this document outlines"
-        - "in this section we will"
-        - "in this response"
-        - "the following is"
+      kind: any
+      parts:
+        - kind: phrase
+          phrases:
+            - "as an ai"
+            - "as a language model"
+            - "this document outlines"
+            - "in this section we will"
+        # Literal uses are common mid-sentence ("the header in this response", "whether the following is set"):
+        # these two are meta-commentary only when they open a sentence (ADR-26).
+        - kind: phrase
+          position: sentence_start
+          phrases:
+            - "in this response"
+            - "the following is"
     instruction: { action: remove, text: "Remove the meta-commentary; state the content directly." }
     examples:
-      hit: ["This document outlines the migration plan."]
-      miss: ["The migration runs in three phases."]
+      hit:
+        - "This document outlines the migration plan."
+        - "In this response, I will cover three options."
+        - "The following is a summary of the options."
+        - "As an AI, I cannot see your repository."
+      miss:
+        - "The migration runs in three phases."
+        - "The Content-Type header in this response is text/html, not JSON."
+        - "Check whether the following is set in your config: cache is true."
+        - "As an aside, the retry count is 3."
 
   - id: core.filler.004
     category: filler
@@ -95,10 +134,24 @@ rules:
         - "to summarize"
         - "in summary"
         - "overall,"
+        - "in short"
+        - "to sum up"
+        - "in a nutshell"
+        - "simply put"
+        - "the bottom line is"
     instruction: { action: remove, text: "Remove; a reply this short needs no summary." }
     examples:
-      hit: ["In summary, the fix is safe."]
-      miss: ["<eval corpus ref: core/filler-004-miss-01>"]
+      hit:
+        - "In summary, the fix is safe."
+        - "In short, the fix is safe."
+        - "To sum up, the fix is safe."
+        - "In a nutshell, the fix is safe."
+        - "Simply put, the fix is safe."
+        - "The bottom line is that the fix is safe."
+      miss:
+        - "<eval corpus ref: core/filler-004-miss-01>"
+        - "The fix, simply put, is safe."
+        - "Check the bottom line of the table for the total."
 
   # ---- hedge --------------------------------------------------------------------------------
   - id: core.hedge.001
@@ -112,7 +165,7 @@ rules:
         - kind: regex
           pattern: '\bit should be noted(?: that)?,?'
         - kind: phrase
-          phrases: ["note that", "please note that"]
+          phrases: ["note that", "please note that", "keep in mind that", "it's important to remember"]
           position: sentence_start
     instruction: { action: remove, text: "Remove the preamble; keep the clause after it." }
     examples:
@@ -120,9 +173,13 @@ rules:
         - "It's worth noting that the index is unique."
         - "It's also worth noting that the index is unique."
         - "Please note that the index is unique."
+        - "Keep in mind that the index is unique."
+        - "It's important to remember that the index is unique."
       miss:
         - "The index is unique."
         - "You can note that fact in the changelog."
+        - "Try to keep in mind that fact."
+        - "The index is unique, which is important to remember."
 
   - id: core.hedge.002
     category: hedge
@@ -139,29 +196,46 @@ rules:
     category: hedge
     severity: warn
     match:
-      kind: phrase
-      phrases:
-        - "arguably"
-        - "generally speaking"
-        - "in many cases"
-        - "it could be argued"
-        - "to some extent"
-        - "in a sense"
+      kind: any
+      parts:
+        - kind: phrase
+          phrases:
+            - "arguably"
+            - "generally speaking"
+            - "in many cases"
+            - "it could be argued"
+            - "to some extent"
+            - "in a sense"
+        - kind: phrase
+          position: sentence_start
+          phrases:
+            - "notably,"
+            - "interestingly,"
     instruction: { action: remove, text: "Remove the hedge or state who argues it and why." }
     examples:
-      hit: ["Arguably, the retry is unnecessary."]
-      miss: ["The retry is unnecessary."]
+      hit:
+        - "Arguably, the retry is unnecessary."
+        - "Notably, the retry is unnecessary."
+        - "Interestingly, the retry is unnecessary."
+      miss:
+        - "The retry is unnecessary."
+        - "The retry is notably absent from the second path."
+        - "Notably absent is the retry."
 
   - id: core.hedge.004
     category: hedge
     severity: block
     match:
       kind: regex
-      pattern: '\b(may or may not|could potentially|might possibly|can possibly)\b'
+      pattern: '\b(may or may not|could potentially|might possibly|can possibly|can potentially)\b'
     instruction: { action: replace, text: "Pick one: say whether it does, and under what condition." }
     examples:
-      hit: ["This could potentially break the build."]
-      miss: ["This breaks the build when X."]
+      hit:
+        - "This could potentially break the build."
+        - "This can potentially break the build."
+      miss:
+        - "This breaks the build when X."
+        - "The build has potential."
 
   - id: core.hedge.005
     category: hedge
@@ -213,6 +287,7 @@ rules:
             - elevates
             - elevated
             - elevating
+            - empowers
         - kind: regex
           pattern: '\b(?:to|can|could|should|will|would|we|you|they|i|us|we''ll|you''ll|they''ll|then) (?P<span>leverage)\b'
         - kind: regex
@@ -223,9 +298,11 @@ rules:
         - "We can leverage the existing cache."
         - "We'll leverage the existing cache."
         - "Then leverage the existing cache."
+        - "This tooling empowers every team."
       miss:
         - "We can use the existing cache."
         - "The leverage ratio is high."
+        - "Each team gets the tooling."
 
   - id: core.vocab.002
     category: vocab
@@ -234,18 +311,21 @@ rules:
       kind: any
       parts:
         - kind: phrase
-          phrases: [tapestry, realm, testament, synergy, "paradigm shift", game-changer, cornerstone]
+          phrases: [tapestry, realm, testament, synergy, "paradigm shift", game-changer, cornerstone, "silver bullet"]
         - kind: regex
-          pattern: '\b(?:the|this|today''s) (?:[a-z-]+ ){0,2}landscape\b'
+          # the key word (allow_terms, ADR-26) is the named group; the span is the whole phrase
+          pattern: '\b(?:the|this|today''s) (?:[a-z-]+ ){0,2}(?P<key>landscape)\b'
     instruction: { action: replace, text: "Name the concrete thing instead of the abstraction." }
     examples:
       hit:
         - "The current landscape of auth libraries…"
         - "The digital security landscape is crowded."
         - "This modern identity landscape is crowded."
+        - "There is no silver bullet for caching."
       miss:
         - "Three auth libraries fit: …"
         - "Landscape mode is the default."
+        - "Treat it as a silver medal, not gold."
 
   - id: core.vocab.003
     category: vocab
@@ -264,10 +344,15 @@ rules:
         - comprehensive
         - meticulous
         - ever-evolving
+        - blazing-fast
     instruction: { action: specify, text: "Replace with the property that makes it so, or remove." }
     examples:
-      hit: ["A robust and seamless integration."]
-      miss: ["The integration retries on 5xx and is idempotent."]
+      hit:
+        - "A robust and seamless integration."
+        - "A blazing-fast integration."
+      miss:
+        - "The integration retries on 5xx and is idempotent."
+        - "The integration is fast when the cache is warm."
 
   - id: core.vocab.004
     category: vocab
@@ -324,16 +409,18 @@ rules:
     severity: warn
     match:
       kind: regex
-      pattern: '\bnot (?:just|only|merely|about) .{3,80}?(?:,|;| —|—) (?:but|it''s about|it is about)\b'
+      pattern: '\bnot (?:(?:just|only|merely|about) .{3,80}?(?:,|;| —|—) (?:but|it''s about|it is about)|only .{3,80}? but also)\b'
     instruction: { action: rephrase, text: "State the point directly without the contrast." }
     examples:
       hit:
         - "It's not just about speed, it's about trust."
         - "It's not just about speed; it's about trust."
         - "It is not just about speed — it is about trust."
+        - "This not only reduces latency but also lowers load."
       miss:
         - "Not only did the test fail, the build did too."
         - "Not only did the test fail; the build did too."
+        - "It is not only fast but slow to start."
 
   - id: core.triad.003
     category: triad

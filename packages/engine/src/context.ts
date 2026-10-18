@@ -1,4 +1,4 @@
-import type { Analysis, Unit } from "@prosegate/segmenter";
+import { countWords, type Analysis, type Span, type Unit } from "@prosegate/segmenter";
 import { addContentWords, finishBag, MaskIndex, type Bag } from "./text.js";
 
 /** Chunk size for per-chunk matching (S4: RE2's backtracker only runs on short inputs). */
@@ -75,6 +75,35 @@ export class DocContext {
       this.sentences.push(current);
     });
     this.headingCount = headings;
+  }
+
+  private emphasisList: Span[] | null = null;
+
+  /**
+   * The bold spans that count as emphasis (ADR-26). A span of at most four words that starts a paragraph
+   * or a list item (after optional list markers or whitespace) is a label ("**Root cause:**",
+   * "**Summary**"), not emphasis, and is left out. Bold inside running text always counts.
+   */
+  get emphasisBold(): Span[] {
+    if (this.emphasisList !== null) return this.emphasisList;
+    const firstOfParagraph = new Set<number>();
+    for (const p of this.analysis.paragraphs) {
+      const first = p.unit_indexes[0];
+      if (first !== undefined) firstOfParagraph.add(first);
+    }
+    const out: Span[] = [];
+    for (const b of this.analysis.bold) {
+      const ui = this.unitAt(b.start);
+      const u = ui < 0 ? null : (this.units[ui] as Unit);
+      const startsBlock = u !== null && !u.continuation && (u.kind === "list_item" || firstOfParagraph.has(ui));
+      const label =
+        startsBlock &&
+        /^\s*(?:(?:[-*+•‣◦▪●]|\d{1,3}[.)])\s+)*$/.test(this.normalized.slice(u.start, b.start)) &&
+        countWords(this.normalized.slice(b.start, b.end).replace(/[*_]/g, " ")) <= 4;
+      if (!label) out.push(b);
+    }
+    this.emphasisList = out;
+    return out;
   }
 
   get proseWords(): number {
