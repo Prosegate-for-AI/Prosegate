@@ -70,6 +70,8 @@ export default function setup(): () => void {
     const changed = [...before].filter(([file, was]) => mtime(file) !== was).map(([file]) => file);
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     if (changed.length > 0) {
+      // Vitest reports a teardown throw but still exits 0, so the exit code is set here as well.
+      process.exitCode = 1;
       throw new Error(`A test run changed a real Claude settings file or Prosegate program directory (incident 2026-10-18): ${changed.join(", ")}. Find the test that reached the real home and isolate it.`);
     }
   };

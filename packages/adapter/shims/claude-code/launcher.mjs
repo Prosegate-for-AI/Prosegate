@@ -81,6 +81,11 @@ async function main() {
     process.stdin.setEncoding("utf8");
     for await (const chunk of process.stdin) raw += chunk;
   } catch { /* handled as unreadable input */ }
+  // Read first, so a failure is deduped per session, never machine-wide.
+  try {
+    const id = JSON.parse(raw).session_id;
+    if (typeof id === "string") sid = id;
+  } catch { /* no session id */ }
   const pin = flags.find((f) => f.startsWith("--use=")); // init pins a version for its self-check
   let version = pin?.slice(6) ?? "";
   if (version === "") {
@@ -90,13 +95,12 @@ async function main() {
   const files = ["shims/claude-code/hook.mjs", "dist/prosegate.mjs"];
   const safe = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(version); // not "." or "..", no separator
   if (!safe || !files.every((f) => existsSync(join(base, f)))) {
-    try { sid = JSON.parse(raw).session_id; } catch { /* keyed to "unknown-session" */ }
     problem = { why: MISSING, where: LOG };
     return log("missing", `version "${version.slice(0, 40)}" not found under ${APP}`);
   }
   const shim = await import(pathToFileURL(join(base, files[0])).href);
   const r = await shim.handle({ event, raw });
-  sid = r.sid ?? null;
+  sid = r.sid ?? sid;
   if (r.stderr) process.stderr.write(r.stderr); // the one-line CI summary (09), or debug notes
   if (r.problem) {
     problem = { why: r.problem.why, where: r.problem.where };

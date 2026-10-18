@@ -20,7 +20,7 @@ import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -46,11 +46,13 @@ const scratchHomes = { HOME: root, USERPROFILE: root, APPDATA: join(root, "appda
 const initEnv = { ...env, ...scratchHomes };
 
 // Directories under the real projects/ that this run created: copied to scratch, then deleted.
+const ownProject = basename(root).replace(/[^A-Za-z0-9]/g, "-");
 const projectsBefore = new Set(existsSync(claudeProjects) ? readdirSync(claudeProjects) : []);
 function collectTranscripts() {
   if (!existsSync(claudeProjects)) return;
   for (const name of readdirSync(claudeProjects)) {
-    if (projectsBefore.has(name)) continue;
+    // Only this run's own project dir (its name is the scratch path, sanitised): other sessions may create theirs meanwhile.
+    if (projectsBefore.has(name) || !name.includes(ownProject)) continue;
     cpSync(join(claudeProjects, name), join(transcripts, name), { recursive: true });
     rmSync(join(claudeProjects, name), { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
   }

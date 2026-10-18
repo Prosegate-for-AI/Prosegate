@@ -313,6 +313,16 @@ describe("at most one Prosegate line per turn (ADR-33, V F-C)", () => {
     expect(cc.stop("w").json).toEqual({ systemMessage: "Prosegate · this turn was not reviewed (input too large) · details: /logs/x.log" });
   });
 
+  it("a failure before the mapping answers is still deduped per session, never machine-wide (the id comes from the input)", () => {
+    const { cc } = stubbed({}, { STUB_MODE: "throw" });
+    expect(cc.stop("x").json).toEqual(line(cc, "internal error"));
+    expect(cc.stop("y", { prompt_id: "next" })).toMatchObject({ code: 0, stdout: "" });
+    cc.sessionId = "a-second-session";
+    expect(cc.stop("z").json).toEqual(line(cc, "internal error"));
+    cc.sessionId = "a-third-session";
+    expect(cc.stop("w").json).toEqual(line(cc, "internal error"));
+  });
+
   it("remembers more than one session (S11): the first is still silent after others have had their line", () => {
     const { cc } = stubbed({}, { STUB_MODE: "problem" });
     for (const id of ["session-a", "session-b", "session-c"]) {
