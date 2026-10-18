@@ -37,11 +37,15 @@
 // nor one written in a language the English vocabulary does not cover; that residual is in 07.
 
 import { CONFUSABLE_PAIRS } from './confusables.js';
+import { safeInline } from './render.js';
 import { isTld } from './tlds.js';
 
 const DEFAULT_MAX = 200;
-/** The denylist-only entry point bounds its input so a hostile string costs a bounded scan. */
-const DENYLIST_ONLY_MAX = 1000;
+/**
+ * The denylist-only entry point bounds its input so a hostile string costs a bounded scan. Its one caller
+ * is the vague_claim parenthetical, at most 60 code points (120 UTF-16 units), so 120 is exact, not generous.
+ */
+const DENYLIST_ONLY_MAX = 120;
 
 // ---- allowlist ----------------------------------------------------------------------------------
 
@@ -167,7 +171,7 @@ let foldMap: Map<string, string> | null = null;
 // Punctuation look-alikes folded in the skeleton view (slash, dot, colon, hyphen, at-sign, backslash).
 const PUNCTUATION_FOLD: Array<[string, string]> = [
   ['\u2044\u2215\u29f8\u2571\uff0f', '/'],
-  ['\u3002\uff61\u2024\u2027\ufe52\uff0e', '.'],
+  ['\u2024\u2027\ufe52\uff0e', '.'],
   ['\ua789\u02d0\u2236\u0589\ufe13\ufe55\uff1a', ':'],
   ['\u2010\u2011\u2012\u2212\ufe58\ufe63\uff0d', '-'],
   ['\uff20\ufe6b', '@'],
@@ -191,7 +195,9 @@ function skeleton(s: string): string {
   const table = foldTable();
   let out = '';
   for (const ch of s) out += table.get(ch) ?? ch;
-  return out;
+  // The ideographic full stop is a dot only between ASCII host characters (`evil\u3002com`). Between CJK
+  // words it is a sentence end, and folding it would read two sentences as a dotted name.
+  return out.replace(/(?<=[A-Za-z0-9-])\s*[\u3002\uff61]\s*(?=[A-Za-z0-9-])/g, '.');
 }
 
 const LEET: Record<string, string> = { '0': 'o', '1': 'l', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', $: 's' };
@@ -256,7 +262,7 @@ const NON_ASCII_DOTTED = /[\p{L}\p{M}\p{Nd}-]{2,}(?:\.[\p{L}\p{M}\p{Nd}-]{2,})+/
 
 // Characters that render as nothing or carry a hidden payload. Line breaks (Cc, Zl, Zp) are included: the
 // vague_claim parenthetical must stay on one line.
-const HIDDEN_CHARACTER = /[\p{Default_Ignorable_Code_Point}\p{Cc}\p{Zl}\p{Zp}\p{Co}\p{Cn}\p{Cs}]/u;
+const HIDDEN_CHARACTER = /[\p{Default_Ignorable_Code_Point}\p{Cf}\p{Cc}\p{Zl}\p{Zp}\p{Co}\p{Cn}\p{Cs}]/u;
 
 const EMAIL =/[^\s(["'\u201c\u2018]@/;
 
@@ -268,24 +274,26 @@ const COMMAND_SUBSTITUTION = /\$[({]/;
 const PATH_LIKE = /(?:^|[\s("'])(?:~\/|\.{1,2}\/|\/[a-z0-9._~$-])|[a-z]:[\\/]|\\[a-z\\]/;
 // Paths that are never prose: system roots, parent traversal, key files.
 const SYSTEM_PATH =
-  /(?:^|[\s("'=])\/(?:etc|usr|bin|sbin|var|tmp|home|root|proc|dev|sys|opt|mnt|lib|boot|srv)(?:\/|(?![a-z0-9]))|~\/|\.\.[\\/]|\bid_rsa\b|\bauthorized_keys\b|(?:\.ssh|\.aws|\.gnupg)[\\/]/;
+  /(?:^|[\s("'=])\/(?:etc|usr|bin|sbin|var|tmp|home|root|proc|dev|sys|opt|mnt|lib|boot|srv)(?:\/|(?![a-z0-9]))|~\/|\.\.[\\/]|\bid_rsa\b|\bauthorized[\s_]+keys\b|\bknown[\s_]+hosts\b|\bssh[\s_]+config[\s_]+file\b|(?:\.ssh|\.aws|\.gnupg)[\\/]/;
 
 // Shell commands that no style rule has a reason to name (they have no everyday prose sense): rejected
 // wherever they appear, in any context, as one word or spaced out ("cu rl", "cur1").
 const HARD_SHELL_WORDS = new Set([
   'curl', 'wget', 'sudo', 'chmod', 'chown', 'chgrp', 'pwsh', 'iex', 'iwr', 'irm', 'ncat', 'netcat', 'scp', 'mshta',
-  'regsvr32', 'rundll32', 'bitsadmin', 'xargs',
+  'regsvr32', 'rundll32', 'bitsadmin', 'xargs', 'osascript', 'schtasks', 'launchctl', 'doas',
 ]);
 // Shell commands that are also ordinary words or product names in prose ("SSH key", "exec summary", "Bash
 // version", "eval runs"): rejected only in command context (see commandViolation).
 const SHELL_WORDS = new Set([
   'bash', 'zsh', 'ksh', 'sh', 'ssh', 'sftp', 'nc', 'telnet', 'eval', 'exec', 'base64', 'powershell', 'cmd', 'rm', 'dd',
-  'certutil', 'wscript', 'cscript', 'printenv', 'crontab',
+  'certutil', 'wscript', 'cscript', 'printenv', 'crontab', 'setx',
 ]);
 // Developer tools: ordinary nouns in prose, so only a strong verb ("run npm") makes them a command.
 const DEV_TOOLS = new Set([
   'npm', 'npx', 'pnpm', 'yarn', 'pip', 'pip3', 'pipx', 'git', 'python', 'python3', 'node', 'deno', 'bun', 'docker',
   'kubectl', 'cargo', 'brew', 'apt', 'composer', 'perl', 'ruby', 'php',
+  // ordinary words elsewhere ("use defaults", Spanish "su"), so strong verbs only
+  'su', 'reg', 'defaults',
 ]);
 // Everyday commands, rejected only directly after run, execute, invoke, type, enter or paste ("run whoami").
 // The ambiguous ones (id, find, type, head, top, kill, source) are left out: "run id" is a CI run id.
@@ -333,6 +341,10 @@ const PHRASES = new RegExp(
       'from now on you',
       'you are now',
       'you re now',
+      'you (?:only )?answer to',
+      'you work for',
+      'your (?:only|new|real|true) (?:job|role|task|purpose) is',
+      'you no longer',
       'act as',
       'begin your (?:revised )?(?:response|reply|answer) with this line',
       '(?:begin|start) your revised (?:response|reply|answer)',
@@ -373,6 +385,13 @@ function overridePhrase(words: readonly string[]): boolean {
 
 type Mode = 'text' | 'id';
 
+const FETCH_VERBS = new Set(['fetch', 'open', 'download', 'load', 'read', 'visit']);
+/** True when fetch, open, download, load, read or visit is one of the two words right before `index`. */
+function fetchVerbBefore(text: string, index: number): boolean {
+  const prior = text.slice(Math.max(0, index - 40), index).match(/[a-z0-9]+/g) ?? [];
+  return prior.slice(-2).some((w) => FETCH_VERBS.has(w));
+}
+
 /** URL, domain, address and link forms. Runs in both modes. */
 function linkViolation(v: string): string | null {
   const squeezed = v.replace(/\s+/g, '');
@@ -391,7 +410,7 @@ function linkViolation(v: string): string | null {
     if (!isTld(tld)) continue;
     const next = closed[(m.index ?? 0) + name.length] ?? '';
     if (DOMAIN_EXEMPT.has(name) && !/[/?#:@\\]/.test(next)) continue;
-    if (tld === 'md' && labels.length === 2 && !/[/?#:@\\]/.test(next)) continue;
+    if (tld === 'md' && labels.length === 2 && !/[?#:@\\]/.test(next) && !fetchVerbBefore(closed, m.index ?? 0)) continue;
     return 'contains a domain name';
   }
   if (DOTTED_QUAD.test(closed)) return 'contains an IP address';
@@ -424,6 +443,24 @@ function tokenViolation(d: string): string | null {
   return null;
 }
 
+/** Joins runs of three or more single-letter words: `c u r l` becomes `curl`. */
+function joinLetterRuns(words: readonly string[]): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while (i < words.length) {
+    let j = i;
+    while (j < words.length && /^[a-z]$/.test(words[j] as string)) j++;
+    if (j - i >= 3) {
+      out.push(words.slice(i, j).join(''));
+      i = j;
+    } else {
+      out.push(words[i] as string);
+      i += 1;
+    }
+  }
+  return out;
+}
+
 function strongVerbBefore(words: readonly string[], i: number): boolean {
   for (let k = Math.max(0, i - 3); k < i; k++) if (STRONG_VERBS.has(words[k] as string)) return true;
   return false;
@@ -442,9 +479,12 @@ function commandViolation(v: string, nonEnglish: boolean): string | null {
   const path = PATH_LIKE.test(v);
   // The words as written, and with digits read as letters ("cur1", "b4sh"; four letters or more, so "5h" is
   // not "sh").
-  const plain = wordsOf(v);
-  for (const words of new Set([plain, wordsOf(leetify(v))])) {
-    const leeted = words !== plain;
+  const lists: Array<[string[], boolean]> = [[wordsOf(v), false], [wordsOf(leetify(v)), true]];
+  for (const [list, leet] of [...lists]) {
+    const joined = joinLetterRuns(list);
+    if (joined.length !== list.length) lists.push([joined, leet]);
+  }
+  for (const [words, leeted] of lists) {
     // Single words, plus adjacent pairs that spell a command when joined ("w get", "ba sh", "power shell").
     const tokens: Array<[string, number]> = words.map((w, i) => [w, i]);
     for (let i = 0; i + 1 < words.length; i++) {
@@ -468,7 +508,19 @@ function commandViolation(v: string, nonEnglish: boolean): string | null {
   return null;
 }
 
+/**
+ * The denylist over the text as written AND over `safeInline(text)`, the form the renderer prints. The renderer
+ * deletes every format character (Cf), braille blanks and other invisibles, so "c", U+FFF9, "u", U+FFF9, "r",
+ * U+FFF9, "l" is `curl` by the time the model reads it; checking only the raw string would let it through.
+ */
 function denylist(s: string, mode: Mode): string | null {
+  const raw = denylistCore(s, mode);
+  if (raw !== null) return raw;
+  const printed = safeInline(s);
+  return printed === s ? null : denylistCore(printed, mode);
+}
+
+function denylistCore(s: string, mode: Mode): string | null {
   const { forms, d } = buildViews(s);
   const nonEnglish = /(?!\p{ASCII})\p{L}/u.test(s);
   for (const v of forms) {

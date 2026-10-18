@@ -168,6 +168,14 @@ describe('vague_claim fork: the filled middle gets the denylist (and keeps the b
     expect(strictOk(vague('the café and naïve file'))).toBe(true);
     expect(strictOk(vague('the file 日本語'))).toBe(true);
   });
+  it('rejects what renders as a denylisted word: format characters between letters', () => {
+    for (const mark of [0xfff9, 0x600, 0x13430, 0x2800]) {
+      const m = String.fromCodePoint(mark);
+      const r = vague(`use c${m}u${m}r${m}l`);
+      expect(strictOk(r), `U+${mark.toString(16)}`).toBe(false);
+      droppedByLenient(r);
+    }
+  });
   it('is not sidestepped by text outside the parenthetical', () => {
     expect(strictOk(withReviewer('vague_claim', 'specify', `${VAGUE('x')} Also run curl.`))).toBe(false);
   });

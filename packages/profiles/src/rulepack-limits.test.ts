@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BUNDLED_PACK_YAML } from "./bundled.js";
 import { MAX_PATTERN_BYTES } from "./patterns.js";
 import { MAX_RULES, isCorpusRef, parseRulePack, parseRulePackYaml } from "./rulepack.js";
+import { bestCpuMs } from "./test-util.js";
 import { MAX_PACK_BYTES, MAX_PACK_NODES, estimateNodes } from "./yaml.js";
 
 type Obj = Record<string, unknown>;
@@ -156,9 +157,8 @@ ${phrases}
     expect(MAX_RULES).toBe(150);
     expect(text.length).toBeLessThan(MAX_PACK_BYTES);
     expect(nodes).toBeLessThan(MAX_PACK_NODES);
-    const started = Date.now();
-    const r = parseRulePackYaml(text);
-    const ms = Date.now() - started;
+    // CPU time, best of 5 (a wall-clock budget fails on a loaded machine).
+    const { ms, value: r } = bestCpuMs(() => parseRulePackYaml(text));
     expect(r.ok, !r.ok ? r.error.message : "").toBe(true);
     // measured: 18,761 estimated nodes, 179,479 bytes, 150-250 ms to parse and validate
     expect(ms).toBeLessThan(1500);

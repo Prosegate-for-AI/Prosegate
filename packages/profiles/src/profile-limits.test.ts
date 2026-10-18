@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseProfileYaml } from "./profile.js";
-import { profileYaml } from "./test-util.js";
+import { bestCpuMs, profileYaml } from "./test-util.js";
 import { MAX_PROFILE_BYTES, MAX_PROFILE_NODES, estimateNodes } from "./yaml.js";
 
 const CATEGORIES = ["filler", "hedge", "vocab", "triad", "structure", "repetition"];
@@ -30,9 +30,8 @@ describe("a profile at the schema maxima fits the node cap (cycle 2)", () => {
     const nodes = estimateNodes(text);
     expect(text.length).toBeLessThan(MAX_PROFILE_BYTES);
     expect(nodes).toBeLessThan(MAX_PROFILE_NODES);
-    const started = Date.now();
-    const r = parseProfileYaml(text);
-    const ms = Date.now() - started;
+    // CPU time, best of 5 (a wall-clock budget fails on a loaded machine).
+    const { ms, value: r } = bestCpuMs(() => parseProfileYaml(text));
     expect(r.ok, !r.ok ? r.error.message : "").toBe(true);
     expect(ms).toBeLessThan(500);
   });

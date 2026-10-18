@@ -460,3 +460,21 @@ export const ORG_INSTRUCTIONS: string[] = [
   "Prefer the word use over utilise.",
   "Always say Bash script, not shell script.",
 ];
+
+/** Multi-sentence CJK and Korean style instructions (sentence-final 。 must not read as a dot in a name). */
+export const CJK_INSTRUCTIONS: string[] = [
+  "日本語で簡潔に書く。結論を先に述べること。",
+  "先写结论。然后写理由。",
+  "影响、根因和后续行动。负责人需明确。",
+  "한국어로 쓴다。결론을 먼저。",
+  "見出しは短くする。箇条書きは並列の項目だけに使う。",
+  "敬語は丁寧語までにする。過度な謙譲表現は避ける。",
+  "数字は半角で書く。単位の前に半角スペースを入れる。",
+  "用简体中文写作。避免使用夸张的形容词。",
+  "每段不超过四句话。先给出答案，再解释原因。",
+  "标题使用名词短语。不要以问号结尾。",
+  "한 문단은 세 문장 이내로 쓴다。존댓말을 일관되게 사용한다。",
+  "PRのタイトルは72文字以内にする。チケット番号を末尾に付ける。",
+  "PR标题不超过72个字符。请附上issue编号。",
+  "API名は英語のまま書く。説明は日本語で書く。",
+];

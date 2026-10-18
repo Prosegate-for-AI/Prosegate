@@ -118,10 +118,11 @@ describe("overrides: constraints from 08 and normalisation", () => {
     expect(paths(profileYaml("a/b", list("harness_hints", 1, 65)))).toContain("trigger.harness_hints[0]");
   });
 
-  it("limits: max_words 100000 passes, 100001 fails; tone 200 and format 300 pass", () => {
+  it("limits: max_words 100000 passes, 100001 fails; tone 200 and format 200 pass (07: every model-injected string is at most 200)", () => {
     ok(profileYaml("a/b", "reviewer:\n  register:\n    max_words: 100000"));
     expect(paths(profileYaml("a/b", "reviewer:\n  register:\n    max_words: 100001"))).toContain("reviewer.register.max_words");
-    ok(profileYaml("a/b", `reviewer:\n  register:\n    tone: "${"t".repeat(200)}"\n    format: "${"f".repeat(300)}"`));
+    ok(profileYaml("a/b", `reviewer:\n  register:\n    tone: "${"t".repeat(200)}"\n    format: "${"f".repeat(200)}"`));
+    expect(paths(profileYaml("a/b", `reviewer:\n  register:\n    format: "${"f".repeat(201)}"`))).toContain("reviewer.register.format");
   });
 
   it("limits: reviewer.categories has at most three entries", () => {
