@@ -296,6 +296,19 @@ describe('parseReviewResultLenient: drops a bad finding and keeps the rest (03 "
     expect(r.ok && r.issues.map((i) => i.path)).toEqual(['findings.1', 'findings.2']);
   });
 
+  it('a document-scope finding may overlap one already kept; an unknown scope value is tolerated', () => {
+    const doc = base();
+    const f = doc.findings[0];
+    doc.findings[1] = { ...doc.findings[1], scope: 'document', span: { ...doc.findings[1].span, start: f.span.start + 1, end: f.span.end - 1, text: f.span.text.slice(1, -1) } };
+    const r = parse(doc);
+    expect(r.ok && r.value.findings).toHaveLength(3);
+    expect(r.ok && r.issues).toEqual([]);
+    const future = base();
+    future.findings[0].scope = 'paragraph';
+    const r2 = parse(future);
+    expect(r2.ok && r2.issues).toEqual([]);
+  });
+
   it('a finding that overlaps one already kept', () => {
     dropped((d) => {
       const f = d.findings[0];
@@ -383,7 +396,7 @@ describe('parseReviewResultLenient: drops a bad finding and keeps the rest (03 "
     const rule = doc.findings[0];
     const container = {
       ...rule,
-      id: findingId('register', null, TEXT, 's1'),
+      id: findingId('register', null, TEXT),
       span: { segment_id: 's1', start: 0, end: TEXT.length, text: TEXT },
       category: 'register',
       source: 'reviewer',

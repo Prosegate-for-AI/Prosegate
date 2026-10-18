@@ -11,8 +11,9 @@ trigger:
   sticky: true
 
 overrides:
-  categories:
-    structure: { severity: block }
+  rules:
+    core.structure.001: { severity: info }
+    core.structure.002: { severity: info }
 
 reviewer:
   register:

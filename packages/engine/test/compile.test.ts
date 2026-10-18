@@ -54,7 +54,7 @@ describe("compilePack", () => {
 
   it("rejects a starts_with pattern that fails, and a metric it does not implement", () => {
     const sm = parseRulePackYaml(
-      ["schema: prosegate.rulepack/1", "id: core", "version: 0.0.2", "findings_schema: 1", "rules:", ruleYaml("core.structure.003", "{ kind: sentence_metric, metric: starts_with, pattern: 'x', above: 0 }")].join("\n"),
+      ["schema: prosegate.rulepack/1", "id: core", "version: 0.1.0", "findings_schema: 1", "rules:", ruleYaml("core.structure.003", "{ kind: sentence_metric, metric: starts_with, pattern: 'x', above: 0 }")].join("\n"),
     );
     if (!sm.ok) throw new Error(sm.error.message);
     expect(() => compilePack(mutate(sm.value, (p) => { (at(p, 0).match as { pattern: string }).pattern = "(("; }))).toThrow(/core\.structure\.003/);

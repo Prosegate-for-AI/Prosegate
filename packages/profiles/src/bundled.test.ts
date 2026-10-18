@@ -110,7 +110,7 @@ describe("the bundled core 0.1.0 pack", () => {
 // entry is [layer index in the chain, origin]; base is layer 0 and the starter is layer 1.
 const EXPECTED_OVERRIDES: Record<string, { categories: Record<string, Sev>; rules: Record<string, Sev>; allow: string[]; maxWords: number }> = {
   "local/base": { categories: {}, rules: {}, allow: [], maxWords: 600 },
-  "local/pr-description": { categories: { structure: "block" }, rules: {}, allow: [], maxWords: 300 },
+  "local/pr-description": { categories: {}, rules: { "core.structure.001": "info", "core.structure.002": "info" }, allow: [], maxWords: 300 },
   "local/design-doc": {
     categories: {},
     rules: { "core.hedge.003": "info", "core.structure.001": "info", "core.structure.002": "info" },
@@ -251,11 +251,11 @@ describe("bundled starter profiles", () => {
       ["warn", "warn", "warn", "warn", "warn"], // triad.001 (ADR-22: pr-description keeps triad at warn)
       ["warn", "warn", "warn", "warn", "warn"], // triad.002
       ["info", "info", "info", "info", "info"], // triad.003 (pack default is info already)
-      ["warn", "block", "info", "block", "warn"], // structure.001
-      ["warn", "block", "info", "warn", "warn"], // structure.002
-      ["warn", "block", "warn", "warn", "warn"], // structure.003
+      ["warn", "info", "info", "block", "warn"], // structure.001
+      ["warn", "info", "info", "warn", "warn"], // structure.002
+      ["warn", "warn", "warn", "warn", "warn"], // structure.003
       ["block", "block", "block", "block", "block"], // structure.004
-      ["warn", "block", "warn", "warn", "block"], // structure.005
+      ["warn", "warn", "warn", "warn", "block"], // structure.005
       ["warn", "warn", "warn", "warn", "warn"], // repetition.001
     ]);
   });

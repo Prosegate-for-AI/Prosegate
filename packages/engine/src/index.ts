@@ -31,15 +31,20 @@ export {
   type SearchPart,
   type SentenceMetricMatch,
 } from "./compile.js";
-export { SIMILARITY_MAX_WORDS } from "./metrics.js";
+export { MAX_SIMILARITY_CANDIDATES, MIN_CLOSING_BLOCKS, SIMILARITY_MAX_WORDS } from "./metrics.js";
+export { WINDOW_CHARS, WINDOW_OVERLAP } from "./search.js";
 export { resolveOverlaps, type Resolvable } from "./overlap.js";
 export {
+  MAX_FINDINGS_PER_RULE,
+  MAX_FINDINGS_PER_TURN,
+  PackVersionError,
   reviewRules,
   reviewRulesDetailed,
   RULES_BUDGET_MS,
   stagesFor,
   type DetailedReview,
   type ReviewRulesInput,
+  type RuleCandidate,
   type RulesDiagnostics,
 } from "./review.js";
 export { isStopWord, STOP_WORDS, STOP_WORDS_VERSION } from "./stopwords.js";

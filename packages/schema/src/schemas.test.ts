@@ -88,7 +88,7 @@ function validReviewerFinding(): Finding {
   const span = 'works';
   const start = TEXT.indexOf(span);
   return {
-    id: findingId('unsupported_claim', null, span, 's1'),
+    id: findingId('unsupported_claim', null, span),
     span: { segment_id: 's1', start, end: start + span.length, text: span },
     category: 'unsupported_claim',
     source: 'reviewer',
@@ -149,7 +149,7 @@ function mk(category: Category, start: number, end: number, severity: Severity =
           ? { action: 'shorten' as const, text: 'Cut to under 300 words.' }
           : { action: 'remove' as const, text: 'Remove it.' };
   return {
-    id: findingId(category, ruleId, text, 's1'),
+    id: findingId(category, ruleId, text),
     span: { segment_id: 's1', start, end, text },
     category,
     source: isRule ? 'rule' : 'reviewer',
@@ -390,13 +390,13 @@ describe('instruction forks and injection limits (03, 07 threats 3 and 4)', () =
   const unsupported = () => validReviewerFinding();
   const vague = (text: string): Finding => ({
     ...unsupported(),
-    id: findingId('vague_claim', null, 'works', 's1'),
+    id: findingId('vague_claim', null, 'works'),
     category: 'vague_claim',
     instruction: { action: 'specify', text },
   });
   const register = (severity: Severity, text: string): Finding => ({
     ...unsupported(),
-    id: findingId('register', null, 'works', 's1'),
+    id: findingId('register', null, 'works'),
     category: 'register',
     severity,
     instruction: { action: 'shorten', text },
@@ -492,6 +492,18 @@ describe('findings placement', () => {
     expect(ok(r)).toBe(true);
   });
 
+  it('document-scope findings (ADR-24) may intersect anything, on either side; unknown scopes are refused', () => {
+    const doc = (f: Finding): Finding => ({ ...f, scope: 'document' });
+    expect(ok(resultOf([mk('hedge', 0, 5), doc(mk('structure', 3, 8))]))).toBe(true); // doc finding after
+    expect(ok(resultOf([doc(mk('structure', 0, 8)), mk('hedge', 3, 6)]))).toBe(true); // doc finding before
+    expect(ok(resultOf([doc(mk('structure', 0, 8)), doc(mk('structure', 2, 9))]))).toBe(true);
+    expect(ok(resultOf([mk('hedge', 0, 5), mk('vocab', 3, 8)]))).toBe(false); // still refused without the scope
+    expect(ok(resultOf([{ ...mk('structure', 0, 5), scope: 'span' }, mk('hedge', 3, 8)]))).toBe(false);
+    expect(ok(resultOf([{ ...mk('structure', 0, 5), scope: 'sentence' as never }]))).toBe(false);
+    // order still applies
+    expect(ok(resultOf([mk('hedge', 4, 6), doc(mk('structure', 0, 8))]))).toBe(false);
+  });
+
   it('rejects two findings that merely overlap', () => {
     expect(ok(resultOf([mk('hedge', 0, 5), mk('vocab', 3, 8)]))).toBe(false);
   });
@@ -584,6 +596,11 @@ describe('placementProblems (direct)', () => {
     // 03: "kept only when its category differs; otherwise the rule finding wins"
     expect(placementProblems([p('reviewer', 'hedge', 0, 20)], p('rule', 'hedge', 5, 8), seg)).not.toEqual([]);
     expect(placementProblems([p('reviewer', 'register', 0, 20)], p('rule', 'hedge', 5, 8), seg)).toEqual([]);
+  });
+
+  it('skips the intersection rule for document scope', () => {
+    expect(placementProblems([p('rule', 'hedge', 0, 20)], { ...p('rule', 'structure', 5, 8), scope: 'document' }, seg)).toEqual([]);
+    expect(placementProblems([{ ...p('rule', 'structure', 0, 20), scope: 'document' }], p('rule', 'hedge', 5, 8), seg)).toEqual([]);
   });
 
   it('compares against every earlier finding, not only the previous one', () => {

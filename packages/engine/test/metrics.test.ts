@@ -95,9 +95,11 @@ describe("similarity_to_prior", () => {
     const big = make(SIMILARITY_MAX_WORDS + 1);
     expect(analyse(exact).prose_words).toBe(SIMILARITY_MAX_WORDS);
     expect(analyse(big).prose_words).toBe(SIMILARITY_MAX_WORDS + 1);
-    expect(spans(small, rep).length).toBeGreaterThan(100);
-    expect(spans(exact, rep).length).toBeGreaterThan(100);
-    expect(spans(big, rep)).toEqual([]);
+    // counted on the candidates: the per-rule cap (50) limits the findings, not the matches
+    const count = (t: string): number => run(t, { packs: [sentenceRule("core.repetition.001", rep)] }).diagnostics.candidates.length;
+    expect(count(small)).toBeGreaterThan(100);
+    expect(count(exact)).toBeGreaterThan(100);
+    expect(count(big)).toBe(0);
   });
 
   it("the stop list is published, sorted and does not contain content words", () => {
@@ -187,7 +189,9 @@ describe("document metrics (values)", () => {
   it("closing_similarity: first non-heading paragraph vs last non-heading block, headings skipped", () => {
     const a = "The deploy pipeline is slow because the tests are slow.";
     expect(docValue(`# Title\n\n${a}\n\nSomething else entirely about bananas and ships.\n\n${a}`, "closing_similarity")).toBeCloseTo(1, 10);
-    expect(docValue(`${a}\n\nThe weather is mild in spring.`, "closing_similarity")).toBe(0);
+    expect(docValue(`${a}\n\nBananas sail on ships.\n\nThe weather is mild in spring.`, "closing_similarity")).toBe(0);
+    // two blocks are not a closing (ADR-24: at least three non-heading blocks)
+    expect(docValue(`${a}\n\n${a}`, "closing_similarity")).toBeNull();
     expect(docValue(`${a}\n\n# Heading last`, "closing_similarity")).toBeNull();
     expect(docValue(a, "closing_similarity")).toBeNull();
   });
@@ -213,6 +217,8 @@ describe("document metrics (values)", () => {
     const text = [
       "The deploy pipeline is slow because the tests are slow.",
       "",
+      "Bananas sail on ships.",
+      "",
       "- Tests are slow",
       "",
       "- The deploy pipeline is slow",
@@ -222,7 +228,7 @@ describe("document metrics (values)", () => {
     const value = docValue(text, "closing_similarity") ?? 0;
     expect(value).toBeGreaterThan(0.6);
     // The last item alone would score lower than the merged list.
-    const lastOnly = docValue("The deploy pipeline is slow because the tests are slow.\n\nBecause the tests are slow", "closing_similarity") ?? 0;
+    const lastOnly = docValue("The deploy pipeline is slow because the tests are slow.\n\nBananas sail on ships.\n\nBecause the tests are slow", "closing_similarity") ?? 0;
     expect(lastOnly).not.toBeCloseTo(value, 3);
   });
 });

@@ -73,30 +73,32 @@ function spawnOnce(): Sample {
 const pct = (xs: number[], p: number): number => [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.ceil(p * xs.length) - 1)] as number;
 
 describe("cold start (ADR-10)", () => {
-  it("a fresh node process that loads the engine, compiles core and reviews 2,000 words: p95 <= 400 ms over 10 spawns", () => {
+  it("a fresh node process that loads the engine, compiles core and reviews 2,000 words: wall minus bare node <= 300 ms p95, and the in-process work <= 250 ms p95, over 10 spawns", () => {
     spawnOnce(); // file cache warm-up; not counted
-    // Wall time on a shared machine: the root `vitest run` executes every package's tests in parallel workers,
-    // which inflates every spawn. Retry (with a pause) until a quiet moment; the test fails only if no attempt of 10
-    // spawns reaches p95 <= 400 ms. A quiet machine passes on the first attempt.
-    let samples: Sample[] = [];
-    let p95 = Infinity;
-    for (let attempt = 1; attempt <= 12 && p95 > 400; attempt++) {
-      if (attempt > 1) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
-      samples = Array.from({ length: 10 }, spawnOnce);
-      p95 = pct(samples.map((s) => s.wall), 0.95);
-      console.log(`cold attempt ${attempt}: wall p95 ${p95.toFixed(1)} ms`);
-    }
-    const col = (k: keyof Sample): number[] => samples.map((s) => s[k]);
-    const line = (k: keyof Sample): string => `${k} p50 ${pct(col(k), 0.5).toFixed(1)} p95 ${pct(col(k), 0.95).toFixed(1)}`;
-    const bare = Array.from({ length: 5 }, () => {
+    const bareOnce = (): number => {
       const t0 = performance.now();
       spawnSync(process.execPath, ["-e", "0"]);
       return performance.now() - t0;
-    });
+    };
+    // Up to three attempts: this runs after other work on a shared machine, and a loaded machine shifts every spawn.
+    // Node's own startup is measured in the same attempt and taken out of the wall time, so the budget is the work.
+    let samples: Sample[] = [];
+    let bare = Infinity;
+    let overhead = Infinity;
+    let work = Infinity;
+    for (let attempt = 1; attempt <= 3 && !(overhead <= 300 && work <= 250); attempt++) {
+      bare = pct(Array.from({ length: 5 }, bareOnce), 0.5);
+      samples = Array.from({ length: 10 }, spawnOnce);
+      overhead = pct(samples.map((s) => s.wall), 0.95) - bare;
+      work = pct(samples.map((s) => s.parse_resolve_ms + s.compile_ms + s.review_ms), 0.95);
+      console.log(`cold attempt ${attempt}: wall p95 - bare p50 = ${overhead.toFixed(1)} ms, in-process p95 = ${work.toFixed(1)} ms`);
+    }
+    const col = (k: keyof Sample): number[] => samples.map((s) => s[k]);
+    const line = (k: keyof Sample): string => `${k} p50 ${pct(col(k), 0.5).toFixed(1)} p95 ${pct(col(k), 0.95).toFixed(1)}`;
     console.log(
       [
         "cold start over 10 spawns (ms):",
-        `  bare node -e 0: p50 ${pct(bare, 0.5).toFixed(1)}`,
+        `  bare node -e 0: p50 ${bare.toFixed(1)}`,
         `  ${line("wall")}`,
         `  ${line("loaded_ms")} (since process start: Node startup + bundle load)`,
         `  ${line("parse_resolve_ms")}`,
@@ -107,6 +109,7 @@ describe("cold start (ADR-10)", () => {
       ].join("\n"),
     );
     expect(samples[0]?.findings).toBeGreaterThan(0);
-    expect(p95).toBeLessThanOrEqual(400);
+    expect(overhead).toBeLessThanOrEqual(300);
+    expect(work).toBeLessThanOrEqual(250);
   }, 300_000);
 });

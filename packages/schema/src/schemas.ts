@@ -199,13 +199,16 @@ export interface PlacedFinding {
   category: Category;
   source: 'rule' | 'reviewer';
   span: { segment_id: string; start: number; end: number };
+  /** 'document' findings (ADR-24) may intersect anything; they still have to be sorted. */
+  scope?: string | undefined;
 }
 
 /**
  * Where a finding sits relative to its segment and to the findings listed before it (03, ADR-17):
  * inside a prose segment; ordered by start ascending then end descending; and the only allowed
  * intersection is a reviewer finding that fully contains a rule finding of a different category.
- * Every earlier finding is compared, not only the previous one.
+ * Every earlier finding is compared, not only the previous one. A document-scope finding (ADR-24)
+ * takes no part in the intersection rule, on either side.
  */
 export function placementProblems(
   earlier: readonly PlacedFinding[],
@@ -225,6 +228,7 @@ export function placementProblems(
     out.push({ path: ['span', 'start'], message: 'findings must be sorted by span.start, then span.end descending' });
   }
   for (const e of earlier) {
+    if (f.scope === 'document' || e.scope === 'document') continue;
     const intersects = f.span.start < e.span.end && e.span.start < f.span.end;
     if (!intersects) continue;
     const nested =
@@ -302,6 +306,7 @@ export const FindingSchema = z
     instruction: z.strictObject({ action: ActionSchema, text: z.string() }),
     evidence: z.string().nullable(),
     profile_origin: ProfileIdFormatSchema, // the id denylist runs in findingProblems
+    scope: z.enum(['span', 'document']).exactOptional(),
   })
   .superRefine((f, ctx) => {
     emit(ctx, findingProblems(f));
