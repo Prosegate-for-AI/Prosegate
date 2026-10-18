@@ -43,6 +43,10 @@ The `feedback_text` sent to the model always ends by telling the model not to ru
 
 Whenever effective enforcement is weaker than the active profile defines (advisory, off, a rule switched off, a local overlay lowering severity, or local profile files changed mid-session), the user sees once per session, and again when it changes: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status` (ADR-30). The model never sees it.
 
+If Prosegate itself cannot handle a turn, the user sees one line per session and reason rather than silence: `Prosegate · this turn was not reviewed (<why>) · details: <log>`; when the program files are missing, `<why>` names the fix (ADR-32, ADR-33).
+
+Claude Code shows each line of a `systemMessage` prefixed "Stop says: ", so on its allow path a turn carries one notice: the lowered-enforcement text joins the notice header, and at most three finding lines follow, then `  …and N more` (ADR-33).
+
 ## Wrong profile
 
 The notice always names the profile. If it is wrong, the user either types `prosegate profile <id>` or tells the model ("use the design-doc profile"), which calls `select_profile`. The correction applies from the next turn; the current turn is not re-reviewed, because the model already spent the pass on the wrong rules and a third pass is worse than a visible mistake.
@@ -87,6 +91,7 @@ Prosegate · 1 of 2 findings remain · revising, pass 2 of 2
 [model] … (revised again; claim still present)
 
 Prosegate · 1 finding remains after 2 passes · shipped as is
+  unsupported claim  "the industry standard approach"
 ```
 
 Advisory mode:
@@ -99,8 +104,12 @@ Prosegate: advisory for this session. Findings will be shown, not enforced. Run 
 
 [model] … (response as written)
 
-Prosegate · profile chat-reply · 2 findings (filler 1, structure 1) · advisory, not enforced
+Prosegate · profile chat-reply · 2 findings (filler 2) · advisory, not enforced · enforcement is lowered in this session (advisory)
+  filler   core.filler.001  "Great question!"
+  filler   core.filler.004  "In summary,"
 ```
+
+The lowered-enforcement text appears on the first advisory turn and again when the lowering changes (ADR-30, ADR-33); later advisory turns show the header without it.
 
 ## Noise budget
 

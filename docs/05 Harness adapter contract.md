@@ -11,7 +11,7 @@ Every entry point reads one JSON object on stdin and writes one on stdout. Exit 
 | Command | When the shim calls it | Input (stdin) | Output (stdout) |
 | --- | --- | --- | --- |
 | `prosegate session-start` | Once, when the harness starts a session | `{harness, session_id, cwd, mode, source?: startup | resume | clear | compact | fork}` (ADR-31) | `{inject: string, notice: string \| null, active_profile, offline: bool}`; `notice` is for the user, never the model (ADR-28) |
-| `prosegate turn-start` | After the user submits a prompt, before the model runs | `{session_id, user_message, tool_calls_so_far: string[]}` | `{inject: string \| null, candidate: string \| null}` |
+| `prosegate turn-start` | After the user submits a prompt, before the model runs | `{session_id, user_message, tool_calls_so_far: string[], turn_id?}` (ADR-33) | `{inject: string \| null, candidate: string \| null}` |
 | `prosegate turn-end` | When the model has produced its final text for the turn | `{session_id, turn_id, assistant_text, user_message, tool_calls: string[], continuation: bool, continue_supported?: bool}` | `{decision: 'allow' \| 'continue', feedback_text, render: 'diff' \| 'summary' \| 'none', result: ReviewResult, notice: string \| null}` (ADR-28, ADR-29) |
 | `prosegate mcp` | Started once by the harness as a stdio MCP server | MCP protocol | MCP protocol |
 
@@ -68,7 +68,7 @@ Hooks are registered in `.claude/settings.json` (project) or `~/.claude/settings
 | Claude Code event | Shim action | Adapter call |
 | --- | --- | --- |
 | `SessionStart` | Read stdin; stdout is added to context | `session-start`; print `inject` |
-| `UserPromptSubmit` | Read `prompt` from stdin; stdout is added to context | `turn-start`; print `inject` if non-null |
+| `UserPromptSubmit` | Read `prompt` from stdin, and `prompt_id` as `turn_id` when present; stdout is added to context | `turn-start`; print `inject` if non-null |
 | `Stop` | Read `last_assistant_message` as the turn text, `stop_hook_active`, and `prompt_id` (used as `turn_id` when present); read the transcript only for the turn's tool-use names, best-effort, tolerating lag | `turn-end`; on `continue`, print `{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":feedback_text}}` and exit `0`; on `allow` with a notice (advisory, shipped as is), print `{"systemMessage":notice}` (ADR-11, ADR-13; fallback: `feedback_text` on stderr, exit `2`) |
 
 `stop_hook_active` is `true` when the Stop hook is running because a previous Stop hook already continued the model. The shim passes it as `continuation`; the adapter uses its own per-`turn_id` pass count as the source of truth and `continuation` only as a cross-check, because the flag does not distinguish Prosegate's continuation from another hook's.
@@ -88,4 +88,4 @@ The transcript parser reads only the tool-use blocks since the last user message
 
 ## Packaging
 
-`prosegate` ships as an npm package containing one platform-independent JavaScript bundle (all pure-JS dependencies inlined) and one native dependency, `@napi-rs/keyring`, kept external and declared in `optionalDependencies`; npm installs only the prebuilt keyring binary for the host platform, with no install scripts or compiler. If the binary is absent or fails to load, keys use the file store described in 07. It is installed with `npx prosegate init --harness claude-code`, which writes the hook and MCP registrations, probes the key store once and records the result, and runs `session-start` once to confirm auth (ADR-14). The shim scripts are inside the package; a user never edits them.
+`prosegate` ships as an npm package containing one platform-independent JavaScript bundle (all pure-JS dependencies inlined) and one native dependency, `@napi-rs/keyring`, kept external and declared in `optionalDependencies`; npm installs only the prebuilt keyring binary for the host platform, with no install scripts or compiler. If the binary is absent or fails to load, keys use the file store described in 07. It is installed with `npx prosegate init --harness claude-code`, which writes the hook and MCP registrations, probes the key store once and records the result, and runs `session-start` once to confirm auth (ADR-14). The shim scripts are inside the package; a user never edits them. `init` copies the package into `~/.prosegate/app/<version>/`, registers the hooks against the version-independent launcher `~/.prosegate/app/hook.mjs`, and writes `~/.prosegate/bin/prosegate`; project scope writes `.claude/settings.local.json`; Prosegate is registered in one scope at a time (ADR-32, ADR-33).
