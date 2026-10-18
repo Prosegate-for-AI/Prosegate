@@ -11,7 +11,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync,
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Ctx } from "./ctx.js";
-import { LockTimeoutError, ensureDirIn, withLock, writeFileAtomic } from "./fs-secure.js";
+import { LockTimeoutError, ensureDirIn, sleepSync, withLock, writeFileAtomic } from "./fs-secure.js";
 import { quoteProblem } from "./hook-shell.js";
 
 /** A version name: letters, digits and . _ + -, starting with a letter or digit (so never "." or "..", and no separator). */
@@ -71,6 +71,27 @@ function optionalDependencies(root: string): Array<[string, string]> {
     if (found.length > 0) break;
   }
   return found;
+}
+
+/**
+ * Moves a freshly built directory into place. On Windows a virus scanner or the indexer often holds a handle on files that were
+ * just written, and the rename fails with EBUSY or EPERM for a moment: retry, and if it never lets go, copy instead (the
+ * install lock is held, and a half-copied directory fails verification and is rebuilt next time).
+ */
+function renameDir(from: string, to: string): void {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code ?? "";
+      if (!["EBUSY", "EPERM", "EACCES"].includes(code)) throw error;
+      if (attempt >= 12) break;
+      sleepSync(25 * (attempt + 1));
+    }
+  }
+  cpSync(from, to, { recursive: true });
+  rmSync(from, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 export interface Installed {
@@ -133,7 +154,7 @@ export function installVersion(ctx: Ctx, root = packageRoot()): Installed | stri
       for (const [from, rel] of optionalDependencies(root)) cpSync(from, join(tmp, rel), { recursive: true });
       writeFileSync(join(tmp, "package.json"), `${JSON.stringify({ name: "prosegate", version: base })}\n`);
       writeFileSync(join(tmp, ".content"), `${hash}\n`);
-      renameSync(tmp, dir);
+      renameDir(tmp, dir);
     } catch (error) {
       rmSync(tmp, { recursive: true, force: true });
       return `Prosegate: could not copy the program files to ${dir} (${(error as NodeJS.ErrnoException).code ?? "error"}). Nothing was changed.`;

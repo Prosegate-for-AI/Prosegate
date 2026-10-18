@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { renderNotice, type ReviewResult } from "@prosegate/schema";
-import { json, pg, tmpDir, testHooks } from "../helpers.js";
+import { ADAPTER_DIR, json, pg, tmpDir, testHooks } from "../helpers.js";
 import { FakeClaudeCode, PROMPT_ID, SESSION, releasePkg, testPkg, type Pkg } from "./driver.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -45,7 +45,7 @@ const MOCK1_FEEDBACK = [
   ...LAST_LINES,
 ].join("\n");
 
-// 09's four lines, byte for byte (ADR-12 order: hedge, vocab, triad).
+// 09's first four lines, byte for byte (ADR-12 order: hedge, vocab, triad); the override line follows on the first notice.
 const MOCK1_NOTICE = [
   `Prosegate ${DOT} profile pr-description ${DOT} 3 findings (hedge 1, vocab 1, triad 1) ${DOT} revising, pass 1 of 2`,
   '  hedge   core.hedge.001  "It\'s worth noting that"',
@@ -106,9 +106,13 @@ describe("09 mock 1: pass-1 revise, pr-description, interactive", () => {
     const out = json<{ decision: string; result: ReviewResult; notice: string; feedback_text: string }>(r);
     expect(out.decision).toBe("continue");
     expect(out.feedback_text).toBe(MOCK1_FEEDBACK);
+    // 09's mock 1 as it stands after ADR-34: the first notice of a session ends with the override line. This is the adapter's
+    // notice, harness-neutral; in Claude Code a continuing turn shows the feedback block instead (ADR-13), asserted above.
+    const first = `${MOCK1_NOTICE}\n  To pause for this session, run: prosegate advisory`;
+    expect(renderNotice(out.result, { mode: "enforce", render: "diff", firstNoticeOfSession: true, phase: "pass1" })).toBe(first);
+    expect(out.notice).toBe(first);
+    // Later notices in the session do not repeat it.
     expect(renderNotice(out.result, { mode: "enforce", render: "diff", firstNoticeOfSession: false, phase: "pass1" })).toBe(MOCK1_NOTICE);
-    // The first notice of a session adds the override line as a fifth line (ADR-12, ADR-16).
-    expect(out.notice).toBe(`${MOCK1_NOTICE}\n  To pause for this session, run: prosegate advisory`);
   });
 });
 
@@ -353,6 +357,30 @@ describe("the shim and the real adapter", () => {
     const cc = new FakeClaudeCode(release);
     cc.sessionStart();
     expect(cc.stop(MOCK1_REVISED)).toMatchObject({ code: 0, stdout: "", stderr: "" });
+  });
+});
+
+// ---- the goldens are 09's mocks, read from the document ---------------------------------------
+
+describe("the notices the goldens assert are the ones docs/09 Enforcement UX.md draws (ADR-34)", () => {
+  const OVERRIDE = "  To pause for this session, run: prosegate advisory";
+  const expected = [
+    `${MOCK1_NOTICE}\n${OVERRIDE}`,
+    [`Prosegate ${DOT} profile design-doc ${DOT} 2 findings (unsupported claim 2) ${DOT} revising, pass 1 of 2`, `  unsupported claim  "${CLAIM_A}"`, `  unsupported claim  "${CLAIM_B}"`, OVERRIDE].join("\n"),
+    `Prosegate ${DOT} 1 of 2 findings remain ${DOT} revising, pass 2 of 2`,
+    `Prosegate ${DOT} 1 finding remains after 2 passes ${DOT} shipped as is\n  unsupported claim  "${CLAIM_B}"`,
+    [
+      `Prosegate ${DOT} profile chat-reply ${DOT} 2 findings (filler 2) ${DOT} advisory, not enforced ${DOT} enforcement is lowered in this session (advisory)`,
+      '  filler  core.filler.001  "Great question"',
+      '  filler  core.filler.004  "In summary"',
+    ].join("\n"),
+  ];
+
+  it("every Prosegate notice block in the mock transcripts of 09 is asserted by a golden, byte for byte, and no golden notice is missing from 09", () => {
+    const doc = readFileSync(join(ADAPTER_DIR, "..", "..", "docs", "09 Enforcement UX.md"), "utf8");
+    const mocks = doc.slice(doc.indexOf("## Mock transcripts"), doc.indexOf("## Noise budget"));
+    const blocks = [...mocks.matchAll(/^(Prosegate · .*(?:\n {2}.*)*)$/gm)].map((m) => m[1] as string);
+    expect(blocks).toEqual(expected);
   });
 });
 
