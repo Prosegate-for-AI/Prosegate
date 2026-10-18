@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -104,6 +104,35 @@ describe("the vitest global setup", () => {
       const later = new Date(statSync(settings).mtimeMs + 60_000);
       utimesSync(settings, later, later);
       expect(() => again()).toThrow(/changed a real Claude settings file/);
+    } finally {
+      for (const k of HOME_VARS) process.env[k] = saved[k];
+      process.env[ISO_ROOT_VAR] = saved[ISO_ROOT_VAR];
+    }
+  });
+});
+
+describe("the vitest global setup also watches the real Prosegate program files (stat only)", () => {
+  it("fails the run when ~/.prosegate/app or ~/.prosegate/bin of a watched home changes, and not otherwise", () => {
+    const watched = tmpDir();
+    const app = join(watched, ".prosegate", "app");
+    mkdirSync(app, { recursive: true });
+    writeFileSync(join(app, "hook.mjs"), "// launcher");
+    const saved = { ...process.env };
+    try {
+      process.env["USERPROFILE"] = watched;
+      process.env["HOME"] = watched;
+      expect(() => pointSetup()()).not.toThrow();
+      process.env["USERPROFILE"] = watched;
+      process.env["HOME"] = watched;
+      const teardown = pointSetup();
+      const later = new Date(Date.now() + 60_000);
+      utimesSync(app, later, later); // what init does to the directory when it adds or removes a version
+      expect(() => teardown()).toThrow(/changed a real Claude settings file or Prosegate program directory/);
+      process.env["USERPROFILE"] = watched;
+      process.env["HOME"] = watched;
+      const bin = pointSetup();
+      mkdirSync(join(watched, ".prosegate", "bin"), { recursive: true }); // a bin directory appearing
+      expect(() => bin()).toThrow(/Prosegate program directory/);
     } finally {
       for (const k of HOME_VARS) process.env[k] = saved[k];
       process.env[ISO_ROOT_VAR] = saved[ISO_ROOT_VAR];

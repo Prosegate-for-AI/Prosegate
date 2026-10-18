@@ -11,10 +11,11 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync,
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Ctx } from "./ctx.js";
-import { ensureDirIn, writeFileAtomic } from "./fs-secure.js";
+import { LockTimeoutError, ensureDirIn, withLock, writeFileAtomic } from "./fs-secure.js";
 import { quoteProblem } from "./hook-shell.js";
 
-export const VERSION_RE = /^[A-Za-z0-9._+-]+$/;
+/** A version name: letters, digits and . _ + -, starting with a letter or digit (so never "." or "..", and no separator). */
+export const VERSION_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
 
 export const appDir = (ctx: Ctx): string => join(ctx.home, "app");
 export const binDir = (ctx: Ctx): string => join(ctx.home, "bin");
@@ -54,6 +55,12 @@ function sources(root: string): { files: Array<[string, string]>; missing: strin
   return { files, missing: files.find(([from]) => !existsSync(from))?.[0] ?? null };
 }
 
+/** The refusal when the package being installed lacks one of its files, else null (checked before anything is written or locked). */
+export function packageProblem(root = packageRoot()): string | null {
+  const missing = sources(root).missing;
+  return missing === null ? null : `Prosegate: the package is incomplete (${missing} is missing). Reinstall it, then run this again.`;
+}
+
 /** Optional native dependencies installed beside the package (npm hoists them next to it): copied so they stay resolvable. */
 function optionalDependencies(root: string): Array<[string, string]> {
   const found: Array<[string, string]> = [];
@@ -73,18 +80,47 @@ export interface Installed {
   created: boolean;
 }
 
-/** Copies the package into app/<version>/ (reusing an identical copy), and the launcher into app/hook.mjs. */
+/** What an installed version directory holds, hashed the way `sources` is hashed; null when a file is missing or unreadable. */
+function installedHash(dir: string, rels: readonly string[]): string | null {
+  try {
+    return sha(...rels.map((rel) => readFileSync(join(dir, rel)))).slice(0, 12);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A version directory is reused only after its files are verified against the hash recorded when it was made: a deleted or
+ * edited file means it is damaged, and "run npx prosegate init again" must really repair it. `good` is reusable, `damaged`
+ * was this content once, `other` is another build of the same version number.
+ */
+function stateOf(dir: string, hash: string, rels: readonly string[]): "absent" | "good" | "damaged" | "other" {
+  if (!existsSync(dir)) return "absent";
+  if (readText(join(dir, ".content"))?.trim() !== hash) return "other";
+  return installedHash(dir, rels) === hash ? "good" : "damaged";
+}
+
+/** Copies the package into app/<version>/ (reusing a verified copy, rebuilding a damaged one), and the launcher into app/hook.mjs. */
 export function installVersion(ctx: Ctx, root = packageRoot()): Installed | string {
   const src = sources(root);
-  if (src.missing !== null) return `Prosegate: the package is incomplete (${src.missing} is missing). Reinstall it, then run this again.`;
+  const incomplete = packageProblem(root);
+  if (incomplete !== null) return incomplete;
   const pkg = JSON.parse(readText(join(root, "package.json")) ?? "{}") as { version?: unknown };
   const base = typeof pkg.version === "string" && VERSION_RE.test(pkg.version) ? pkg.version : "0.0.0";
+  const rels = src.files.map(([, rel]) => rel);
   const hash = sha(...src.files.map(([from]) => readFileSync(from))).slice(0, 12);
   const apps = appDir(ctx);
   ensureDirIn(ctx.home, apps, ctx.platform);
   // The same version with other content (a development build) gets its own directory, so a running hook never loses its files.
+  // A damaged directory is removed and rebuilt; if it cannot be removed (a hook holds it open) the build goes to another name.
   let version = base;
-  while (existsSync(join(apps, version)) && readText(join(apps, version, ".content"))?.trim() !== hash) version = version === base ? `${base}-${hash.slice(0, 8)}` : `${version}-x`;
+  for (;;) {
+    const state = stateOf(join(apps, version), hash, rels);
+    if (state === "absent" || state === "good") break;
+    if (state === "damaged") rmSync(join(apps, version), { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+    if (!existsSync(join(apps, version))) break;
+    version = version === base ? `${base}-${hash.slice(0, 8)}` : `${version}-x`;
+  }
   const dir = join(apps, version);
   const created = !existsSync(dir);
   if (created) {
@@ -183,8 +219,32 @@ export function onPath(ctx: Ctx): boolean {
   return path.split(delimiter).some((dir) => dir !== "" && !temporary(dir) && names.some((name) => existsSync(join(dir, name))));
 }
 
-/** Removes the program files and the command (`uninit --purge`). */
+/**
+ * Removes the versions, the `current` and `previous` pointers and the command (`uninit --purge`). The launcher stays: a project
+ * that is still set up then shows its readable "files are missing" line, not a "cannot find module" error from Claude Code.
+ */
 export function purge(ctx: Ctx): void {
-  rmSync(appDir(ctx), { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
-  rmSync(binDir(ctx), { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  const gone = { recursive: true, force: true, maxRetries: 3, retryDelay: 50 };
+  if (existsSync(appDir(ctx))) {
+    for (const name of readdirSync(appDir(ctx))) if (name !== "hook.mjs") rmSync(join(appDir(ctx), name), gone);
+  }
+  rmSync(binDir(ctx), gone);
+}
+
+export class InstallBusyError extends Error {
+  override readonly name = "InstallBusyError";
+}
+
+/**
+ * Runs `fn` holding the install lock (app/.install.lock), so two inits at once do not overwrite each other's pointer or
+ * version directory. A second init waits up to 30 s; the lock of a crashed init is broken after 2 minutes or when its owner is dead.
+ */
+export function withInstallLock<T>(ctx: Ctx, fn: () => T): T {
+  ensureDirIn(ctx.home, appDir(ctx), ctx.platform);
+  try {
+    return withLock(join(appDir(ctx), ".install.lock"), fn, { timeoutMs: 30_000, staleMs: 120_000 });
+  } catch (error) {
+    if (error instanceof LockTimeoutError) throw new InstallBusyError("another prosegate init is running");
+    throw error;
+  }
 }

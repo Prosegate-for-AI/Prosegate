@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { createCtx } from "../../src/ctx.js";
 import { detectShell, hookCommand } from "../../src/hook-shell.js";
 import { runUninit } from "../../src/init.js";
-import { pg, tmpDir } from "../helpers.js";
+import { pg, pgAsync, tmpDir } from "../helpers.js";
 import { layoutPkg, releasePkg, type Pkg } from "./driver.js";
 
 // `prosegate init --harness claude-code` and `prosegate uninit` (ADR-32, ADR-33): they copy the package to ~/.prosegate/app, register the
@@ -20,6 +20,8 @@ beforeAll(async () => {
 
 const fwd = (p: string): string => p.replace(/\\/g, "/");
 const BASH = detectShell(createCtx({ env: {}, home: "x", cwd: "x" })).kind === "bash";
+/** A skipped git test shows as skipped in the report instead of passing without having run. */
+const HAS_GIT = spawnSync("git", ["--version"], { windowsHide: true }).status === 0;
 
 /** PATH without any directory that holds a `prosegate` command, so "is it on PATH?" is the test's to decide. */
 function cleanPath(extra: string[] = []): string {
@@ -114,9 +116,10 @@ describe("init, user scope", () => {
       `Prosegate is installed for Claude Code: hooks added to ${e.settings}. The self-check passed.`,
       "Sign-in is not available in this build yet; installed in local mode.",
       "Start a new Claude Code session. If it asks whether to trust the folder, say yes; hooks do not run until you do.",
+      // The PATH line comes before the lines that tell the user to type `prosegate`.
+      `To use "prosegate" directly, add ${join(e.home, "bin")} to your PATH; until then, "npx prosegate <command>" works.`,
       'Prosegate stays silent when your prose is clean. To pause it for a session, run "prosegate advisory" in a terminal outside Claude Code.',
       `To remove it, run "prosegate uninit". Your previous settings are saved in ${join(e.home, "backups", backup as string)}.`,
-      `To use "prosegate" directly, add ${join(e.home, "bin")} to your PATH; until then, "npx prosegate <command>" works.`,
     ]);
     expect(r.stdout).toMatch(/^[\x20-\x7e\n]*$/); // no emoji, no colour
   });
@@ -125,7 +128,7 @@ describe("init, user scope", () => {
     const e = env();
     const lines = init(e, ["--local"]).stdout.trimEnd().split("\n");
     expect(lines[1]).toBe("Local mode for now: no sign-in is needed yet.");
-    expect(lines[4]).toBe('To remove it, run "prosegate uninit".');
+    expect(lines[5]).toBe('To remove it, run "prosegate uninit".');
     expect(backupsOf(e)).toEqual([]);
   });
 
@@ -226,7 +229,9 @@ describe("init, user scope", () => {
   it("warns when disableAllHooks is true", () => {
     const e = env();
     writeSettings(e, JSON.stringify({ disableAllHooks: true }));
-    expect(init(e).stdout).toContain(`Warning: "disableAllHooks" is true in ${e.settings}, so Claude Code will run no hook at all, Prosegate's included.`);
+    expect(init(e).stdout).toContain(
+      `Warning: "disableAllHooks" is true in ${e.settings}, so Claude Code will run no hook at all, Prosegate's included. Remove that setting, or set it to false, then start a new session.`,
+    );
   });
 
   it("a settings file that cannot be written gets a real message and leaves no backup", () => {
@@ -280,6 +285,73 @@ describe("init, versions and the launcher", () => {
   });
 });
 
+describe("init, a damaged install and two inits at once", () => {
+  const sessionStartOk = (e: Env): boolean => {
+    const r = spawnSync(process.execPath, [join(e.home, "app", "hook.mjs"), "SessionStart"], {
+      input: JSON.stringify({ session_id: "s-recover", cwd: tmpDir(), hook_event_name: "SessionStart", source: "startup" }),
+      encoding: "utf8",
+      env: { ...process.env, PROSEGATE_HOME: e.home },
+    });
+    return typeof (JSON.parse(r.stdout) as { hookSpecificOutput?: { additionalContext?: unknown } }).hookSpecificOutput?.additionalContext === "string";
+  };
+
+  it("a version directory with a deleted file is rebuilt by the next init, and the hooks work again (V F-A)", () => {
+    const e = env();
+    expect(init(e).code).toBe(0);
+    rmSync(join(e.home, "app", "1.0.0", "dist", "prosegate.mjs"));
+    expect(sessionStartOk(e)).toBe(false);
+    const again = init(e);
+    expect(again.code).toBe(0);
+    expect(existsSync(join(e.home, "app", "1.0.0", "dist", "prosegate.mjs"))).toBe(true);
+    expect(sessionStartOk(e)).toBe(true);
+    expect(readdirSync(join(e.home, "app")).sort()).toEqual(["1.0.0", "current", "hook.mjs"]);
+  });
+
+  it("a version directory with an edited or emptied file is rebuilt too, not trusted because its marker file is intact", () => {
+    for (const rel of [join("dist", "prosegate.mjs"), join("shims", "claude-code", "hook.mjs"), join("shims", "claude-code", "launcher.mjs")]) {
+      const e = env();
+      init(e);
+      writeFileSync(join(e.home, "app", "1.0.0", rel), "// damaged\n");
+      expect(init(e).code, rel).toBe(0);
+      expect(readFileSync(join(e.home, "app", "1.0.0", rel), "utf8"), rel).not.toBe("// damaged\n");
+      expect(sessionStartOk(e), rel).toBe(true);
+    }
+  });
+
+  it("four inits at once: one installs, the others wait and find it done; one registration, no leftovers", async () => {
+    const e = env();
+    const runs = await Promise.all(
+      Array.from({ length: 4 }, () => pgAsync(pkg.bundle, ["init", "--harness", "claude-code", "--local"], { home: e.home, cwd: tmpDir(), env: { PROSEGATE_CLAUDE_HOME: e.claude, PATH: cleanPath() } })),
+    );
+    // Normally all four succeed. On a machine so loaded that an init waits out its 30 s, the only other outcome allowed is the
+    // lock's own refusal, in full; anything else (a half-written pointer, a crash) fails.
+    const ok = runs.filter((r) => r.code === 0);
+    for (const r of runs.filter((x) => x.code !== 0)) expect(r.stderr).toBe("Prosegate: another prosegate init is running; try again when it finishes.\n");
+    expect(ok.length).toBeGreaterThanOrEqual(2);
+    expect(ok.filter((r) => r.stdout.startsWith("Prosegate is installed for Claude Code")).length).toBe(1);
+    expect(ok.filter((r) => r.stdout.startsWith("Prosegate was already installed for Claude Code")).length).toBe(ok.length - 1);
+    expect(read(e.settings)).toEqual({ hooks: ours(e) });
+    expect(readdirSync(join(e.home, "app")).sort()).toEqual(["1.0.0", "current", "hook.mjs"]);
+    expect(sessionStartOk(e)).toBe(true);
+  }, 120_000);
+
+  it("an init that cannot get the install lock within about 30 s refuses, and changes nothing", () => {
+    const e = env();
+    mkdirSync(join(e.home, "app"), { recursive: true });
+    // A lock held by a live process (this one), fresh: not stale, so the init waits for it.
+    writeFileSync(join(e.home, "app", ".install.lock"), JSON.stringify({ pid: process.pid, token: "held-by-the-test", at: Date.now() }));
+    const t0 = performance.now();
+    const r = init(e);
+    const waited = performance.now() - t0;
+    expect(r.code).toBe(1);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toBe("Prosegate: another prosegate init is running; try again when it finishes.\n");
+    expect(waited).toBeGreaterThanOrEqual(29_000);
+    expect(existsSync(e.settings)).toBe(false);
+    expect(existsSync(join(e.home, "app", "current"))).toBe(false);
+  }, 120_000);
+});
+
 describe("init, project scope", () => {
   it("writes .claude/settings.local.json in the working directory and leaves the user settings alone", () => {
     const e = env();
@@ -309,10 +381,34 @@ describe("init, project scope", () => {
     });
   });
 
-  it("warns, once, when git does not ignore the local file, and not when it does", () => {
+  it("project scope says how to remove it: `prosegate uninit --scope project`, in full", () => {
+    const e = env();
+    const lines = init(e, ["--scope", "project", "--local"], { cwd: tmpDir("pg-project-") }).stdout.trimEnd().split("\n");
+    expect(lines.at(-1)).toBe('To remove it, run "prosegate uninit --scope project".');
+    expect(lines.join("\n")).not.toContain('run "prosegate uninit".');
+  });
+
+  it("a failed clean-up of the earlier .claude/settings.json is reported, not swallowed", () => {
+    if (process.platform !== "win32") return; // a read-only file blocks the atomic replace on Windows only
     const e = env();
     const project = tmpDir("pg-project-");
-    if (spawnSync("git", ["init", "-q"], { cwd: project }).status !== 0) return; // no git on this machine
+    const legacyFile = join(project, ".claude", "settings.json");
+    const entry = { hooks: { Stop: [{ hooks: [{ type: "command", command: 'node "C:/x/node_modules/prosegate/shims/claude-code/hook.mjs" Stop' }] }] } };
+    writeSettings(e, JSON.stringify(entry), legacyFile);
+    chmodSync(legacyFile, 0o444);
+    const r = init(e, ["--scope", "project", "--local"], { cwd: project });
+    chmodSync(legacyFile, 0o666);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain(
+      "Warning: Prosegate's earlier entries are still in .claude/settings.json because it could not be written (EPERM). Make it writable, then run \"prosegate uninit --scope project\".",
+    );
+    expect(read(legacyFile)).toEqual(entry);
+  });
+
+  it.skipIf(!HAS_GIT)("warns, once, when git does not ignore the local file, and not when it does", () => {
+    const e = env();
+    const project = tmpDir("pg-project-");
+    expect(spawnSync("git", ["init", "-q"], { cwd: project }).status).toBe(0);
     const file = join(project, ".claude", "settings.local.json");
     const open = init(e, ["--scope", "project", "--local"], { cwd: project });
     expect(open.stdout).toContain(`Warning: git does not ignore ${file}; add it to .gitignore so a machine-specific path is not committed.`);
@@ -346,7 +442,15 @@ describe("one registration", () => {
 describe("a third party's hook with the same layout is never touched", () => {
   it("not by init, not by uninit, and uninit without init does not say it removed anything", () => {
     const e = env();
-    const only = { hooks: { Stop: [{ hooks: [{ type: "command", command: THIRD_PARTY }] }] } };
+    // Each of these names "Prosegate" somewhere (the Node path, a parent directory) but none is Prosegate's script (C S1).
+    const lookalikes = [
+      THIRD_PARTY,
+      `'C:/Prosegate/tools/node.exe' '/opt/acme/claude-code/hook.mjs' Stop`,
+      `node /opt/Prosegate/acme/claude-code/hook.mjs Stop`,
+      `node /opt/Prosegate/vendor/app/hook.mjs Stop`,
+      `"/home/me/.prosegate-tools/bin/node" "/srv/other/shims/claude-code/hook.mjs" Stop`,
+    ];
+    const only = { hooks: { Stop: lookalikes.map((command) => ({ hooks: [{ type: "command", command }] })) } };
     const text = `${JSON.stringify(only, null, 2)}\n`;
     writeSettings(e, text);
     const nothing = uninit(e);
@@ -356,7 +460,7 @@ describe("a third party's hook with the same layout is never touched", () => {
     expect(readFileSync(e.settings, "utf8")).toBe(text);
     expect(backupsOf(e)).toEqual([]);
     expect(init(e).code).toBe(0);
-    expect(((read(e.settings)["hooks"] as { Stop: unknown[] }).Stop)[0]).toEqual(only.hooks.Stop[0]);
+    expect(((read(e.settings)["hooks"] as { Stop: unknown[] }).Stop).slice(0, lookalikes.length)).toEqual(only.hooks.Stop);
     expect(uninit(e).code).toBe(0);
     expect(readFileSync(e.settings, "utf8")).toBe(text);
   });
@@ -376,15 +480,57 @@ describe("uninit", () => {
     expect(existsSync(join(e.home, "app", "hook.mjs"))).toBe(true);
   });
 
-  it("--purge also removes ~/.prosegate/app and ~/.prosegate/bin", () => {
+  it("--purge removes the versions, current, previous and bin, but keeps the launcher so other projects show the readable line (V F-B)", () => {
     const e = env();
     init(e);
     const r = uninit(e, ["--purge"]);
     expect(r.code).toBe(0);
-    expect(existsSync(join(e.home, "app"))).toBe(false);
+    expect(readdirSync(join(e.home, "app"))).toEqual(["hook.mjs"]);
     expect(existsSync(join(e.home, "bin"))).toBe(false);
-    expect(r.stdout).toContain("Removed Prosegate's program files");
+    expect(r.stdout.trimEnd().split("\n").at(-1)).toBe(
+      `Removed Prosegate's program files from ${join(e.home, "app")} and ${join(e.home, "bin")}. A project that is still set up shows a "files are missing" line until you run "npx prosegate uninit --scope project" in it.`,
+    );
     expect(read(e.settings)).toEqual({});
+  });
+
+  it("after a purge, a project that is still set up shows the launcher's files-are-missing line, not an error", () => {
+    const e = env();
+    init(e);
+    uninit(e, ["--purge"]);
+    const stop = spawnSync(process.execPath, [join(e.home, "app", "hook.mjs"), "Stop"], {
+      input: JSON.stringify({ session_id: "s-1", prompt_id: "p", last_assistant_message: "text" }),
+      encoding: "utf8",
+      env: { ...process.env, PROSEGATE_HOME: e.home },
+    });
+    expect(stop.status).toBe(0);
+    expect((JSON.parse(stop.stdout) as { systemMessage: string }).systemMessage).toContain('its files are missing; run "npx prosegate init" again');
+  });
+
+  it("the no-op line names the other scope when our entries are there, both ways round (C M1, V F-D)", () => {
+    const e = env();
+    const project = tmpDir("pg-project-");
+    const projectFile = join(project, ".claude", "settings.local.json");
+    expect(init(e, ["--scope", "project", "--local"], { cwd: project }).code).toBe(0);
+    const fromUser = uninit(e, [], { cwd: project });
+    expect(fromUser.stdout.split("\n")[0]).toBe(`No Prosegate hooks found in ${e.settings}; nothing changed. Prosegate is set up in ${projectFile}: run "prosegate uninit --scope project".`);
+    const gone = uninit(e, ["--scope", "project"], { cwd: project });
+    expect(gone.stdout.split("\n")[0]).toBe(`Prosegate hooks removed from ${projectFile}.`);
+
+    const f = env();
+    expect(init(f, ["--local"], { cwd: project }).code).toBe(0);
+    const fromProject = uninit(f, ["--scope", "project"], { cwd: project });
+    const files = `${projectFile} or ${join(project, ".claude", "settings.json")}`;
+    expect(fromProject.stdout.split("\n")[0]).toBe(`No Prosegate hooks found in ${files}; nothing changed. Prosegate is set up in ${f.settings}: run "prosegate uninit".`);
+  });
+
+  it("project-scope uninit also cleans the earlier build's .claude/settings.json (I36)", () => {
+    const e = env();
+    const project = tmpDir("pg-project-");
+    const old = { permissions: { allow: ["Bash(ls)"] }, hooks: { Stop: [{ hooks: [{ type: "command", command: 'node "C:/x/node_modules/prosegate/shims/claude-code/hook.mjs" Stop' }] }] } };
+    writeSettings(e, JSON.stringify(old, null, 2), join(project, ".claude", "settings.json"));
+    const r = uninit(e, ["--scope", "project"], { cwd: project });
+    expect(r.stdout.split("\n")[0]).toBe(`Prosegate hooks removed from ${join(project, ".claude", "settings.json")}.`);
+    expect(read(join(project, ".claude", "settings.json"))).toEqual({ permissions: old.permissions });
   });
 
   it("leaves an empty settings object, not an empty hooks key, when the file had only our hooks", () => {
@@ -565,7 +711,9 @@ describe("the self-check, and rolling back when it fails (ADR-33)", () => {
     const r = init(e, ["--local"], {}, bad);
     expect(r.code).toBe(1);
     expect(r.stdout).toBe("");
-    expect(r.stderr).toMatch(/^Prosegate: the self-check failed \(the hook could not run: Prosegate · this session may not be reviewed \(internal error\) · details: .+\), so the hooks were rolled back and your settings are unchanged\. Details: .+\.log\n$/);
+    // One sentence, one "Details:", and the problem is a fragment (C S2).
+    expect(r.stderr).toBe(`Prosegate: the self-check failed (the hook could not run: internal error), so the hooks were rolled back and your settings are unchanged. Details: ${join(e.home, "logs", `${new Date().toISOString().slice(0, 10)}.log`)}\n`);
+    expect(r.stderr.match(/Details:/g)).toHaveLength(1);
     untouched(e);
     expect(backupsOf(e)).toEqual([]);
   });
@@ -580,7 +728,7 @@ describe("the self-check, and rolling back when it fails (ADR-33)", () => {
     );
     const r = init(e, ["--local"], {}, once);
     expect(r.code).toBe(1);
-    expect(r.stderr).toMatch(/^Prosegate: the self-check failed \(.+\), so the hooks were rolled back and your settings are unchanged\./);
+    expect(r.stderr).toBe(`Prosegate: the self-check failed (the hook could not run: second call), so the hooks were rolled back and your settings are unchanged. Details: ${join(e.home, "logs", `${new Date().toISOString().slice(0, 10)}.log`)}\n`);
     expect(readFileSync(e.settings, "utf8")).toBe(EXISTING_TEXT);
     expect(existsSync(join(e.home, "app", "current"))).toBe(false);
     expect(readdirSync(join(e.home, "app")).filter((n) => /^\d/.test(n))).toEqual([]);
@@ -605,7 +753,7 @@ describe("the self-check, and rolling back when it fails (ADR-33)", () => {
     const r = init(e, ["--local"], { env: { HOME: home, USERPROFILE: home, PROSEGATE_HOOK_SHELL: "bash" } });
     expect(r.code).toBe(1);
     expect(r.stderr).toBe(
-      `Prosegate: the self-check failed (your shell startup prints text; Claude Code cannot read hook output while it does. Print only in interactive shells, then run this again.), so the hooks were rolled back and your settings are unchanged. Details: ${join(e.home, "logs", `${new Date().toISOString().slice(0, 10)}.log`)}\n`,
+      `Prosegate: the self-check failed (your shell startup prints text, and Claude Code cannot read hook output while it does; print only in interactive shells), so the hooks were rolled back and your settings are unchanged. Details: ${join(e.home, "logs", `${new Date().toISOString().slice(0, 10)}.log`)}\n`,
     );
     untouched(e);
   });
@@ -614,10 +762,13 @@ describe("the self-check, and rolling back when it fails (ADR-33)", () => {
 describe("quoting (F3, F11)", () => {
   const quirky = `a$HOME \`echo hi\` b`;
 
-  it.skipIf(!BASH || process.platform !== "win32")("a home whose path holds $ and backticks is registered literally and runs through Git Bash", () => {
+  // Git Bash on Windows; bash and a plain POSIX sh elsewhere (PROSEGATE_HOOK_SHELL=sh forces the second).
+  const shells = process.platform === "win32" ? [undefined] : [undefined, "sh"];
+  it.skipIf(process.platform === "win32" && !BASH).each(shells)("a home whose path holds $ and backticks is registered literally and runs through the hook shell (%s)", (forced) => {
+    const hookShell = forced === undefined ? {} : { PROSEGATE_HOOK_SHELL: forced };
     const e = env();
     const odd: Env = { claude: e.claude, home: join(tmpDir("pg-odd-"), quirky, ".prosegate"), settings: e.settings };
-    const r = init(odd);
+    const r = init(odd, ["--local"], { env: hookShell });
     expect(r.stderr).toBe("");
     expect(r.code).toBe(0);
     const start = ((read(e.settings)["hooks"] as { SessionStart: Array<{ hooks: Array<{ command: string }> }> }).SessionStart)[0]?.hooks[0]?.command ?? "";
@@ -625,7 +776,7 @@ describe("quoting (F3, F11)", () => {
     expect(start).toContain("$HOME");
     expect(start).toContain("`echo hi`");
     // Run the registered command again, as Claude Code would.
-    const shell = detectShell(createCtx({ env: {}, home: "x", cwd: "x" }));
+    const shell = detectShell(createCtx({ env: hookShell, home: "x", cwd: "x" }));
     const run = spawnSync(shell.file, [...shell.args, start], { input: JSON.stringify({ session_id: "s", cwd: tmpDir(), hook_event_name: "SessionStart", source: "startup" }), encoding: "utf8", env: { ...process.env, PROSEGATE_HOME: odd.home } });
     expect(JSON.parse(run.stdout)).toHaveProperty("hookSpecificOutput.additionalContext");
   });

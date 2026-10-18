@@ -1,14 +1,24 @@
 // Live end-to-end run of the Claude Code shim against the real `claude` CLI (W3.2). Not part of `pnpm test`: it
 // needs a logged-in CLI and spends a few model turns. Run it from the repository root after `pnpm build`:
 //   node packages/adapter/test/live/run-live.mjs [--keep] [--model haiku]
-// It makes a scratch project and a scratch Prosegate home, adds a recorder hook of its own to the project
-// settings (to prove init leaves other hooks alone and to capture the exact stdin Claude Code sends), installs
-// Prosegate with `prosegate init --scope project` (never --scope user: that edits the real ~/.claude/settings.json),
-// drives `claude -p` headless twice (enforcing, then PROSEGATE_MODE=advisory), asserts from the stream-json
-// output and the session transcript, prints excerpts, and deletes the scratch directory and the transcripts it made.
+//
+// WHAT THIS RUN TOUCHES (incident 2026-10-18, cycle 2 rules)
+//  - It never reads the content of any Claude settings file, and it copies no credential file. An OAuth refresh
+//    done by a copy could rotate the user's token and log them out.
+//  - `claude` runs with the REAL CLAUDE_CONFIG_DIR (whatever the environment says, else ~/.claude), so it stays logged
+//    in, and with `--setting-sources project,local`, so user-level settings (and any hooks in them) play no part.
+//  - Every Prosegate home is scratch: PROSEGATE_HOME, the Prosegate program files `init` installs, and the home
+//    variables `init` sees. `init` runs with `--scope project` only, in a scratch project.
+//  - The one thing it does write under the real config directory is what Claude itself writes for this run:
+//    `projects/<scratch project>` (transcripts). The script copies exactly the directories that appeared during
+//    the run into the scratch tree, reads them from there, and deletes them from the real config directory.
+// It makes a scratch project, adds a recorder hook of its own to the project settings (to prove init leaves other
+// hooks alone and to capture the exact stdin Claude Code sends), installs Prosegate, drives `claude -p` headless
+// twice (enforcing, then PROSEGATE_MODE=advisory), asserts from the stream-json output and the transcript, prints
+// excerpts, and deletes the scratch directory.
 import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,46 +33,33 @@ const root = mkdtempSync(join(scratchRoot, "live-"));
 const project = join(root, "project");
 const home = join(root, "prosegate-home");
 const recorded = join(root, "recorded.jsonl");
+const transcripts = join(root, "transcripts");
 mkdirSync(join(project, ".claude"), { recursive: true });
 
 // The host session's own variables would make the child think it is nested (docs/spikes/s1-stop-hook/run.mjs).
-const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_BASE_URL|CI$|PROSEGATE_|CLAUDE_CONFIG_DIR$)/i.test(k)));
+// CLAUDE_CONFIG_DIR is kept: `claude` must find its own login there.
+const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLAUDECODE|CLAUDE_CODE_|ANTHROPIC_BASE_URL|CI$|PROSEGATE_)/i.test(k)));
+const claudeProjects = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects");
+const env = { ...base, PROSEGATE_HOME: home };
+// init (and the hooks it checks) see only scratch homes.
+const scratchHomes = { HOME: root, USERPROFILE: root, APPDATA: join(root, "appdata"), LOCALAPPDATA: join(root, "localappdata"), XDG_CONFIG_HOME: join(root, "xdg"), CLAUDE_CONFIG_DIR: join(root, "claude-config"), PROSEGATE_CLAUDE_HOME: join(root, "claude-config") };
+const initEnv = { ...env, ...scratchHomes };
 
-// Incident 2026-10-18: this run must never read or write the real Claude settings. Claude runs against a SCRATCH config
-// directory (CLAUDE_CONFIG_DIR), so the real ~/.claude/settings.json, and any Prosegate hooks left in it, play no part.
-// Only what Claude needs to stay logged in is copied in, and nothing else: `.credentials.json` (the OAuth token, from the
-// source config directory) and `.claude.json` (account and onboarding state, from the home directory or the source
-// config directory). On macOS the token lives in the Keychain and no file is copied; the CLI then asks to log in.
-// UNVERIFIED on this machine: written without running `claude` (W3.2 cycle 1 forbade it).
-const scratchClaude = join(root, "claude-config");
-const sourceClaude = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
-mkdirSync(scratchClaude, { recursive: true });
-const copied = [];
-for (const [from, to] of [[join(sourceClaude, ".credentials.json"), ".credentials.json"], [join(process.env.CLAUDE_CONFIG_DIR ? sourceClaude : homedir(), ".claude.json"), ".claude.json"]]) {
-  if (existsSync(from)) {
-    copyFileSync(from, join(scratchClaude, to));
-    copied.push(to);
+// Directories under the real projects/ that this run created: copied to scratch, then deleted.
+const projectsBefore = new Set(existsSync(claudeProjects) ? readdirSync(claudeProjects) : []);
+function collectTranscripts() {
+  if (!existsSync(claudeProjects)) return;
+  for (const name of readdirSync(claudeProjects)) {
+    if (projectsBefore.has(name)) continue;
+    cpSync(join(claudeProjects, name), join(transcripts, name), { recursive: true });
+    rmSync(join(claudeProjects, name), { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
   }
 }
-// Abort if the settings Claude will read contain a Prosegate hook: the run would be measuring something else.
-const effective = join(scratchClaude, "settings.json");
-if (existsSync(effective) && /prosegate/i.test(readFileSync(effective, "utf8"))) {
-  console.error(`ABORT  ${effective} contains a Prosegate hook; this run must start from no user-level Prosegate registration.`);
-  process.exit(4);
-}
-// ...and tell the user when their real settings still carry one (it cannot affect this run, but it is probably unintended).
-const realSettings = join(sourceClaude, "settings.json");
-if (existsSync(realSettings) && /prosegate/i.test(readFileSync(realSettings, "utf8"))) console.log(`note: ${realSettings} contains a Prosegate hook; this run ignores it (scratch config directory).`);
-console.log(`scratch Claude config: ${scratchClaude} (copied: ${copied.join(", ") || "nothing: log in when asked"})`);
-
-const env = { ...base, PROSEGATE_HOME: home, CLAUDE_CONFIG_DIR: scratchClaude, PROSEGATE_CLAUDE_HOME: scratchClaude };
-const transcriptDir = join(scratchClaude, "projects", project.replace(/[^A-Za-z0-9]/g, "-"));
-// init runs with every home-like variable in the scratch tree as well (it never needs the real one).
-const initEnv = { ...env, HOME: root, USERPROFILE: root, APPDATA: join(root, "appdata"), LOCALAPPDATA: join(root, "localappdata"), XDG_CONFIG_HOME: join(root, "xdg") };
 
 // The prompt hands the model a hedge as a first draft but tells it to follow a later revision request, so the run
 // tests Prosegate's mechanism rather than whether the model disobeys the user (an explicit "begin with X" is kept
 // through every revision, which is correct behaviour and was observed).
+
 const PROMPT =
   "Write a note of about 90 words, in at least three sentences, on why a service should cache catalog reads per tenant. " +
   "Your first draft must open with the words 'It's worth noting that'. If you are then asked to revise it, do what the revision request asks and drop that opening. " +
@@ -78,12 +75,14 @@ const short = (v, n = 600) => JSON.stringify(v).slice(0, n);
 const jsonl = (text) => text.split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return { unparsed: l.slice(0, 100) }; } });
 
 function claude(extraEnv) {
-  const r = spawnSync("claude", ["-p", PROMPT, "--model", model, "--output-format", "stream-json", "--verbose"], {
-    cwd: project, env: { ...env, ...extraEnv }, encoding: "utf8", timeout: 300_000,
-  });
+  // --setting-sources project,local: the user's own settings (and any hooks in them) are not read by this run.
+  const args = ["-p", PROMPT, "--model", model, "--setting-sources", "project,local", "--output-format", "stream-json", "--verbose"];
+  const r = spawnSync("claude", args, { cwd: project, env: { ...env, ...extraEnv }, encoding: "utf8", timeout: 300_000 });
+  collectTranscripts();
   const lines = jsonl(r.stdout ?? "");
   const sessionId = lines.find((l) => l.type === "system" && l.subtype === "init")?.session_id;
-  const transcript = sessionId && existsSync(join(transcriptDir, `${sessionId}.jsonl`)) ? jsonl(readFileSync(join(transcriptDir, `${sessionId}.jsonl`), "utf8")) : [];
+  const found = sessionId && existsSync(transcripts) ? readdirSync(transcripts).map((d) => join(transcripts, d, `${sessionId}.jsonl`)).find((f) => existsSync(f)) : undefined;
+  const transcript = found === undefined ? [] : jsonl(readFileSync(found, "utf8"));
   const stops = transcript.filter((l) => l.type === "attachment" && l.attachment?.type === "hook_success" && l.attachment.hookEvent === "Stop" && /app[\\/]hook\.mjs['"]? Stop/.test(l.attachment.command ?? ""));
   return {
     status: r.status, raw: r.stdout ?? "", stderr: r.stderr ?? "", lines, transcript, sessionId,
@@ -158,14 +157,13 @@ try {
     check(typeof msg === "string" && msg.includes("advisory, not enforced") && msg.includes("core.hedge.001"), "advisory: the shim sent the advisory notice, with the finding, as systemMessage");
   }
 } finally {
-  if (keep) console.log(`\nkept: ${root} (transcripts in ${transcriptDir})`);
+  collectTranscripts(); // whatever the run left under the real projects/ directory goes, even after a failure
+  if (keep) console.log(`\nkept: ${root} (transcripts in ${transcripts})`);
   else {
-    for (const dir of [root, transcriptDir]) {
-      try {
-        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
-      } catch (error) {
-        console.log(`could not remove ${dir} (${error.code}); delete it by hand`);
-      }
+    try {
+      rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+    } catch (error) {
+      console.log(`could not remove ${root} (${error.code}); delete it by hand`);
     }
   }
 }

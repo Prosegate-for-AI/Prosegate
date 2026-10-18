@@ -33,7 +33,14 @@ function realSettingsFiles(): string[] {
   add(homedir());
   add(process.env["USERPROFILE"]);
   add(process.env["HOME"]);
-  const files = [...homes].flatMap((h) => [join(h, ".claude", "settings.json"), join(h, ".claude", "settings.local.json")]);
+  // The real Prosegate program files too (stat only): the launcher every registration names, and the directories init writes.
+  const files = [...homes].flatMap((h) => [
+    join(h, ".claude", "settings.json"),
+    join(h, ".claude", "settings.local.json"),
+    join(h, ".prosegate", "app"),
+    join(h, ".prosegate", "app", "hook.mjs"),
+    join(h, ".prosegate", "bin"),
+  ]);
   for (const dir of [process.env["CLAUDE_CONFIG_DIR"], process.env["PROSEGATE_CLAUDE_HOME"]]) if (dir !== undefined && dir !== "") files.push(join(dir, "settings.json"));
   return [...new Set(files)];
 }
@@ -63,7 +70,7 @@ export default function setup(): () => void {
     const changed = [...before].filter(([file, was]) => mtime(file) !== was).map(([file]) => file);
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     if (changed.length > 0) {
-      throw new Error(`A test run changed a real Claude settings file (incident 2026-10-18): ${changed.join(", ")}. Find the test that reached the real home and isolate it.`);
+      throw new Error(`A test run changed a real Claude settings file or Prosegate program directory (incident 2026-10-18): ${changed.join(", ")}. Find the test that reached the real home and isolate it.`);
     }
   };
 }

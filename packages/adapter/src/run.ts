@@ -58,8 +58,8 @@ separate terminal for those. enforce and the rest work anywhere.
 
 Environment: PROSEGATE_MODE=advisory|off (CI), PROSEGATE_SESSION=<id>
 Hooks, called by the harness shim: session-start | turn-start | turn-end
-Debug: add --debug to a hook to write that turn's text to the session
-debug directory.  Also: --version, --help
+Debug: start your agent with PROSEGATE_DEBUG=1 to write each turn's text
+to the session debug directory.  Also: --version, --help
 `;
 
 /** Time a hook waits for its stdin before failing open. */
@@ -171,7 +171,8 @@ export async function run(argv: readonly string[], io: RunIO): Promise<number> {
       return r.code;
     } catch (error) {
       log(ctx, "error", "adapter_error", `${first} failed: ${describeError(error)}`);
-      io.stderr.write(`prosegate: ${first} failed (${plainFailure(error)}); nothing was changed that a backup does not cover. Details: ${logPathFor(ctx)}\n`);
+      const saved = join(ctx.home, "backups");
+      io.stderr.write(`Prosegate: ${first} did not finish (${plainFailure(error)}). A backup of any settings file it was changing is in ${saved}. Details: ${logPathFor(ctx)}\n`);
       return 1;
     }
   }

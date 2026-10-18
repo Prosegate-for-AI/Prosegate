@@ -262,8 +262,7 @@ describe("09 advisory mock (chat-reply), byte for byte", () => {
     expect(stop.json).toEqual({
       systemMessage: [
         `Prosegate ${DOT} profile chat-reply ${DOT} 2 findings (filler 2) ${DOT} advisory, not enforced ${DOT} enforcement is lowered in this session (advisory)`,
-        // 09's mock draws these two lines with three spaces after "filler" and the punctuation inside the quotes; ADR-12's column rule
-        // (label padded to max(8, longest + 2)) gives two, and the rule phrases are "Great question" and "In summary" (HQ: fix the 09 mock).
+        // 09's advisory mock (after ADR-34): the label padded to max(8, longest + 2), the rule phrases without punctuation.
         '  filler  core.filler.001  "Great question"',
         '  filler  core.filler.004  "In summary"',
       ].join("\n"),

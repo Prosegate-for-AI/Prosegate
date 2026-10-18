@@ -15,14 +15,17 @@ import {
   appDir,
   binDir,
   currentVersion,
+  InstallBusyError,
   installVersion,
   launcherPath,
   onPath,
+  packageProblem,
   previousVersion,
   pruneVersions,
   purge,
   restoreCurrent,
   setCurrent,
+  withInstallLock,
   writeBin,
 } from "./app-install.js";
 import { detectShell, hookCommand, quoteProblem, runInShell, type HookShell } from "./hook-shell.js";
@@ -38,8 +41,12 @@ const EVENTS = ["SessionStart", "UserPromptSubmit", "Stop"] as const;
 type HookEvent = (typeof EVENTS)[number];
 const HOOK_TIMEOUT_S = 10;
 const BACKUPS_KEPT = 5;
-/** A command init wrote: the path holds "prosegate" (so a third party's `.../claude-code/hook.mjs` is never ours) and ends in hook.mjs and an event. */
-const OURS = /hook\.mjs['"]?\s+(SessionStart|UserPromptSubmit|Stop)(\s|$)/;
+/** `<script>.mjs <Event>`: the script argument (single-quoted, double-quoted or bare) that ends in hook.mjs, then an event. */
+const SCRIPT = /(?:'([^']*hook\.mjs)'|"([^"]*hook\.mjs)"|([^\s'"]*hook\.mjs))\s+(?:SessionStart|UserPromptSubmit|Stop)(?:\s|$)/;
+/** `<...>/.prosegate/app/hook.mjs` or `<...>/prosegate/app/hook.mjs`: the launcher in a Prosegate home. */
+const LAUNCHER_PATH = /(^|\/)\.?prosegate\/app\/hook\.mjs$/i;
+/** `<...>/prosegate/<...>/shims/claude-code/hook.mjs`: the package's own shim, as the first W3.2 build registered it. */
+const PACKAGE_SHIM = /(^|\/)prosegate\/(.*\/)?shims\/claude-code\/hook\.mjs$/i;
 
 export const INIT_USAGE = "usage: prosegate init --harness claude-code [--scope project|user] [--local]";
 export const UNINIT_USAGE = "usage: prosegate uninit [--scope project|user] [--purge]";
@@ -170,11 +177,24 @@ function load(path: string): Loaded | string {
   return { settings: parsed, text };
 }
 
-/** Ours: a hook command that ends in hook.mjs and an event and names "prosegate" in its path, or names this home's launcher. */
+/** The hook script a command runs: the quoted or bare argument that ends in hook.mjs and is followed by an event. */
+function scriptOf(command: string): string | null {
+  const m = SCRIPT.exec(command);
+  const script = m?.[1] ?? m?.[2] ?? m?.[3];
+  return script === undefined ? null : script.replace(/\\/g, "/");
+}
+
+/**
+ * Ours, judged from the script argument alone (never the Node path or anything else in the command): this home's launcher, a
+ * launcher in a `.prosegate` or `prosegate` home, or the package's own shim in a directory named `prosegate` (the first W3.2
+ * build registered `.../prosegate/shims/claude-code/hook.mjs`). A third party's `.../claude-code/hook.mjs` is not.
+ */
 function isOurs(hook: unknown, known: ReadonlySet<string>): boolean {
   if (!isObject(hook) || typeof hook["command"] !== "string") return false;
-  const command = hook["command"];
-  return OURS.test(command) && (/prosegate/i.test(command) || [...known].some((launcher) => command.includes(launcher)));
+  const script = scriptOf(hook["command"]);
+  if (script === null) return false;
+  const lower = script.toLowerCase();
+  return [...known].some((launcher) => launcher.toLowerCase() === lower) || LAUNCHER_PATH.test(script) || PACKAGE_SHIM.test(script);
 }
 
 /** True when any hook in the settings is one of ours. */
@@ -307,7 +327,8 @@ export function roundTripEnv(ctx: Ctx, claudeDir: string | null, base: NodeJS.Pr
   return { ...base, ...given, PROSEGATE_HOME: ctx.home, ...(claudeDir === null ? {} : { PROSEGATE_CLAUDE_HOME: claudeDir }) };
 }
 
-const SHELL_TEXT = "your shell startup prints text; Claude Code cannot read hook output while it does. Print only in interactive shells, then run this again.";
+/** Problems are fragments ("the hook printed nothing"), so the one failure sentence reads whole. */
+const SHELL_TEXT = "your shell startup prints text, and Claude Code cannot read hook output while it does; print only in interactive shells";
 
 /** Runs a registered command the way Claude Code does (through its shell) with a SessionStart for a synthetic session; null when it answered. */
 function selfCheck(ctx: Ctx, shell: HookShell, command: string, claudeDir: string | null): string | null {
@@ -328,20 +349,22 @@ function selfCheck(ctx: Ctx, shell: HookShell, command: string, claudeDir: strin
     return r.stdout.trim() === "" ? "the hook printed nothing" : SHELL_TEXT;
   }
   if (typeof out.hookSpecificOutput?.additionalContext === "string") return null;
-  return typeof out.systemMessage === "string" ? `the hook could not run: ${out.systemMessage.slice(0, 200)}` : "the hook gave no answer";
+  // The launcher's own fail-open line: "Prosegate · this session may not be reviewed (<why>) · details: <log>".
+  const why = typeof out.systemMessage === "string" ? /\((.+)\) · details:/.exec(out.systemMessage)?.[1] : undefined;
+  return why === undefined ? "the hook gave no answer" : `the hook could not run: ${why}`;
 }
 
 const done = (out: string[]): InitResult => ({ code: 0, out: `${out.join("\n")}\n`, err: "" });
 const refuse = (err: string): InitResult => ({ code: 1, out: "", err: `${err}\n` });
 const scopeFlag = (s: "project" | "user"): string => (s === "project" ? " --scope project" : "");
+const uninitCommand = (s: "project" | "user"): string => `"prosegate uninit${scopeFlag(s)}"`;
+const BUSY = "Prosegate: another prosegate init is running; try again when it finishes.";
 
-/** "Prosegate is already set up in <file>" when the other scope has entries of ours, else null. */
-function otherScopeRefusal(target: Target, known: ReadonlySet<string>): string | null {
+/** The first file of the other scope that holds entries of ours, else null. */
+function otherScopeEntry(target: Target, known: ReadonlySet<string>): { path: string; scope: "project" | "user" } | null {
   for (const o of target.other) {
     const loaded = load(o.path);
-    if (typeof loaded !== "string" && hasOurs(loaded.settings, known)) {
-      return `Prosegate: it is already set up in ${o.path} (${o.scope} scope), and one registration is enough. Run "prosegate uninit${scopeFlag(o.scope)}" first, then run this again.`;
-    }
+    if (typeof loaded !== "string" && hasOurs(loaded.settings, known)) return o;
   }
   return null;
 }
@@ -360,27 +383,63 @@ function disableAllHooksIn(files: readonly string[]): string | null {
   return null;
 }
 
-export function runInit(args: readonly string[], ctx: Ctx): InitResult {
+interface InitPlan {
+  o: Options;
+  target: Target;
+  nodePath: string;
+  shell: HookShell;
+  commands: Record<HookEvent, string>;
+  known: ReadonlySet<string>;
+  loaded: Loaded;
+  legacy: Loaded | null;
+  merged: { settings: Json; changed: boolean };
+}
+
+/** Everything init can check without writing: the arguments, the settings files, the refusals. A string is the refusal. */
+function planInit(args: readonly string[], ctx: Ctx): InitPlan | string {
   const o = parseArgs(args, true);
-  if (typeof o === "string") return refuse(o);
+  if (typeof o === "string") return o;
   const target = settingsTarget(ctx, o.scope);
-  if (typeof target === "string") return refuse(target);
+  if (typeof target === "string") return target;
   const nodePath = process.execPath;
   const launcher = launcherPath(ctx);
   const quote = quoteProblem(nodePath, launcher);
-  if (quote !== null) return refuse(quote);
-
+  if (quote !== null) return quote;
+  const incomplete = packageProblem();
+  if (incomplete !== null) return incomplete;
   const shell = detectShell(ctx);
   const commands = Object.fromEntries(EVENTS.map((e) => [e, hookCommand(shell, nodePath, launcher, e)])) as Record<HookEvent, string>;
   const known = new Set([launcher.replace(/\\/g, "/")]);
-  const refusal = otherScopeRefusal(target, known);
-  if (refusal !== null) return refuse(refusal);
+  const other = otherScopeEntry(target, known);
+  if (other !== null) {
+    return `Prosegate: it is already set up in ${other.path} (${other.scope} scope), and one registration is enough. Run ${uninitCommand(other.scope)} first, then run this again.`;
+  }
   const loaded = load(target.path);
-  if (typeof loaded === "string") return refuse(loaded);
+  if (typeof loaded === "string") return loaded;
   const legacy = target.legacy === null ? null : load(target.legacy);
-  if (typeof legacy === "string") return refuse(legacy);
+  if (typeof legacy === "string") return legacy;
   const merged = merge(loaded.settings, target.path, commands, known);
-  if (typeof merged === "string") return refuse(merged);
+  if (typeof merged === "string") return merged;
+  return { o, target, nodePath, shell, commands, known, loaded, legacy, merged };
+}
+
+export function runInit(args: readonly string[], ctx: Ctx): InitResult {
+  const first = planInit(args, ctx);
+  if (typeof first === "string") return refuse(first);
+  try {
+    // Re-planned under the lock: another init may have finished since the first look.
+    return withInstallLock(ctx, () => {
+      const plan = planInit(args, ctx);
+      return typeof plan === "string" ? refuse(plan) : applyInit(plan, ctx);
+    });
+  } catch (error) {
+    if (error instanceof InstallBusyError) return refuse(BUSY);
+    throw error;
+  }
+}
+
+function applyInit(plan: InitPlan, ctx: Ctx): InitResult {
+  const { o, target, nodePath, shell, commands, known, loaded, legacy, merged } = plan;
 
   // 1. The program files, then a check of the NEW version (the launcher can be pinned to one with --use) before anything points at it.
   const installed = installVersion(ctx);
@@ -414,17 +473,18 @@ export function runInit(args: readonly string[], ctx: Ctx): InitResult {
     return fail(problem);
   }
 
-  // 3. The earlier W3.2 build wrote project entries to .claude/settings.json: take them out (project scope).
-  const lines: string[] = [];
+  // 3. The earlier W3.2 build wrote project entries to .claude/settings.json: take them out (project scope), and say if that failed.
+  const notes: string[] = [];
   let legacyBackup: string | null = null;
   if (legacy !== null && target.legacy !== null && hasOurs(legacy.settings, known)) {
     const cleaned = merge(legacy.settings, target.legacy, null, known);
-    if (typeof cleaned !== "string") {
-      const r = save(ctx, target.legacy, legacy, cleaned.settings);
-      if (typeof r !== "string") {
-        legacyBackup = r.backup;
-        lines.push("Removed Prosegate's earlier entries from .claude/settings.json.");
-      }
+    const r = typeof cleaned === "string" ? cleaned : save(ctx, target.legacy, legacy, cleaned.settings);
+    if (typeof r === "string") {
+      const code = /\((E[A-Z]+)\)/.exec(r)?.[1] ?? "error";
+      notes.push(`Warning: Prosegate's earlier entries are still in .claude/settings.json because it could not be written (${code}). Make it writable, then run "prosegate uninit --scope project".`);
+    } else {
+      legacyBackup = r.backup;
+      notes.push("Removed Prosegate's earlier entries from .claude/settings.json.");
     }
   }
   pruneVersions(ctx);
@@ -432,19 +492,20 @@ export function runInit(args: readonly string[], ctx: Ctx): InitResult {
   const backupPath = saved?.backup ?? legacyBackup;
 
   const where = o.scope === "project" ? `${target.path} (this folder only; not committed)` : target.path;
+  const remove = `To remove it, run ${uninitCommand(o.scope)}.${backupPath === null ? "" : ` Your previous settings are saved in ${backupPath}.`}`;
   const out = [
     merged.changed ? `Prosegate is installed for Claude Code: hooks added to ${where}. The self-check passed.` : `Prosegate was already installed for Claude Code in ${where}; nothing changed. The self-check passed.`,
     o.local ? "Local mode for now: no sign-in is needed yet." : "Sign-in is not available in this build yet; installed in local mode.",
     "Start a new Claude Code session. If it asks whether to trust the folder, say yes; hooks do not run until you do.",
+    // The PATH line comes before the lines that tell the user to type `prosegate`.
+    ...(typeof bin === "string" ? [bin] : onPath(ctx) ? [] : [`To use "prosegate" directly, add ${binDir(ctx)} to your PATH; until then, "npx prosegate <command>" works.`]),
     'Prosegate stays silent when your prose is clean. To pause it for a session, run "prosegate advisory" in a terminal outside Claude Code.',
-    `To remove it, run "prosegate uninit".${backupPath === null ? "" : ` Your previous settings are saved in ${backupPath}.`}`,
-    ...lines,
+    remove,
+    ...notes,
   ];
-  if (typeof bin === "string") out.push(`Could not write the prosegate command: ${bin}`);
-  else if (!onPath(ctx)) out.push(`To use "prosegate" directly, add ${binDir(ctx)} to your PATH; until then, "npx prosegate <command>" works.`);
   if (o.scope === "project" && notIgnored(ctx.cwd, target.path)) out.push(`Warning: git does not ignore ${target.path}; add it to .gitignore so a machine-specific path is not committed.`);
   const off = disableAllHooksIn([target.path, ...target.other.map((x) => x.path)]);
-  if (off !== null) out.push(`Warning: "disableAllHooks" is true in ${off}, so Claude Code will run no hook at all, Prosegate's included.`);
+  if (off !== null) out.push(`Warning: "disableAllHooks" is true in ${off}, so Claude Code will run no hook at all, Prosegate's included. Remove that setting, or set it to false, then start a new session.`);
   return done(out);
 }
 
@@ -453,28 +514,55 @@ export function runUninit(args: readonly string[], ctx: Ctx): InitResult {
   if (typeof o === "string") return refuse(o);
   const target = settingsTarget(ctx, o.scope);
   if (typeof target === "string") return refuse(target);
-  // A third party's hook that merely looks like ours is never touched: ours name "prosegate" or this home's launcher.
+  try {
+    const changed = existsSync(appDir(ctx)) ? withInstallLock(ctx, () => uninitSettings(target, ctx)) : uninitSettings(target, ctx);
+    return typeof changed === "string" ? refuse(changed) : finishUninit(o, changed, ctx);
+  } catch (error) {
+    if (error instanceof InstallBusyError) return refuse(BUSY.replace("init", "command"));
+    throw error;
+  }
+}
+
+interface Removal {
+  files: string[];
+  removed: string[];
+  backups: string[];
+  /** Entries of ours in the other scope, which this command did not touch. */
+  other: { path: string; scope: "project" | "user" } | null;
+}
+
+function uninitSettings(target: Target, ctx: Ctx): Removal | string {
+  // A third party's hook that merely looks like ours is never touched: ours are judged by their script path.
   const known = new Set([launcherPath(ctx).replace(/\\/g, "/")]);
   const files = [target.path, ...(target.legacy === null ? [] : [target.legacy])];
-  const removed: string[] = [];
-  const backups: string[] = [];
+  const removal: Removal = { files, removed: [], backups: [], other: null };
   for (const file of files) {
     const loaded = load(file);
-    if (typeof loaded === "string") return refuse(loaded);
+    if (typeof loaded === "string") return loaded;
     const merged = merge(loaded.settings, file, null, known);
-    if (typeof merged === "string") return refuse(merged);
+    if (typeof merged === "string") return merged;
     if (!merged.changed) continue;
     const r = save(ctx, file, loaded, merged.settings);
-    if (typeof r === "string") return refuse(r);
-    removed.push(file);
-    if (r.backup !== null) backups.push(r.backup);
+    if (typeof r === "string") return r;
+    removal.removed.push(file);
+    if (r.backup !== null) removal.backups.push(r.backup);
   }
-  const out: string[] = removed.length === 0 ? [`No Prosegate hooks found in ${files.join(" or ")}; nothing changed.`] : [`Prosegate hooks removed from ${removed.join(" and ")}.`];
-  if (backups.length > 0) out.push(`Your previous settings are saved in ${backups.join(" and ")}.`);
+  removal.other = otherScopeEntry(target, known);
+  return removal;
+}
+
+function finishUninit(o: Options, r: Removal, ctx: Ctx): InitResult {
+  const out: string[] = [];
+  if (r.removed.length > 0) out.push(`Prosegate hooks removed from ${r.removed.join(" and ")}.`);
+  else {
+    const here = `No Prosegate hooks found in ${r.files.join(" or ")}; nothing changed.`;
+    out.push(r.other === null ? here : `${here} Prosegate is set up in ${r.other.path}: run ${uninitCommand(r.other.scope)}.`);
+  }
+  if (r.backups.length > 0) out.push(`Your previous settings are saved in ${r.backups.join(" and ")}.`);
   if (o.purge) {
     try {
       purge(ctx);
-      out.push(`Removed Prosegate's program files from ${appDir(ctx)} and ${binDir(ctx)}. Any other project still registered shows a "files are missing" line until you run uninit there.`);
+      out.push(`Removed Prosegate's program files from ${appDir(ctx)} and ${binDir(ctx)}. A project that is still set up shows a "files are missing" line until you run "npx prosegate uninit --scope project" in it.`);
     } catch (error) {
       out.push(`Could not remove ${appDir(ctx)} (${(error as NodeJS.ErrnoException).code ?? "error"}); delete it by hand.`);
     }

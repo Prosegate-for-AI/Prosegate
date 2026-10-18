@@ -1,21 +1,18 @@
-import { foldClaudeNotice } from "./claude-notice.js";
+import { claudeCodeHook } from "./claude-code.js";
 import { createCtx } from "./ctx.js";
-import { writeFileAtomic } from "./fs-secure.js";
 import { log } from "./log.js";
 import { InputTooLargeError, logPathFor, run } from "./run.js";
 import { recordErrorLockFree } from "./telemetry.js";
-import { toolNames } from "./transcript.js";
 
 /**
- * The bundle is both the `prosegate` command and, for the Claude Code shim, a module that exports `run`: the shim
- * imports it in its own process instead of spawning a second Node (a spawn costs a whole extra process start on
- * every hook, about 370 ms on a slow Windows machine). The shim sets this global before the import; anything
- * else that loads the file gets the command, so a failed detection can only ever leave the command working.
+ * The bundle is both the `prosegate` command and, for the Claude Code shim, a module that exports
+ * `claudeCodeHook`: the shim imports it in its own process instead of spawning a second Node (a spawn
+ * costs a whole extra process start on every hook). The shim sets this global before the import;
+ * anything else that loads the file gets the command, so a failed detection can only ever leave the
+ * command working.
  */
 const embedded = (globalThis as { __prosegateEmbedded?: unknown }).__prosegateEmbedded === true;
-// What the Claude Code shim uses from the bundle besides `run`: the atomic owner-only write, the notice folding (ADR-33) and the
-// transcript reader. The shim stays small (05: more than 150 lines is doing the adapter's job).
-export { run, writeFileAtomic, foldClaudeNotice, toolNames };
+export { run, claudeCodeHook };
 
 /** The hard cap on what a hook reads (ADR-30): the engine bounds the review, this bounds the bytes. */
 const MAX_STDIN_BYTES = 12 * 1024 * 1024;
