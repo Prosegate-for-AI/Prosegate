@@ -42,6 +42,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm test:perf
       - run: pnpm check:deps
       - run: pnpm check:secrets
       - run: pnpm eval:rules

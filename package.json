@@ -15,7 +15,8 @@
     "check:deps": "node scripts/check-deps.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "eval:rules": "tsx eval/runners/eval-rules.ts",
-    "check:bundle": "node scripts/check-bundle.mjs"
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "test:perf": "vitest run --config vitest.perf.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
