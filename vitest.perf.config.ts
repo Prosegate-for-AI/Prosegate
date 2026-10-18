@@ -8,5 +8,7 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "**/dist/**", "docs/**", ".claude/**"],
     fileParallelism: false,
     testTimeout: 300_000,
+    globalSetup: ["packages/adapter/test/global-setup.ts"],
+    setupFiles: ["packages/adapter/test/setup-env.ts"],
   },
 });

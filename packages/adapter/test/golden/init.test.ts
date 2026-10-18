@@ -193,7 +193,7 @@ describe("init", () => {
   it("the user scope honours CLAUDE_CONFIG_DIR, and PROSEGATE_CLAUDE_HOME wins over it", () => {
     const e = env();
     const other = join(tmpDir("pg-config-"), "cfg");
-    const r = pg(pkg.bundle, ["init", "--harness", "claude-code", "--local"], { home: e.home, cwd: tmpDir(), env: { CLAUDE_CONFIG_DIR: other } });
+    const r = pg(pkg.bundle, ["init", "--harness", "claude-code", "--local"], { home: e.home, cwd: tmpDir(), env: { CLAUDE_CONFIG_DIR: other, PROSEGATE_CLAUDE_HOME: "" } });
     expect(r.code).toBe(0);
     expect(existsSync(join(other, "settings.json"))).toBe(true);
     const winner = pg(pkg.bundle, ["init", "--harness", "claude-code", "--local"], { home: e.home, cwd: tmpDir(), env: { CLAUDE_CONFIG_DIR: other, PROSEGATE_CLAUDE_HOME: e.claude } });

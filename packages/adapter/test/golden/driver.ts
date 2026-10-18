@@ -6,7 +6,7 @@
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { buildBundle, pg, tmpDir, ADAPTER_DIR, type Proc } from "../helpers.js";
+import { buildBundle, cleanEnv, pg, tmpDir, ADAPTER_DIR, type Proc } from "../helpers.js";
 
 export const SHIM_SOURCE = join(ADAPTER_DIR, "shims", "claude-code", "hook.mjs");
 
@@ -43,14 +43,8 @@ export function stubPkg(body: string): Pkg {
   return pkg;
 }
 
-const SCRUBBED = ["CLAUDECODE", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_ENTRYPOINT", "CI", "PROSEGATE_MODE", "PROSEGATE_SESSION", "PROSEGATE_DEBUG", "PROSEGATE_TEST_HOOKS", "PROSEGATE_TIMINGS", "CLAUDE_CONFIG_DIR", "PROSEGATE_CLAUDE_HOME"];
-
-/** The test process's environment without agent markers and Prosegate switches, plus what the test sets. */
-export function cleanEnv(home: string, extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
-  const kept = Object.entries(process.env).filter(([k]) => !SCRUBBED.includes(k.toUpperCase()));
-  const set = Object.entries(extra).filter((e): e is [string, string] => e[1] !== undefined);
-  return { ...Object.fromEntries(kept), PROSEGATE_HOME: home, ...Object.fromEntries(set) };
-}
+/** The environment of every fake-Claude-Code child: agent markers and real homes scrubbed, temp homes set (helpers.ts). */
+export { cleanEnv };
 
 export const SESSION = "5d1b8a52-2f0e-4c3e-9a77-0b1e7f3c9a10";
 export const PROMPT_ID = "c0ffee00-1111-4222-8333-444455556666";

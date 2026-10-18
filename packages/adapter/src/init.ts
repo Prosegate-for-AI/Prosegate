@@ -5,7 +5,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Ctx } from "./ctx.js";
@@ -59,14 +59,45 @@ function parseArgs(args: readonly string[], needHarness: boolean): Options | str
   return o;
 }
 
-/** Where Claude Code keeps user settings: PROSEGATE_CLAUDE_HOME (tests), else CLAUDE_CONFIG_DIR, else ~/.claude. */
-function claudeHome(env: Ctx["env"]): string {
+/** Replaced by tsup (`define`): `false` in the release bundle, a string in the test build, undefined when run from source. See ctx.ts. */
+declare const __PROSEGATE_TEST__: boolean | string | undefined;
+
+/**
+ * Where Claude Code keeps user settings: PROSEGATE_CLAUDE_HOME, else CLAUDE_CONFIG_DIR (both "given"), else `.claude` under
+ * the home directory the ENVIRONMENT names (USERPROFILE on Windows, HOME elsewhere), never os.homedir(): a caller that
+ * isolates its environment is then isolated (incident 2026-10-18). Null when the environment names no home.
+ */
+function claudeHome(env: Ctx["env"], platform: NodeJS.Platform): { dir: string; given: boolean } | null {
   const pick = (k: string): string | undefined => (env[k] !== undefined && env[k] !== "" ? env[k] : undefined);
-  return pick("PROSEGATE_CLAUDE_HOME") ?? pick("CLAUDE_CONFIG_DIR") ?? join(homedir(), ".claude");
+  const given = pick("PROSEGATE_CLAUDE_HOME") ?? pick("CLAUDE_CONFIG_DIR");
+  if (given !== undefined) return { dir: given, given: true };
+  const home = platform === "win32" ? (pick("USERPROFILE") ?? pick("HOME")) : (pick("HOME") ?? pick("USERPROFILE"));
+  return home === undefined ? null : { dir: join(home, ".claude"), given: false };
 }
 
-export function settingsPath(ctx: Ctx, scope: "project" | "user"): string {
-  return scope === "project" ? join(ctx.cwd, ".claude", "settings.json") : join(claudeHome(ctx.env), "settings.json");
+function isUnder(path: string, dir: string, platform: NodeJS.Platform): boolean {
+  const norm = (p: string): string => (platform === "win32" ? resolve(p).toLowerCase() : resolve(p));
+  const base = norm(dir);
+  return norm(path).startsWith(base.endsWith(sep) ? base : base + sep);
+}
+
+/**
+ * The settings file for a scope, or the refusal. In a test build or when run from source (never in the release
+ * bundle: `__PROSEGATE_TEST__` is false there and the branch folds away), a user-scope path that was not given
+ * explicitly and is not under the OS temp directory is refused: it would be somebody's real ~/.claude.
+ */
+export function settingsTarget(ctx: Ctx, scope: "project" | "user"): { path: string; claudeDir: string | null } | string {
+  const home = claudeHome(ctx.env, ctx.platform);
+  if (scope === "project") return { path: join(ctx.cwd, ".claude", "settings.json"), claudeDir: home?.dir ?? null };
+  if (home === null) return "Prosegate: cannot tell where your Claude settings are (no home directory in the environment), so nothing was changed. Set CLAUDE_CONFIG_DIR, then run this again.";
+  const path = join(home.dir, "settings.json");
+  if (typeof __PROSEGATE_TEST__ !== "boolean" && !home.given && !isUnder(path, tmpdir(), ctx.platform)) return testBuildRefusal(path);
+  return { path, claudeDir: home.dir };
+}
+
+/** Only referenced from the folded branch above, so the release bundle does not carry its text. */
+function testBuildRefusal(path: string): string {
+  return `Prosegate: refusing to write ${path} from a test build: it is outside the temp directory and no test home was given (set PROSEGATE_CLAUDE_HOME). Nothing was changed.`;
 }
 
 /** The shim ships inside the package, beside dist/ (and beside src/ when run from source). */
@@ -192,14 +223,20 @@ function save(path: string, loaded: Loaded, settings: Json, ctx: Ctx): string | 
 // TODO(Phase 5): register `prosegate mcp` as a stdio server with `claude mcp add --scope user` (S1); nothing is registered now.
 
 /** Runs the registered SessionStart command the way Claude Code does (through a shell) and checks that it answers. */
-function roundTrip(command: string, ctx: Ctx): string | null {
+/** The check uses the homes init was given: the Prosegate home it cleans up afterwards is the one the hook writes to (incident 2026-10-18). */
+export function roundTripEnv(ctx: Ctx, claudeDir: string | null, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const given = Object.fromEntries(Object.entries(ctx.env).filter((e): e is [string, string] => e[1] !== undefined));
+  return { ...base, ...given, PROSEGATE_HOME: ctx.home, ...(claudeDir === null ? {} : { PROSEGATE_CLAUDE_HOME: claudeDir }) };
+}
+
+function roundTrip(command: string, ctx: Ctx, claudeDir: string | null): string | null {
   const r = spawnSync(command, {
     shell: true,
     input: JSON.stringify({ session_id: SYNTHETIC_SESSION, cwd: ctx.cwd, hook_event_name: "SessionStart", source: "startup" }),
     encoding: "utf8",
     timeout: 20_000,
     windowsHide: true,
-    env: { ...process.env, ...Object.fromEntries(Object.entries(ctx.env).filter((e): e is [string, string] => e[1] !== undefined)) },
+    env: roundTripEnv(ctx, claudeDir),
   });
   try {
     removeTree(join(ctx.home, SESSIONS_DIR, SYNTHETIC_SESSION));
@@ -223,7 +260,9 @@ const refuse = (err: string): InitResult => ({ code: 1, out: "", err: `${err}\n`
 export function runInit(args: readonly string[], ctx: Ctx): InitResult {
   const o = parseArgs(args, true);
   if (typeof o === "string") return refuse(o);
-  const path = settingsPath(ctx, o.scope);
+  const target = settingsTarget(ctx, o.scope);
+  if (typeof target === "string") return refuse(target);
+  const { path } = target;
   const loaded = load(path);
   if (typeof loaded === "string") return refuse(loaded);
   const shim = shimPath();
@@ -233,7 +272,7 @@ export function runInit(args: readonly string[], ctx: Ctx): InitResult {
   if (typeof merged === "string") return refuse(merged);
   const backup = merged.changed ? save(path, loaded, merged.settings, ctx) : null;
 
-  const problem = roundTrip(commands.SessionStart, ctx);
+  const problem = roundTrip(commands.SessionStart, ctx, target.claudeDir);
   if (problem !== null) {
     return refuse(`Prosegate: the hooks are in ${path}, but the check failed: ${problem}. Claude Code will ignore Prosegate until this is fixed. Details: ${logPathFor(ctx)}`);
   }
@@ -253,7 +292,9 @@ export function runInit(args: readonly string[], ctx: Ctx): InitResult {
 export function runUninit(args: readonly string[], ctx: Ctx): InitResult {
   const o = parseArgs(args, false);
   if (typeof o === "string") return refuse(o.replace(INIT_USAGE, "usage: prosegate uninit [--scope project|user]"));
-  const path = settingsPath(ctx, o.scope);
+  const target = settingsTarget(ctx, o.scope);
+  if (typeof target === "string") return refuse(target);
+  const { path } = target;
   const loaded = load(path);
   if (typeof loaded === "string") return refuse(loaded);
   const merged = merge(loaded.settings, path, null);

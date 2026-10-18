@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { CLEAN_TEXT, SESSION, TIC_TEXT, WARN_TEXT, buildBundle, json, pg, sessionStartInput, testHooks, tmpDir, turnEndInput } from "./helpers.js";
+import { CLEAN_TEXT, SESSION, TIC_TEXT, WARN_TEXT, buildBundle, cleanEnv, json, pg, sessionStartInput, testHooks, tmpDir, turnEndInput } from "./helpers.js";
 
 // Subprocess tests over the built bundle: every exit-code path, with fresh processes (05). The release
 // bundle is used unless a test needs fault injection, which only a test build has (ADR-29).
@@ -263,7 +263,7 @@ describe("fail open (05)", () => {
 
   it("a stdin that never closes is abandoned after the wait, exit 1", async () => {
     const home = tmpDir();
-    const child = spawn(process.execPath, [bundle, "turn-end"], { env: { ...process.env, PROSEGATE_HOME: home }, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [bundle, "turn-end"], { env: cleanEnv(home), stdio: ["pipe", "pipe", "pipe"] });
     let stderr = "";
     child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
     const code = await new Promise<number | null>((resolve) => child.on("close", resolve));

@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -73,13 +73,41 @@ export interface SpawnOpts {
   args?: string[];
 }
 
-const SCRUBBED = ["CLAUDECODE", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_ENTRYPOINT", "CI", "PROSEGATE_MODE", "PROSEGATE_SESSION", "PROSEGATE_DEBUG", "PROSEGATE_TEST_HOOKS", "PROSEGATE_TIMINGS"];
+/** Variables that point at a user's real files (incident 2026-10-18): always replaced by temp directories in a test child. */
+export const HOME_VARS = ["HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "CLAUDE_CONFIG_DIR", "PROSEGATE_CLAUDE_HOME", "PROSEGATE_HOME"] as const;
+export const SCRUBBED: readonly string[] = ["CLAUDECODE", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_ENTRYPOINT", "CI", "PROSEGATE_MODE", "PROSEGATE_SESSION", "PROSEGATE_DEBUG", "PROSEGATE_TEST_HOOKS", "PROSEGATE_TIMINGS", ...HOME_VARS];
 
-/** The test process's environment without agent markers and Prosegate switches, plus what the test sets. */
-function cleanEnv(o: SpawnOpts): NodeJS.ProcessEnv {
+let isolatedRoot: string | undefined;
+/**
+ * Temp directories for every home-like variable, one set per test file. A child process never inherits the host's
+ * HOME, USERPROFILE, APPDATA, LOCALAPPDATA, XDG_CONFIG_HOME, CLAUDE_CONFIG_DIR, PROSEGATE_CLAUDE_HOME or PROSEGATE_HOME,
+ * so os.homedir() and every fallback in the product land in the temp tree. A call site overrides a variable it needs.
+ */
+export function isolatedHomes(prosegateHome?: string): Record<(typeof HOME_VARS)[number], string> {
+  isolatedRoot ??= tmpDir("pg-iso-");
+  const root = isolatedRoot;
+  const dir = (name: string): string => {
+    const d = join(root, name);
+    mkdirSync(d, { recursive: true });
+    return d;
+  };
+  return {
+    HOME: dir("home"),
+    USERPROFILE: dir("home"),
+    APPDATA: dir("appdata"),
+    LOCALAPPDATA: dir("localappdata"),
+    XDG_CONFIG_HOME: dir("xdg"),
+    CLAUDE_CONFIG_DIR: dir("claude-config"),
+    PROSEGATE_CLAUDE_HOME: dir("claude-home"),
+    PROSEGATE_HOME: prosegateHome ?? dir("prosegate"),
+  };
+}
+
+/** The test process's environment without agent markers, Prosegate switches or any real home, plus temp homes and what the test sets. */
+export function cleanEnv(prosegateHome: string, extraEnv: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
   const kept = Object.entries(process.env).filter(([k]) => !SCRUBBED.includes(k.toUpperCase()));
-  const extra = Object.entries(o.env ?? {}).filter((e): e is [string, string] => e[1] !== undefined);
-  return { ...Object.fromEntries(kept), PROSEGATE_HOME: o.home, ...Object.fromEntries(extra) };
+  const extra = Object.entries(extraEnv).filter((e): e is [string, string] => e[1] !== undefined);
+  return { ...Object.fromEntries(kept), ...isolatedHomes(prosegateHome), ...Object.fromEntries(extra) };
 }
 
 /** Runs the built bundle in a fresh process with a temp HOME. The environment starts clean of agent markers. */
@@ -87,7 +115,7 @@ export function pg(bundle: string, argv: string[], o: SpawnOpts): Proc {
   const r = spawnSync(process.execPath, [bundle, ...argv], {
     input: o.raw ?? (o.input === undefined ? "" : JSON.stringify(o.input)),
     encoding: "utf8",
-    env: cleanEnv(o),
+    env: cleanEnv(o.home, o.env),
     cwd: o.cwd,
     timeout: 60_000,
   });
@@ -97,7 +125,7 @@ export function pg(bundle: string, argv: string[], o: SpawnOpts): Proc {
 /** As pg, but asynchronous, so two processes can run at the same time. */
 export function pgAsync(bundle: string, argv: string[], o: SpawnOpts): Promise<Proc> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [bundle, ...argv], { env: cleanEnv(o), cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [bundle, ...argv], { env: cleanEnv(o.home, o.env), cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d: Buffer) => (stdout += d.toString()));
@@ -152,7 +180,8 @@ export const WARN_TEXT =
 /** An in-process Ctx over a temp home. */
 export function testCtx(home: string, over: Partial<Ctx> = {}): Ctx {
   return createCtx({
-    env: {},
+    // Temp homes for every home-like variable: an in-process `init` must not find a real ~/.claude (incident 2026-10-18).
+    env: isolatedHomes(home),
     home,
     cwd: "/work/project",
     platform: process.platform,
