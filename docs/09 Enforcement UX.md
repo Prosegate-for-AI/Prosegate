@@ -41,7 +41,7 @@ The `feedback_text` sent to the model always ends by telling the model not to ru
 - After pass 2: allow regardless. If findings remain: `Prosegate · 1 finding remains after 2 passes · shipped as is` so the user knows to look.
 - A pass that produces zero findings prints nothing, even on pass 2.
 
-Whenever effective enforcement is weaker than the active profile defines (advisory, quiet, off, a rule switched off, a local overlay lowering severity, or local profile files changed mid-session), the user sees once per session, and again when it changes: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status` (ADR-30). The model never sees it.
+Whenever effective enforcement is weaker than the active profile defines (advisory, off, a rule switched off, a local overlay lowering severity, or local profile files changed mid-session), the user sees once per session, and again when it changes: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status` (ADR-30). The model never sees it.
 
 ## Wrong profile
 

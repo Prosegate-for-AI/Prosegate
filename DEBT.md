@@ -28,3 +28,5 @@ Accepted should-fix findings, known gaps and parked ideas. Each has the phase th
 | D-22 | `prosegate profile diff` (what changed between the last-seen and current profile), removed from the 09 notice until built | ADR-28 | 5 | open |
 | D-23 | A reply written entirely as a blockquote, as indented paragraphs or in an unclosed fence is never reviewed (no_prose). Blockquotes are excluded by design (03: users' words); measure how often models do this in the eval corpus | W3.1 security F15 | 6 | open |
 | D-24 | 'Fail closed' when re-resolution fails under an org `required` policy has no defined behaviour (hook fails open today). Decide with the config client | W3.1 conformance S5 | 7 | open |
+| D-25 | `@prosegate/profiles` should export pre-parsed bundled content at `gen:bundled` time; the adapter re-parses the bundled pack and profile YAML on every hook (~58 ms of the cold path) | W3.1 cycle 1 | 5 | open |
+| D-26 | "pass k of <cap>" belongs in the schema renderers; the adapter rewrites "of 2" for cap 1 | W3.1 cycle 1 | 4 | open |
