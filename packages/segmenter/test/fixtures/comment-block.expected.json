@@ -1,0 +1,76 @@
+{
+  "text_length": 53,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 9,
+      "head": "Before.\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 9,
+      "end": 46,
+      "head": "<!-- TODO\n\nremove this. Really"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 46,
+      "end": 53,
+      "head": "After.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 7,
+      "words": 1,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "Before."
+    },
+    {
+      "segment_id": "s3",
+      "kind": "sentence",
+      "start": 46,
+      "end": 52,
+      "words": 1,
+      "text_start": 46,
+      "continuation": false,
+      "continued": false,
+      "head": "After."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 7,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 46,
+      "end": 52,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 2,
+  "language": "unknown"
+}

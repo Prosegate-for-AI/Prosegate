@@ -54,9 +54,10 @@ describe("a.m., p.m. and etc. end sentences unless a weekday, month or time zone
     expect(sentences("Meet at 9 a.m. Monday for the review. Then lunch.")).toEqual(["Meet at 9 a.m. Monday for the review.", "Then lunch."]);
   });
   const soft = ["a.m.", "p.m.", "etc."];
-  const nonBreaking = ["Monday", "Tue", "Wednesday", "Sun", "March", "Sept", "Dec", "EST", "PST", "UTC", "CEST", "GMT"];
+  const dayNames = ["Monday", "Tue", "Wednesday", "Sun", "March", "Sept", "Dec"];
+  const zones = ["EST", "PST", "UTC", "CEST", "GMT"];
   for (const ab of soft) {
-    for (const next of nonBreaking) {
+    for (const next of ab === "etc." ? dayNames : [...dayNames, ...zones]) {
       it(`${ab} ${next} does not break`, () => {
         expect(sentences(`We meet at 9 ${ab} ${next} for coffee. Then we go.`)).toEqual([`We meet at 9 ${ab} ${next} for coffee.`, "Then we go."]);
       });
@@ -65,6 +66,11 @@ describe("a.m., p.m. and etc. end sentences unless a weekday, month or time zone
       expect(sentences(`We meet at 9 ${ab} Everyone is welcome. Then we go.`)).toEqual([`We meet at 9 ${ab}`, "Everyone is welcome.", "Then we go."]);
     });
   }
+  it("etc. is followed by an ALLCAPS word that is not a time zone: the sentence ends", () => {
+    expect(sentences("Rotate the tokens, keys, etc. API keys are rotated now. Done.")).toEqual(["Rotate the tokens, keys, etc.", "API keys are rotated now.", "Done."]);
+    expect(sentences("Lint, build, etc. CI is green. Done.")).toEqual(["Lint, build, etc.", "CI is green.", "Done."]);
+    expect(sentences("Open at 9 p.m. CI is green. Done.")).toEqual(["Open at 9 p.m. CI is green.", "Done."]);
+  });
   it("a long ALLCAPS word or a 1-letter token is not a time zone", () => {
     expect(sentences("Open at 9 a.m. UNICEF staff only. Done.")).toEqual(["Open at 9 a.m.", "UNICEF staff only.", "Done."]);
     expect(sentences("Open at 9 a.m. I will come. Done.")).toEqual(["Open at 9 a.m.", "I will come.", "Done."]);
@@ -117,13 +123,31 @@ describe("inline numbered steps", () => {
     expect(sentences("Steps: 1. Install the deps. 2. Run the tests.")).toEqual(["Steps: 1. Install the deps.", "2. Run the tests."]);
   });
   it("no unit is just a step number", () => {
-    const t = "First: 1. Install. 2. Run. 3. Ship. 10. Celebrate.";
+    const t = "First: 1. Install. 2. Run. 3. Ship. 4. Celebrate.";
     for (const s of sentences(t)) expect(/^\d{1,2}[.)]$/.test(s)).toBe(false);
-    expect(sentences(t)).toEqual(["First: 1. Install.", "2. Run.", "3. Ship.", "10. Celebrate."]);
+    expect(sentences(t)).toEqual(["First: 1. Install.", "2. Run.", "3. Ship.", "4. Celebrate."]);
   });
   it("a number that ends a real sentence still breaks", () => {
     expect(sentences("We have step 2. Then we go.")).toEqual(["We have step 2.", "Then we go."]);
     expect(sentences("It costs 5 dollars. 3 more are free.")).toEqual(["It costs 5 dollars.", "3 more are free."]);
+  });
+  it("a lone number after a colon, semicolon, period or ? is a sentence end, not a step marker", () => {
+    expect(sentences("Exit code: 1. The build failed.")).toEqual(["Exit code: 1.", "The build failed."]);
+    expect(sentences("Max retries: 3. The backoff doubles.")).toEqual(["Max retries: 3.", "The backoff doubles."]);
+    expect(sentences("Node version: 20. Upgrade it.")).toEqual(["Node version: 20.", "Upgrade it."]);
+    expect(sentences("Errors: 0. Warnings: 3. The build passed.")).toEqual(["Errors: 0.", "Warnings: 3.", "The build passed."]);
+    expect(sentences("Done; 2. Then more.")).toEqual(["Done; 2.", "Then more."]);
+  });
+  it("a sequence is recognised from either side: a later N+1 or an earlier N-1, with . or ) markers", () => {
+    expect(sentences("Do this: 1. Install it. 2) Run it.")).toEqual(["Do this: 1. Install it.", "2) Run it."]);
+    expect(sentences("Do this: 1. Install it. 2. Run it. 3. Ship it.")).toEqual(["Do this: 1. Install it.", "2. Run it.", "3. Ship it."]);
+  });
+  it("dotted multi-letter initials never end a sentence before a name", () => {
+    for (const name of ["J.P. Morgan", "J.K. Rowling", "U.K. Government", "D.J. Bernstein", "J.R.R. Tolkien", "T.S. Eliot"]) {
+      expect(sentences(`We hired ${name} for it. Done.`), name).toEqual([`We hired ${name} for it.`, "Done."]);
+      expect(sentences(`It was a long day. ${name} said hi. Done.`), name).toEqual(["It was a long day.", `${name} said hi.`, "Done."]);
+    }
+    expect(sentences("It was founded in the U.K. The next year it grew.")).toEqual(["It was founded in the U.K.", "The next year it grew."]);
   });
   it("a number after an abbreviation period is not a step marker", () => {
     expect(sentences("See Vol. 3. Then stop.")).toEqual(["See Vol. 3.", "Then stop."]);

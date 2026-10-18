@@ -121,9 +121,9 @@ describe("a cue line ending in a colon followed by a quote-only paragraph or lis
   it("trailing punctuation after the closing quote is allowed", () => {
     expect(quotesOf('The docs say:\n\n"tokens expire soon".\n\nOk.')).toEqual(['"tokens expire soon"']);
   });
-  it("every list item that is entirely a quote, until one is not", () => {
-    const t = 'Your request:\n\n- "add retry logic"\n- "bump the deps"\n- plain item here\n- "not covered by the cue"';
-    expect(quotesOf(t)).toEqual(['"add retry logic"', '"bump the deps"']);
+  it("every list item of the first list that is entirely a quote (the carry ends with that list)", () => {
+    const t = 'Your request:\n\n- "add retry logic"\n- "bump the deps"\n- plain item here\n- "still in the same list"';
+    expect(quotesOf(t)).toEqual(['"add retry logic"', '"bump the deps"', '"still in the same list"']);
   });
   it("a numbered list directly under the cue line", () => {
     const t = 'You asked for:\n1. "retry logic"\n2. "better logs"\n';

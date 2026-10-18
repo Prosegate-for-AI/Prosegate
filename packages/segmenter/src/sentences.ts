@@ -162,7 +162,25 @@ function initialContext(text: string, tokStart: number, s: number): boolean {
   return INITIAL_LEAD_WORDS.has(prev.toLowerCase().replace(/[^a-z]/g, ""));
 }
 
-function vetoed(text: string, dotAt: number, s: number, next: number): boolean {
+/** Is there a step marker "N." or "N)" (N a number) set off by whitespace inside text[lo, hi)? */
+function hasMarker(text: string, lo: number, hi: number, n: number): boolean {
+  if (hi <= lo) return false;
+  const win = text.slice(lo, hi);
+  for (const suffix of [".", ")"]) {
+    const needle = String(n) + suffix;
+    for (let k = win.indexOf(needle); k >= 0; k = win.indexOf(needle, k + 1)) {
+      const before = lo + k === 0 ? 32 : text.charCodeAt(lo + k - 1);
+      const after = lo + k + needle.length < text.length ? text.charCodeAt(lo + k + needle.length) : 32;
+      if (isWs(before) && isWs(after)) return true;
+    }
+  }
+  return false;
+}
+
+/** Window (code units) in which a neighbouring step marker is looked for. */
+const MARKER_WINDOW = 600;
+
+function vetoed(text: string, dotAt: number, s: number, e: number, next: number): boolean {
   const { tok, start: tokStart } = tokenBefore(text, dotAt, s);
   if (tok.length === 0) return false;
   const lower = tok.toLowerCase();
@@ -170,10 +188,22 @@ function vetoed(text: string, dotAt: number, s: number, next: number): boolean {
   const nc = text.charCodeAt(next);
   if ((NO_BREAK_BEFORE_DIGIT.has(tok) || tok === "No") && nc >= 48 && nc <= 57) return true;
   // Inline numbered steps ("Steps: 1. Install it. 2. Run it."): the number stays with its step.
-  if (tok.length <= 2 && /^\d{1,2}$/.test(tok) && startsUnitOrClause(text, tokStart, s)) return true;
+  // Only a number that belongs to a sequence is a step marker: "Exit code: 1. The build failed." is a sentence end.
+  if (tok.length <= 2 && /^\d{1,2}$/.test(tok) && startsUnitOrClause(text, tokStart, s)) {
+    const n = Number(tok);
+    if (hasMarker(text, next, Math.min(e, next + MARKER_WINDOW), n + 1)) return true;
+    if (n > 1 && hasMarker(text, Math.max(s, tokStart - MARKER_WINDOW), tokStart, n - 1)) return true;
+  }
   if (SOFT_ABBREVIATIONS.has(lower)) {
     const w = wordAt(text, next);
-    return WEEKDAYS_AND_MONTHS.has(w.toLowerCase()) || /^[A-Z]{2,4}$/.test(w);
+    // A weekday or month follows 9 a.m. / etc.; a time zone (ALLCAPS, 2-4 letters) follows a clock time only.
+    return WEEKDAYS_AND_MONTHS.has(w.toLowerCase()) || ((lower === "a.m" || lower === "p.m") && /^[A-Z]{2,4}$/.test(w));
+  }
+  // Dotted multi-letter initials (J.P. Morgan, J.K. Rowling, U.K. Government, J.R.R. Tolkien): no left context needed.
+  if (tok.includes(".") && INITIALS_RE.test(tok) && nc >= 65 && nc <= 90) {
+    const w = wordAt(text, next);
+    if (w.length === 1) return text.charCodeAt(next + 1) === 46;
+    return !SENTENCE_STARTERS.has(w.toLowerCase());
   }
   // "J. Smith", "J.R.R. Tolkien": an initial before a name. Not before a word that starts sentences
   // ("Appendix A. The next step"), a single capital after it only counts as a further initial
@@ -260,7 +290,7 @@ export function splitSentences(text: string, s: number, e: number, masks: Span[]
     let j = i + 1;
     while (j < e && isTerm(text.charCodeAt(j))) j++;
     const b = breakAfter(j);
-    if (b !== null && !(c === 46 && j - i === 1 && vetoed(text, i, s, b[1]))) {
+    if (b !== null && !(c === 46 && j - i === 1 && vetoed(text, i, s, e, b[1]))) {
       emit(b[0], b[1]);
       i = b[1];
     } else {
