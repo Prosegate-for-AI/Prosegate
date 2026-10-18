@@ -254,3 +254,23 @@ Consequence: 09's "Override and modes" table gains `rule off`, `rule on` and `ru
 - **The feedback tail names its reader.** The last line of `feedback_text` becomes `(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)`. Today's "the user can run" addresses the user in the third person in text the user reads (ADR-13).
 
 Consequence: 05's `session-start` output gains `notice`; 09's quiet row, refusal and required strings change; 03's template last line changes; the W3.1 adapter, W3.2 shim and `@prosegate/schema` renderer follow.
+
+## ADR-29 · Production engine budget, test seams out of release builds, 05/07 contract gaps
+
+2026-10-18. From the W3.1 conformance review.
+- **Two budgets, two purposes.** 10's 200 ms pack budget is a publish-time quality gate measured on a quiet machine (ADR-10). It is not a production cutoff. With that number as the runtime budget, 6 of 8 concurrent turn-ends on a normally loaded laptop were skipped silently. At turn end the adapter now passes the engine a budget of the time remaining under the 6 s `turn-end` cap, at most 2,000 ms. A budget trip is logged to `~/.prosegate/logs`, counted in telemetry (`turn_budget_exceeded`) and shown by `prosegate status`, never silent. The load loops (local YAML parsing, example checks) also check the deadline.
+- **No test seams in release builds.** Fault injection, budget overrides and similar levers are compiled out of the published bundle by a build-time define. Tests use a separate test build. A project `.claude/settings.json` `env` block can set any variable for hook processes, so an environment lever is an enforcement bypass that works even under `required`.
+- **Validation cost.** Bundled content is trusted and not re-validated per hook. Local pack and profile files are validated once per content hash, with the "validated" marker kept beside the session store. Every hook is a fresh process, so an in-memory cache never hits.
+- **05 contract gaps.**
+  - `turn-end` output gains `notice: string | null`, matching `session-start` (ADR-28).
+  - `turn-end` input gains an optional `continue_supported: boolean`, default true. A shim for a harness that cannot continue the model passes false, so the adapter can record `enforcement_unavailable` as 05 promises.
+  - Live hook input outranks the stored `turn.json` when both are present.
+- **07 data flows.** Three rows are added:
+  - `turn.json`: the last user message, ≤ 2,000 chars.
+  - `report.json`: headless only, finding spans ≤ 80 chars.
+  - `debug/`: `--debug` only, whole turns.
+
+  They are local only and mode 0600 or an owner-only ACL. Session directories are deleted after 24 hours idle, not at the next session start, so a second live session keeps its state. Prose-bearing files are deleted with their session.
+- **The owner-only ACL is applied to the Prosegate home root** explicitly and idempotently, including a pre-existing one, not only to directories Prosegate created.
+
+Consequence: 05's tables and 07's data-flow table change, the W3.1 adapter follows, and 09's quiet row already reflects ADR-28.
