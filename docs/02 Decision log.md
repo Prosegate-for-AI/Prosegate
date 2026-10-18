@@ -239,3 +239,80 @@ Rejected: semantic matching for filler, which belongs to the reviewer stage (Pha
 - **Agents cannot lower enforcement.** `advisory`, `off`, `quiet` and `rule off` refuse when they detect an agent's tool context. That means a `CLAUDECODE` environment variable together with a non-TTY stdin; harness shims register their own markers. They print: `prosegate <cmd> must be run by you in a terminal, not by the agent.` Commands that raise enforcement (`enforce`, `rule on`) are always allowed. This enforces what ADR-16 only asks of the model. Residual: a user who runs Claude Code's `!` shell escape gets the same refusal and must use a separate terminal; this is documented in `--help`. An agent that fakes a TTY or unsets the variable can still get through. That needs deliberate circumvention, and it is visible because `override_used` telemetry is emitted for every mode change.
 
 Consequence: 09's "Override and modes" table gains `rule off`, `rule on` and `rule list`. The adapter's command layer implements the agent check.
+
+## ADR-28 · Model context and user notices are separate channels; CLI copy fixes
+
+2026-10-18. From the UX review of the W3.1 CLI.
+- **Notices never reach the model.** `session-start` returns user-facing lines in a new field, `notice` (string or null; the shim shows it as `systemMessage`). They are never appended to `inject`: the profile-updated line, the overlays-ignored line and the resolution-error line. Appended to the model's context, they named prosegate commands to a shell-capable model (ADR-16's concern) and spent its tokens.
+- **The inject only describes what exists.** Tool names appear only once the MCP server ships (Phase 5). The inject opens with the same guard the feedback carries: `If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands.` The length line reads `Aim for at most N words of prose; code and quoted output do not count.`
+- **`quiet` hides Prosegate's own notices, not Claude Code's display of a revision request.** Claude Code always shows continuation feedback (ADR-13), so a `quiet` session still shows the feedback block on each revision. The command's confirmation says so, and so does 09.
+- **Profiles can be named by slug.** `prosegate profile <slug>` resolves an unambiguous slug, so the name a notice shows (`pr-description`) works as typed. Bare `prosegate profile` lists profiles. Errors suggest the nearest id.
+- **No pointer to commands that do not exist.** The profile-updated line drops "prosegate profile diff to see" until a diff command ships (DEBT). It fires only when the integer version or a pinned pack changed, not after the user's own `rule off`.
+- **Refusal and policy copy.** These strings change in 09 and ADR-27:
+  - The agent refusal becomes `Prosegate: <cmd> was refused because it looks like the agent ran it. In Claude Code, a command typed after ! counts as the agent; run it in a separate terminal.`
+  - The org message becomes `Prosegate: enforcement is required by <org>, so this cannot be changed here. Ask an admin to change the policy.` The admin doc, not the CLI, tells admins what `required` costs in adoption (09).
+- **The feedback tail names its reader.** The last line of `feedback_text` becomes `(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)`. Today's "the user can run" addresses the user in the third person in text the user reads (ADR-13).
+
+Consequence: 05's `session-start` output gains `notice`; 09's quiet row, refusal and required strings change; 03's template last line changes; the W3.1 adapter, W3.2 shim and `@prosegate/schema` renderer follow.
+
+## ADR-29 · Production engine budget, test seams out of release builds, 05/07 contract gaps
+
+2026-10-18. From the W3.1 conformance review.
+- **Two budgets, two purposes.** 10's 200 ms pack budget is a publish-time quality gate measured on a quiet machine (ADR-10). It is not a production cutoff. With that number as the runtime budget, 6 of 8 concurrent turn-ends on a normally loaded laptop were skipped silently. At turn end the adapter now passes the engine a budget of the time remaining under the 6 s `turn-end` cap, at most 2,000 ms. A budget trip is logged to `~/.prosegate/logs`, counted in telemetry (`turn_budget_exceeded`) and shown by `prosegate status`, never silent. The load loops (local YAML parsing, example checks) also check the deadline.
+- **No test seams in release builds.** Fault injection, budget overrides and similar levers are compiled out of the published bundle by a build-time define. Tests use a separate test build. A project `.claude/settings.json` `env` block can set any variable for hook processes, so an environment lever is an enforcement bypass that works even under `required`.
+- **Validation cost.** Bundled content is trusted and not re-validated per hook. Local pack and profile files are validated once per content hash, with the "validated" marker kept beside the session store. Every hook is a fresh process, so an in-memory cache never hits.
+- **05 contract gaps.**
+  - `turn-end` output gains `notice: string | null`, matching `session-start` (ADR-28).
+  - `turn-end` input gains an optional `continue_supported: boolean`, default true. A shim for a harness that cannot continue the model passes false, so the adapter can record `enforcement_unavailable` as 05 promises.
+  - Live hook input outranks the stored `turn.json` when both are present.
+- **07 data flows.** Three rows are added:
+  - `turn.json`: the last user message, ≤ 2,000 chars.
+  - `report.json`: headless only, finding spans ≤ 80 chars.
+  - `debug/`: `--debug` only, whole turns.
+
+  They are local only and mode 0600 or an owner-only ACL. Session directories are deleted after 24 hours idle, not at the next session start, so a second live session keeps its state. Prose-bearing files are deleted with their session.
+- **The owner-only ACL is applied to the Prosegate home root** explicitly and idempotently, including a pre-existing one, not only to directories Prosegate created.
+
+Consequence: 05's tables and 07's data-flow table change, the W3.1 adapter follows, and 09's quiet row already reflects ADR-28.
+
+## ADR-30 · Lowered enforcement is always visible to the user; hardening the local adapter
+
+2026-10-18. From the W3.1 security verification. The agent can edit any file the user can: overlays, `state.json`, lock files. Prevention is therefore impossible locally, but **visibility is required**. Decisions:
+- **Lowered-enforcement notice.**
+  - **Trigger.** Effective enforcement is weaker than the active profile's own definition, by any path: a mode below enforce from a command, the environment or `state.json`; a local overlay that lowers mode or severity or disables rules; or local profile or pack files that changed since session start.
+  - **What the user sees.** The adapter shows the user one line, through `notice` / `systemMessage`, never the model: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status`. It appears once per session and again whenever the lowering changes.
+  - **Accounting.** `override_used` is true for every lowering path, not only commands. `prosegate status` lists the lowered mode, downgraded categories and rules switched off.
+  - **Integrity record.** A content hash of local profile and pack files is taken at session start; a mid-session change shows the notice.
+- **Agent-context markers.** A present but empty marker counts as set. The adapter checks `CLAUDECODE`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_CODE_SESSION_ID` and `CLAUDE_CODE_ENTRYPOINT`, plus a TTY check. ADR-27's residual stands: a deliberate agent can still get past this, and the notice above is what catches it.
+- **Locks.** A lock whose mtime is in the future, or older than 5 s, is stale. The fail-open path emits telemetry `adapter_error` through a lock-free append fallback, so a planted lock cannot suppress telemetry.
+- **Turn binding.** A harness with a turn identifier must pass it; the Claude Code shim always passes `prompt_id`. A `turn-end` whose `turn_id` was not seen at `turn-start` starts its own count and cannot consume another turn's passes, so a spoofed `turn-end` cannot exhaust the real turn's cap.
+- **Oversize replies are reviewed, not skipped.** Past 100 KB of prose, the engine reviews the first 100 KB, aligned to units. Code does not count toward the limit. The result records `truncated` in diagnostics and telemetry uses its own error code (`turn_truncated`, added to 07's list).
+- **Debug.** `PROSEGATE_DEBUG` / `--debug` also shows a user-facing notice once per session, because hook stderr is not visible.
+
+Rejected: signing or encrypting local state (the agent holds the same key the user does). Consequence: 07 threat 6 and the error-code list are updated, 09 gains the lowered-enforcement notice, and W3.1 cycle 1 implements it.
+
+## ADR-31 · Turn and session semantics across hook processes
+
+2026-10-18. From the W3.1 cross-process verification (524 kill-fault trials, 1,260 hostile event orders).
+- **Floors apply on pass 1 only.** On pass 2 and the cap check the engine reviews the revision whatever its length. A revision that shrinks below `token_floor_words` was shipping its surviving block findings silently and counting them as cleared.
+- **The profile is fixed for the turn.** Pass 2 and the cap check use the profile pass 1 used. A `prosegate profile` or `select_profile` call between passes applies from the next turn, as 09 says.
+- **`pass_cap` from the profile is honoured** (04: 1 or 2). The notice reads "pass k of <cap>".
+- **SessionStart `source`.**
+  - Session-start input gains an optional `source: startup | resume | clear | compact | fork`.
+  - Session modes (advisory, quiet, off) reset on `startup` and `clear`, as 09's "cleared at next session start" says.
+  - They survive `resume`, `compact` and `fork`.
+  - `compact` never touches pass counts, since it fires mid-turn.
+- **Retention.**
+  - Prose-bearing session files are deleted when their turn ends (allow): `turn.json`, and `debug/` unless `--debug` is still on.
+  - `report.json` is deleted at the next session start.
+  - Session state (mode, counts, profile choice) persists for 7 days idle, so a session left open overnight keeps its mode.
+  - This supersedes ADR-29's 24 h figure and makes 07's table stricter for prose than before.
+- **Targeting commands.**
+  - A command targets the session in the current directory or its nearest ancestor that has one. If more than one live session matches, it lists them and asks for `--session <id>` (or `PROSEGATE_SESSION`) instead of guessing.
+  - Confirmations name the session they changed when more than one session exists.
+- **One deadline per hook process,** starting at process start. Every lock wait is capped at the time remaining. The hook gives its decision within 8 s, under Claude Code's 10 s Stop timeout.
+- **Locks.** A lock records its owner PID and start time. A lock whose owner is dead is broken immediately. A holder deletes only a lock it still owns. Leftover temp files are swept at session start.
+- **Repeated Stops after the cap.** These happen when other hooks continue the model. The "shipped as is" notice is shown once per turn, not on every Stop.
+- **Advisory renders its findings** (ADR-16), so 09's "summary form" for advisory means the notice line plus finding lines, never a continuation.
+
+Consequence: 03 thresholds, 05 session-start input, 07 retention and 09 override table change, and W3.1 cycle 1 implements this.

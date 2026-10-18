@@ -12,7 +12,10 @@ What the claim does not cover: the reviewer provider sees the draft under that p
 | --- | --- | --- | --- | --- |
 | Draft, user message, style constraints | Machine → reviewer provider (direct HTTPS) | Reviewer stage runs (over floor, key present, profile enables it) | Not stored by Prosegate; provider terms apply | Provider's |
 | Harness transcript (last turn only) | Harness file → adapter process memory | `turn-end` | Never written by Prosegate; `--debug` writes a local copy with a warning | Process lifetime |
-| Resolved profile snapshot | Adapter → `~/.prosegate/sessions/<id>/` | Session start | Local disk, 0600 | Deleted at next session start |
+| Resolved profile snapshot | Adapter → `~/.prosegate/sessions/<id>/` | Session start | Local disk, 0600 / owner-only ACL | With its session: 7 days idle (ADR-31); holds no prose |
+| Last user message (`turn.json`, ≤ 2,000 chars) | Adapter → session dir | Turn start | Local disk, 0600 / owner-only ACL | Deleted when the turn ends (ADR-31) |
+| Headless report (`report.json`, spans ≤ 80 chars) | Adapter → session dir | Turn end, headless only | Local disk, 0600 / owner-only ACL | Deleted at the next session start (ADR-31) |
+| Debug copy of a turn (`debug/`) | Adapter → session dir | Only with `--debug`, with a user notice | Local disk, 0600 / owner-only ACL | Deleted when the turn ends unless `--debug` is still on (ADR-31) |
 | Profiles, rule packs, reviewer prompts | Config service → machine | Session start, `reload` | D1 (server), local cache | Until user deletes |
 | Device key | Config service → machine (once) | `prosegate init` | OS keychain; file 0600 fallback | Until revoked |
 | Reviewer key (vended) | Config service → machine | Session start if absent or rotated | OS keychain; never in config files, env dumps or logs | Until revoked or rotated (30 days) |
@@ -67,7 +70,7 @@ type Event =
 type ErrorCode =
   | 'adapter_error' | 'reviewer_timeout' | 'reviewer_http_error' | 'reviewer_schema_invalid' | 'reviewer_key_missing'
   | 'profile_resolution_failed' | 'pack_rejected' | 'signature_invalid' | 'snapshot_missing' | 'turn_budget_exceeded'
-  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped';
+  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped' | 'turn_truncated';
 ```
 
 Every stored event carries `account_id`, `device_id` and `ts` (integer epoch milliseconds). The adapter sends `ts`; the service stamps `account_id` and `device_id` from the authenticated device key, so a client cannot attribute events to another account (ADR-17). Every string field has its own format (enum, semver, model-id pattern, or the 04 id grammar), at most 64 visible ASCII characters, and is rejected if it has the shape of a key. `profile_id`, `from` and `to` carry a synced id or the literal `local`, never a local profile's own name; `rule_ids` carry only ids from `core` or synced packs. The adapter enforces both by masking against the session's synced id sets in its single send path, because the schema cannot tell a local id from a synced one. Arrays and counts are bounded. The adapter truncates `ts` to the minute and shuffles events within a batch; no event carries a session or turn id. Events from one turn can still share a minute and a batch; what they reveal together is which rule ids fired on pass 1 and which were cleared on pass 2, which is the purpose of the event and is disclosed.

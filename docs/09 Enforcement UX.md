@@ -24,15 +24,15 @@ How the notice reaches the user depends on the harness. Where the shim has a use
 | --- | --- | --- |
 | `prosegate advisory` | Findings are still computed and shown in `summary` form; the model is never continued | Session; cleared at next session start |
 | `prosegate enforce` | Restores enforcement | Session |
-| `prosegate quiet` | Enforcement stays on; the user notice is suppressed | Session |
+| `prosegate quiet` | Enforcement stays on; Prosegate's own notices are suppressed (Claude Code still shows each revision request; ADR-13, ADR-28) | Session |
 | `prosegate off` | No review, no notice, no telemetry beyond `override_used` | Session |
 | `prosegate profile <id>` | Sets the active profile and clears candidate state | Session |
 | `prosegate rule off <id>` / `rule on <id>` / `rule list` | Disables or re-enables one rule in a local overlay of the active profile; lists local disables (ADR-27) | Persistent, local |
 | `PROSEGATE_MODE=advisory\|off` | Same as the commands, for CI and scripts | Process |
 
-Commands that lower enforcement refuse when run from an agent's tool context, with `prosegate <cmd> must be run by you in a terminal, not by the agent.` (ADR-27).
+Commands that lower enforcement refuse when run from an agent's tool context, with `Prosegate: <cmd> was refused because it looks like the agent ran it. In Claude Code, a command typed after ! counts as the agent; run it in a separate terminal.` (ADR-27, ADR-28).
 
-The `feedback_text` sent to the model always ends by telling the model not to run prosegate commands and telling the user how to pause (`prosegate advisory`), and the first notice of a session names the override too (ADR-16). Org policy can set `enforcement_default` to `required`, which makes `advisory` and `off` refuse with `Enforcement is required by <org>; ask an admin, or uninstall.` The same policy limits selection to the org's own profiles and ignores local overlays for the session (ADR-18). That is an org admin's call, and the doc for admins says plainly that it costs them adoption.
+The `feedback_text` sent to the model always ends by telling the model not to run prosegate commands and telling the user how to pause (`prosegate advisory`), and the first notice of a session names the override too (ADR-16). Org policy can set `enforcement_default` to `required`, which makes `advisory` and `off` refuse with `Prosegate: enforcement is required by <org>, so this cannot be changed here. Ask an admin to change the policy.` (ADR-28) The same policy limits selection to the org's own profiles and ignores local overlays for the session (ADR-18). That is an org admin's call, and the doc for admins says plainly that it costs them adoption.
 
 ## Pass cap
 
@@ -41,11 +41,13 @@ The `feedback_text` sent to the model always ends by telling the model not to ru
 - After pass 2: allow regardless. If findings remain: `Prosegate · 1 finding remains after 2 passes · shipped as is` so the user knows to look.
 - A pass that produces zero findings prints nothing, even on pass 2.
 
+Whenever effective enforcement is weaker than the active profile defines (advisory, quiet, off, a rule switched off, a local overlay lowering severity, or local profile files changed mid-session), the user sees once per session, and again when it changes: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status` (ADR-30). The model never sees it.
+
 ## Wrong profile
 
 The notice always names the profile. If it is wrong, the user either types `prosegate profile <id>` or tells the model ("use the design-doc profile"), which calls `select_profile`. The correction applies from the next turn; the current turn is not re-reviewed, because the model already spent the pass on the wrong rules and a third pass is worse than a visible mistake.
 
-At session start, if the active profile's version changed since the last session, one line says so: `Prosegate · profile pr-description updated to v5 (2 rules changed) · prosegate profile diff to see`.
+At session start, if the active profile's version or a pinned pack changed since the last session, one line says so: `Prosegate · profile pr-description updated to v5 (2 rules changed)` (ADR-28; a diff command is later work).
 
 ## Headless and CI
 
