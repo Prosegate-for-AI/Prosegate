@@ -38,7 +38,7 @@ function withReviewer(category: 'vague_claim' | 'register' | 'unsupported_claim'
     severity,
     instruction: { action, text },
   });
-  f.id = findingId(category, null, f.span.text, 's1');
+  f.id = findingId(category, null, f.span.text);
   return refeed(r);
 }
 

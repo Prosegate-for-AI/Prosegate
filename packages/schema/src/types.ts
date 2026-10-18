@@ -42,7 +42,7 @@ export interface Segment {
 }
 
 export interface Finding {
-  id: string; // first 10 hex of sha256(category|rule_id|span.text|segment.id), rule_id null → ''; stable across passes; not unique within a result (ADR-17)
+  id: string; // first 10 hex of sha256(category|rule_id|span_key): span_key = span.text, or '' for document-metric findings; rule_id null → ''; stable across passes and position-independent; not unique within a result (ADR-17, ADR-23)
   span: { segment_id: string; start: number; end: number; text: string }; // text must equal the slice; consumers drop mismatches
   category: Category;
   source: 'rule' | 'reviewer';
@@ -52,6 +52,7 @@ export interface Finding {
   instruction: { action: Action; text: string };
   evidence: string | null; // reviewer's one-line reason; null for rules
   profile_origin: string; // profile id whose config enabled or set severity for this finding
+  scope?: 'span' | 'document'; // default 'span'; 'document' for document_metric findings, which are exempt from overlap resolution (ADR-24)
 }
 
 export type Severity = 'block' | 'warn' | 'info';

@@ -17,7 +17,8 @@ describe("word boundaries (ADR-15: only at word-character edges)", () => {
     expect(only("The robustness of it.", "core.vocab.003")).toEqual([]);
     expect(only("The unrobust thing.", "core.vocab.003")).toEqual([]);
     expect(only("The robust_value thing.", "core.vocab.003")).toEqual([]);
-    expect(only("The robust-ish thing.", "core.vocab.003")).toEqual(["robust"]);
+    expect(only("The robust-ish thing.", "core.vocab.003")).toEqual([]); // a hyphen between letters is word-internal (ADR-24)
+    expect(only("The robust - ish thing.", "core.vocab.003")).toEqual(["robust"]);
     expect(only("It is robust.", "core.vocab.003")).toEqual(["robust"]);
     expect(only("It is (robust).", "core.vocab.003")).toEqual(["robust"]);
   });
@@ -77,7 +78,8 @@ describe("position", () => {
     expect(only("(Note that this holds.)", "core.hedge.001")).toEqual(["Note that"]);
     expect(only("It works. Note that it fails.", "core.hedge.001")).toEqual(["Note that"]);
     expect(only("I think great question marks help.", "core.filler.001")).toEqual([]);
-    expect(only("Please note that it fails.", "core.hedge.001")).toEqual([]);
+    expect(only("Please note that it fails.", "core.hedge.001")).toEqual(["Please note that"]); // ADR-24 variant
+    expect(only("You should note that it fails.", "core.hedge.001")).toEqual([]);
   });
 
   it("sentence_start applies in a list item, not after a list marker's middle", () => {

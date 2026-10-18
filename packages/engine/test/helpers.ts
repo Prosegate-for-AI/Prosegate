@@ -32,7 +32,7 @@ export function ruleYaml(id: string, match: string, severity: "block" | "warn" |
 
 /** A compiled pack with id `core` (so the bundled profiles pin it) from rule YAML entries. */
 export function packOf(...rules: string[]): CompiledPack {
-  const yaml = ["schema: prosegate.rulepack/1", "id: core", "version: 0.0.1", "findings_schema: 1", "rules:", ...rules].join("\n");
+  const yaml = ["schema: prosegate.rulepack/1", "id: core", "version: 0.1.0", "findings_schema: 1", "rules:", ...rules].join("\n");
   const parsed = parseRulePackYaml(yaml);
   if (!parsed.ok) throw new Error(parsed.error.message);
   return compilePack(parsed.value);

@@ -24,10 +24,22 @@ rules:
         - "sure thing"
         - "i'd be happy to"
         - "i'd be glad to"
+        - "that's a great question"
+        - "good question"
+        - "certainly."
+        - "absolutely."
     instruction: { action: remove, text: "Remove. Start with the answer." }
     examples:
-      hit: ["Great question! Let's dive into the cache layer."]
-      miss: ["The cache layer is per tenant."]
+      hit:
+        - "Great question! Let's dive into the cache layer."
+        - "That's a great question. The cache layer is per tenant."
+        - "Good question! The cache layer is per tenant."
+        - "Certainly. The cache layer is per tenant."
+        - "Absolutely. The cache layer is per tenant."
+      miss:
+        - "The cache layer is per tenant."
+        - "Certainly the cache layer is per tenant."
+        - "The good question is who owns the cache layer."
 
   - id: core.filler.002
     category: filler
@@ -42,10 +54,17 @@ rules:
         - "let me know if you have any questions"
         - "happy to help"
         - "don't hesitate to"
+        - "let me know if you have any other questions"
+        - "let me know if you'd like"
     instruction: { action: remove, text: "Remove. End on the last substantive point." }
     examples:
-      hit: ["Let me know if you have any questions!"]
-      miss: ["Reply by Thursday if the dates don't work."]
+      hit:
+        - "Let me know if you have any questions!"
+        - "Let me know if you have any other questions."
+        - "Let me know if you'd like the full diff."
+      miss:
+        - "Reply by Thursday if the dates don't work."
+        - "Tell me which option you pick by Thursday."
 
   - id: core.filler.003
     category: filler
@@ -89,16 +108,21 @@ rules:
       kind: any
       parts:
         - kind: regex
-          pattern: '\b(?:it''s|it is) (?:important to note|worth noting|worth mentioning)(?: that)?,?'
+          pattern: '\b(?:it''s|it is) (?:also )?(?:important to note|worth noting|worth mentioning)(?: that)?,?'
         - kind: regex
           pattern: '\bit should be noted(?: that)?,?'
         - kind: phrase
-          phrases: ["note that"]
+          phrases: ["note that", "please note that"]
           position: sentence_start
     instruction: { action: remove, text: "Remove the preamble; keep the clause after it." }
     examples:
-      hit: ["It's worth noting that the index is unique."]
-      miss: ["The index is unique."]
+      hit:
+        - "It's worth noting that the index is unique."
+        - "It's also worth noting that the index is unique."
+        - "Please note that the index is unique."
+      miss:
+        - "The index is unique."
+        - "You can note that fact in the changelog."
 
   - id: core.hedge.002
     category: hedge
@@ -190,13 +214,18 @@ rules:
             - elevated
             - elevating
         - kind: regex
-          pattern: '\b(?:to|can|could|should|will|would|we|you|they|i|us) (?P<span>leverage)\b'
+          pattern: '\b(?:to|can|could|should|will|would|we|you|they|i|us|we''ll|you''ll|they''ll|then) (?P<span>leverage)\b'
         - kind: regex
           pattern: '\b(?P<span>underscore[sd]) (?:the|that|how|why|a|an|our|its|this)\b'
     instruction: { action: replace, text: "Use the plain verb (use, build, support, speed up)." }
     examples:
-      hit: ["We can leverage the existing cache."]
-      miss: ["We can use the existing cache."]
+      hit:
+        - "We can leverage the existing cache."
+        - "We'll leverage the existing cache."
+        - "Then leverage the existing cache."
+      miss:
+        - "We can use the existing cache."
+        - "The leverage ratio is high."
 
   - id: core.vocab.002
     category: vocab
@@ -207,11 +236,16 @@ rules:
         - kind: phrase
           phrases: [tapestry, realm, testament, synergy, "paradigm shift", game-changer, cornerstone]
         - kind: regex
-          pattern: '\b(?:the|this|today''s) (?:current |modern |evolving |changing )?landscape\b'
+          pattern: '\b(?:the|this|today''s) (?:[a-z-]+ ){0,2}landscape\b'
     instruction: { action: replace, text: "Name the concrete thing instead of the abstraction." }
     examples:
-      hit: ["The current landscape of auth libraries…"]
-      miss: ["Three auth libraries fit: …"]
+      hit:
+        - "The current landscape of auth libraries…"
+        - "The digital security landscape is crowded."
+        - "This modern identity landscape is crowded."
+      miss:
+        - "Three auth libraries fit: …"
+        - "Landscape mode is the default."
 
   - id: core.vocab.003
     category: vocab
@@ -255,11 +289,16 @@ rules:
     severity: warn
     match:
       kind: phrase
-      phrases: ["a wide range of", "a variety of", "a plethora of", "a myriad of", "a number of", "various"]
+      phrases: ["a wide range of", "a variety of", "a plethora of", "a myriad of", "a number of", "various", "a wide array of", "numerous"]
     instruction: { action: specify, text: "Give the count or the items." }
     examples:
-      hit: ["There are a number of options."]
-      miss: ["There are three options."]
+      hit:
+        - "There are a number of options."
+        - "There is a wide array of options."
+        - "Numerous options exist."
+      miss:
+        - "There are three options."
+        - "The numeral is Roman."
 
   # ---- triad --------------------------------------------------------------------------------
   - id: core.triad.001
@@ -267,24 +306,34 @@ rules:
     severity: warn
     match:
       kind: regex
-      pattern: '\b[a-z]{1,12}, [a-z]{1,12},? and [a-z]{1,12}\b'
+      pattern: '\b[a-z][a-z-]{0,11}, [a-z][a-z-]{0,11},? and [a-z][a-z-]{0,11}\b'
       sentence_exclude: '\d'
       sentence_max_words: 25
     instruction: { action: shorten, text: "Keep the one that matters, or give evidence for each." }
     examples:
-      hit: ["It is fast, simple, and reliable."]
-      miss: ["It is fast, simple, and reliable on 3 runners."]
+      hit:
+        - "It is fast, simple, and reliable."
+        - "It is well-tested, documented, and fast."
+        - "It is fast, reliable and\nscalable."
+      miss:
+        - "It is fast, simple, and reliable on 3 runners."
+        - "It is well-tested and documented."
 
   - id: core.triad.002
     category: triad
     severity: warn
     match:
       kind: regex
-      pattern: '\bnot (?:just|only|merely|about) .{3,80}?, (?:but|it''s about|it is about)\b'
+      pattern: '\bnot (?:just|only|merely|about) .{3,80}?(?:,|;| —|—) (?:but|it''s about|it is about)\b'
     instruction: { action: rephrase, text: "State the point directly without the contrast." }
     examples:
-      hit: ["It's not just about speed, it's about trust."]
-      miss: ["Not only did the test fail, the build did too."]
+      hit:
+        - "It's not just about speed, it's about trust."
+        - "It's not just about speed; it's about trust."
+        - "It is not just about speed — it is about trust."
+      miss:
+        - "Not only did the test fail, the build did too."
+        - "Not only did the test fail; the build did too."
 
   - id: core.triad.003
     category: triad
@@ -332,7 +381,7 @@ rules:
   - id: core.structure.004
     category: structure
     severity: block
-    match: { kind: document_metric, metric: closing_similarity, above: 0.6, min_sentences: 6 }
+    match: { kind: document_metric, metric: closing_similarity, above: 0.75, min_sentences: 6 }
     instruction: { action: remove, text: "Remove the closing paragraph; it restates the opening." }
     examples:
       hit: ["<eval corpus ref: core/structure-004-hit-01>"]

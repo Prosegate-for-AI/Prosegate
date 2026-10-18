@@ -51,6 +51,12 @@ export interface SearchPart {
    */
   readonly phrases: readonly string[] | null;
   readonly sticky: (i: number) => RegExp;
+  /**
+   * Regex parts whose trailing  was stripped: the same pattern with RE2's own trailing  kept, compiled on
+   * first use. When the stripped pattern's match fails the trailing boundary, RE2 backtracks into the other
+   * alternatives (or a longer lazy match) at the same start with this one; the JS Unicode check runs again after.
+   */
+  readonly strict: () => RE2JS | null;
   readonly filters: SearchFilters;
 }
 
@@ -109,6 +115,37 @@ function phraseSource(phrases: readonly string[]): { source: string; list: strin
   list.sort((a, b) => b.length - a.length || (a < b ? -1 : a > b ? 1 : 0));
   const alts = list.map((p) => p.split(" ").map(escapeRegex).join("\\s+"));
   return { source: `(?:${alts.join("|")})`, list };
+}
+
+/**
+ * A literal space in a regex matches a run of whitespace (`\s+`), as a space does in a phrase. The text
+ * has its line breaks and tabs turned into spaces one for one, so a CRLF wrap is two of them
+ * ("worth\r\nnoting") and a pattern written with one space would otherwise miss it. A space inside a
+ * character class, an escaped space, and a space that carries its own quantifier are left alone.
+ */
+export function whitespaceRuns(pattern: string): string {
+  let out = "";
+  let inClass = false;
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i] as string;
+    if (c === "\\") {
+      out += c + (pattern[i + 1] ?? "");
+      i++;
+    } else if (inClass) {
+      if (c === "]") inClass = false;
+      out += c;
+    } else if (c === "[") {
+      inClass = true;
+      out += c;
+      if (pattern[i + 1] === "^") out += pattern[++i];
+      if (pattern[i + 1] === "]") out += pattern[++i];
+    } else if (c === " " && !"?*+{".includes(pattern[i + 1] ?? "")) {
+      out += "\\s+";
+    } else {
+      out += c;
+    }
+  }
+  return out;
 }
 
 /** True when `p` has a `|` outside every group and character class. */
@@ -219,11 +256,12 @@ function compilePart(part: PartInput, ruleId: string, packId: string): SearchPar
       return r;
     };
     const word = part.boundary === "word";
-    return { kind: "search", source: "phrase", re, spanGroup: 0, checkLead: word, checkTrail: word, phrases: list, sticky, filters };
+    return { kind: "search", source: "phrase", re, spanGroup: 0, checkLead: word, checkTrail: word, phrases: list, sticky, strict: () => null, filters };
   }
-  const { source, lead, trail } = stripOuterBoundaries(part.pattern);
+  const { source, lead, trail } = stripOuterBoundaries(whitespaceRuns(part.pattern));
   const re = compileRe2(source, ruleId, "pattern", packId);
   const group = re.namedGroups()["span"];
+  let strictRe: RE2JS | undefined;
   return {
     kind: "search",
     source: "regex",
@@ -232,6 +270,11 @@ function compilePart(part: PartInput, ruleId: string, packId: string): SearchPar
     checkLead: lead,
     checkTrail: trail,
     phrases: null,
+    strict: () => {
+      if (!trail) return null;
+      strictRe ??= compileRe2(`(?:${source})\\b`, ruleId, "pattern", packId);
+      return strictRe;
+    },
     sticky: () => {
       throw new Error("sticky() is for phrase parts");
     },
@@ -295,29 +338,25 @@ function compileRule(rule: Rule, packId: string): CompiledRule {
 // ---- cache -------------------------------------------------------------------------------------
 
 interface CacheEntry {
-  source: RulePack;
-  fingerprint: string | null;
+  fingerprint: string;
   compiled: CompiledPack;
 }
 
 const CACHE = new Map<string, CacheEntry>();
 
 /**
- * Compiles `pack` once; later calls with the same `id@version` return the same object. A call with
- * the same id and version but different content (a test pack, a republished draft) recompiles and
- * replaces the entry, so a stale compile is never served.
+ * Compiles `pack` once; later calls with the same `id@version` and the same content return the same
+ * object. The content is fingerprinted on every call, so a pack mutated in place or republished under
+ * the same id@version recompiles and replaces the entry: a stale compile is never served.
  */
 export function compilePack(pack: RulePack): CompiledPack {
   const key = `${pack.id}@${pack.version}`;
+  const fingerprint = JSON.stringify(pack);
   const hit = CACHE.get(key);
-  if (hit !== undefined) {
-    if (hit.source === pack) return hit.compiled;
-    hit.fingerprint ??= JSON.stringify(hit.source);
-    if (hit.fingerprint === JSON.stringify(pack)) return hit.compiled;
-  }
+  if (hit !== undefined && hit.fingerprint === fingerprint) return hit.compiled;
   const rules = pack.rules.map((r) => Object.freeze(compileRule(r, pack.id)));
   const compiled: CompiledPack = Object.freeze({ id: pack.id, version: pack.version, rules: Object.freeze(rules) });
-  CACHE.set(key, { source: pack, fingerprint: null, compiled });
+  CACHE.set(key, { fingerprint, compiled });
   return compiled;
 }
 

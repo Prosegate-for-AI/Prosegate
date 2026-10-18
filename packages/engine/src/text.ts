@@ -44,20 +44,37 @@ export function lastCodePoint(s: string, start: number, end: number): string {
   return cp !== null && end - cp.length >= start ? cp : (s[end - 1] as string);
 }
 
-/** True when a match [s, e) of `s` starts on a word character that follows another word character. */
+/** A hyphen between two word characters is word-internal (consistent with the segmenter's word count; ADR-24). */
+function wordBefore(s: string, i: number): boolean {
+  const before = codePointBefore(s, i);
+  if (before === null) return false;
+  if (isWordCodePoint(before)) return true;
+  if (before !== "-") return false;
+  const beyond = codePointBefore(s, i - 1);
+  return beyond !== null && isWordCodePoint(beyond);
+}
+
+function wordAfter(s: string, i: number): boolean {
+  const after = codePointAt(s, i);
+  if (after === null) return false;
+  if (isWordCodePoint(after)) return true;
+  if (after !== "-") return false;
+  const beyond = codePointAt(s, i + 1);
+  return beyond !== null && isWordCodePoint(beyond);
+}
+
+/** True when a match [s, e) of the text starts on a word character that follows another word character (or a letter-hyphen). */
 export function startsMidWord(s: string, start: number, end: number): boolean {
   const first = codePointAt(s, start);
   if (first === null || start >= end || !isWordCodePoint(first)) return false;
-  const before = codePointBefore(s, start);
-  return before !== null && isWordCodePoint(before);
+  return wordBefore(s, start);
 }
 
-/** True when a match [s, e) of `s` ends on a word character that is followed by another word character. */
+/** True when a match [s, e) of the text ends on a word character that is followed by another word character (or a hyphen and one). */
 export function endsMidWord(s: string, start: number, end: number): boolean {
   if (end <= start) return false;
   if (!isWordCodePoint(lastCodePoint(s, start, end))) return false;
-  const after = codePointAt(s, end);
-  return after !== null && isWordCodePoint(after);
+  return wordAfter(s, end);
 }
 
 // ---- masks ---------------------------------------------------------------------------------------
@@ -189,4 +206,49 @@ export function cosine(a: Bag, b: Bag): number {
 /** Collapses runs of whitespace to one space and trims; used to compare spans with allow_terms. */
 export function squashSpace(s: string): string {
   return s.replace(/\s+/g, " ").trim();
+}
+
+// ---- allow_terms ---------------------------------------------------------------------------------
+
+const WORD_RE = /[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu;
+
+/** Lowercase word tokens of `s` (a hyphenated or apostrophised word is one token). */
+export function wordTokens(s: string): string[] {
+  return s.toLowerCase().match(WORD_RE) ?? [];
+}
+
+export interface AllowTerm {
+  /** The term, normalised, lowercase, whitespace squashed. */
+  text: string;
+  tokens: string[];
+}
+
+export function makeAllowTerm(normalised: string): AllowTerm {
+  const text = squashSpace(normalised.toLowerCase());
+  return { text, tokens: wordTokens(text) };
+}
+
+/**
+ * True when an allowed term equals the whole span, or equals a run of whole word tokens inside it
+ * (so "landscape" exempts "the current landscape", and "robust" does not exempt "robustness").
+ */
+export function spanAllowed(span: string, terms: readonly AllowTerm[]): boolean {
+  const whole = squashSpace(span.toLowerCase());
+  if (terms.some((t) => t.text === whole)) return true;
+  const tokens = wordTokens(span);
+  for (const t of terms) {
+    const n = t.tokens.length;
+    if (n === 0 || n > tokens.length) continue;
+    for (let i = 0; i + n <= tokens.length; i++) {
+      let same = true;
+      for (let k = 0; k < n; k++) {
+        if (tokens[i + k] !== t.tokens[k]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return true;
+    }
+  }
+  return false;
 }

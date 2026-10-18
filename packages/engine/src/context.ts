@@ -32,6 +32,8 @@ export interface Chunk {
 export class DocContext {
   readonly text: string;
   readonly normalized: string;
+  /** `normalized` with CR, LF and TAB as spaces (1:1): what patterns run on, so a hard wrap is a space (ADR-24). */
+  readonly match: string;
   readonly units: readonly Unit[];
   readonly masks: MaskIndex;
   readonly sentences: Sentence[] = [];
@@ -46,6 +48,7 @@ export class DocContext {
   constructor(readonly analysis: Analysis) {
     this.text = analysis.text;
     this.normalized = analysis.normalized;
+    this.match = analysis.normalized.replace(/[\r\n\t]/g, " ");
     this.units = analysis.units;
     this.masks = new MaskIndex(analysis.masks);
     this.unitStarts = analysis.units.map((u) => u.start);
@@ -96,6 +99,21 @@ export class DocContext {
     return pos < (this.units[ans] as Unit).end ? ans : -1;
   }
 
+  /** The segment id containing offset `pos` (segments partition the text), or null. */
+  segmentAt(pos: number): { id: string; end: number } | null {
+    const segs = this.analysis.segments;
+    let lo = 0;
+    let hi = segs.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const seg = segs[mid] as { id: string; start: number; end: number };
+      if (pos < seg.start) hi = mid - 1;
+      else if (pos >= seg.end) lo = mid + 1;
+      else return seg;
+    }
+    return null;
+  }
+
   /** Index of the first unit that starts after `pos`, or units.length. */
   nextUnitAfter(pos: number): number {
     let lo = 0;
@@ -118,7 +136,7 @@ export class DocContext {
     let start = -1;
     let end = -1;
     const flush = (): void => {
-      if (start >= 0) out.push({ start, end, text: this.normalized.slice(start, end) });
+      if (start >= 0) out.push({ start, end, text: this.match.slice(start, end) });
       start = -1;
     };
     for (const u of this.units) {

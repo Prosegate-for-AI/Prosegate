@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderFeedbackText, renderNotice } from "@prosegate/schema";
+import { renderNotice } from "@prosegate/schema";
 import { profile, review, run } from "./helpers.js";
 
 const SEEN_TWICE = "It's worth noting that the cache is per tenant. The index is unique. It's worth noting that the index is unique.";
@@ -32,7 +32,6 @@ describe("pass 1", () => {
     expect(r.stats.sentence_count).toBe(3);
     expect(r.stats.prose_chars).toBe("Plan".length + "The plan is robust.".length + "It is fine.".length + "Done now.".length);
     expect(r.stats.rules_latency_ms).toBeGreaterThanOrEqual(0);
-    expect(r.feedback_text).toBe(renderFeedbackText(r));
     expect(r.profile).toEqual({ id: "local/base", version: profile().version, resolved_from: ["local/base"] });
   });
 });

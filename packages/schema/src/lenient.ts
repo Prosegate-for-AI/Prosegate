@@ -66,6 +66,8 @@ const LenientFindingSchema = z.object({
   instruction: z.object({ action: z.string().min(1), text: z.string() }),
   evidence: z.string().nullable(),
   profile_origin: ProfileIdFormatSchema, // the id denylist runs per finding, in findingProblems
+  // optional, so an unknown value from a newer producer is tolerated; only 'document' is special (ADR-24)
+  scope: z.string().exactOptional(),
 });
 
 const LenientStatsSchema = z.object({
