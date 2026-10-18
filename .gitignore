@@ -19,3 +19,7 @@ docs/spikes/s2-openai-vending/s2-report.json
 
 # Agent worktrees
 .claude/worktrees/
+
+# eval run reports: CI artifacts; a pack release commits its report with git add -f (10)
+eval/reports/*.json
+!eval/reports/.gitkeep
