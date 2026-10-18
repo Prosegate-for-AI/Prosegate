@@ -12,7 +12,10 @@ What the claim does not cover: the reviewer provider sees the draft under that p
 | --- | --- | --- | --- | --- |
 | Draft, user message, style constraints | Machine → reviewer provider (direct HTTPS) | Reviewer stage runs (over floor, key present, profile enables it) | Not stored by Prosegate; provider terms apply | Provider's |
 | Harness transcript (last turn only) | Harness file → adapter process memory | `turn-end` | Never written by Prosegate; `--debug` writes a local copy with a warning | Process lifetime |
-| Resolved profile snapshot | Adapter → `~/.prosegate/sessions/<id>/` | Session start | Local disk, 0600 | Deleted at next session start |
+| Resolved profile snapshot | Adapter → `~/.prosegate/sessions/<id>/` | Session start | Local disk, 0600 / owner-only ACL | With its session: 24 h idle (ADR-29) |
+| Last user message (`turn.json`, ≤ 2,000 chars) | Adapter → session dir | Turn start | Local disk, 0600 / owner-only ACL | With its session: 24 h idle |
+| Headless report (`report.json`, spans ≤ 80 chars) | Adapter → session dir | Turn end, headless only | Local disk, 0600 / owner-only ACL | With its session: 24 h idle |
+| Debug copy of a turn (`debug/`) | Adapter → session dir | Only with `--debug`, with a warning | Local disk, 0600 / owner-only ACL | With its session: 24 h idle |
 | Profiles, rule packs, reviewer prompts | Config service → machine | Session start, `reload` | D1 (server), local cache | Until user deletes |
 | Device key | Config service → machine (once) | `prosegate init` | OS keychain; file 0600 fallback | Until revoked |
 | Reviewer key (vended) | Config service → machine | Session start if absent or rotated | OS keychain; never in config files, env dumps or logs | Until revoked or rotated (30 days) |
