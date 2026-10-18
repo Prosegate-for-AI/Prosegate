@@ -31,4 +31,4 @@ Snapshot, rewritten at each change. Last updated 2026-10-18.
 
 1. Review W3.2 cycle 1: conformance and a top-tier adversarial pass. Merge, run the gates, re-run the 09 goldens.
 2. Phase 3 exit, then a status message. Murray runs `npx prosegate init` (user scope) once the restore is done.
-3. Brief Phase 4, the reviewer: key store per ADR-14, BYOK, prompt builder, provider clients, D-16, D-21, D-26. Per plan §8, it is not wired into turn-end until the rules path has run a week on Murray's machine.
+3. **Stop.** Murray asked to stop after Phase 3 (2026-10-18). No Phase 4 work starts until he says so.
