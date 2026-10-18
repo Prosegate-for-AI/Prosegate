@@ -1,0 +1,16 @@
+# Fixture pack: the `miss` example contains the phrase the rule fires on, so the example gate must fail.
+schema: prosegate.rulepack/1
+id: fx
+version: 0.1.0
+findings_schema: 1
+rules:
+  - id: fx.filler.001
+    category: filler
+    severity: block
+    match:
+      kind: phrase
+      phrases: ["needless filler"]
+    instruction: { action: remove, text: "Remove it." }
+    examples:
+      hit: ["This sentence carries needless filler."]
+      miss: ["This sentence also carries needless filler."]

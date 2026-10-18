@@ -1,0 +1,97 @@
+{
+  "schema": "prosegate.eval-baseline/1",
+  "rules": {
+    "core.filler.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.filler.002": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.filler.003": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.filler.004": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.hedge.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.hedge.002": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.hedge.003": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.hedge.004": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.hedge.005": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.repetition.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.structure.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.structure.002": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.structure.003": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.structure.004": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.structure.005": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.triad.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.triad.002": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.triad.003": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.vocab.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.vocab.002": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.vocab.003": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.vocab.004": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "core.vocab.005": {
+      "precision": null,
+      "fp_rate": null
+    }
+  }
+}

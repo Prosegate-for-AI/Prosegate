@@ -1,0 +1,16 @@
+# Fixture pack: every example does what it says. Used to show a clean pack passes the example gate.
+schema: prosegate.rulepack/1
+id: fx
+version: 0.1.0
+findings_schema: 1
+rules:
+  - id: fx.filler.001
+    category: filler
+    severity: block
+    match:
+      kind: phrase
+      phrases: ["needless filler"]
+    instruction: { action: remove, text: "Remove it." }
+    examples:
+      hit: ["This sentence carries needless filler."]
+      miss: ["This sentence carries a result."]

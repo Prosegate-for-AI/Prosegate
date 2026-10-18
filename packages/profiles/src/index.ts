@@ -10,6 +10,7 @@ export const profilesPlaceholder = {
 } as const;
 
 export { bundledPackSources, bundledProfileSources, BUNDLED_PACK_YAML, BUNDLED_PROFILE_YAML } from "./bundled.js";
+export { isCorpusRef } from "./rulepack.js";
 export { ResolutionError, type Issue, type ParseResult, type ResolutionErrorCode } from "./errors.js";
 export { parseProfile, parseProfileYaml, type Profile } from "./profile.js";
 export {

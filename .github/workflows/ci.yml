@@ -46,6 +46,13 @@ jobs:
       - run: pnpm check:deps
       - run: pnpm check:secrets
       - run: pnpm eval:rules
+      - name: Keep the eval report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: eval-report-${{ matrix.os }}-${{ matrix.node }}
+          path: eval/reports/*.json
+          if-no-files-found: warn
 
       - name: Build the adapter bundle
         run: pnpm build
