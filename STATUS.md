@@ -17,6 +17,10 @@ Phases 0–3: spikes; schema, segmenter and profiles; the engine and `core` 0.1.
 - `pnpm test:perf` on a quiet machine (HQ-6).
 - HQ-7 corpus licensing (most urgent), HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-8.
 
+## Remaining work
+
+The rest of v0 is on the AI Taskboard as 46 tickets in New, under project Prosegate, with 55 dependency links. `[Human]` tickets are yours and block the agent tickets that need them. The ticket generator is in the session scratchpad (`tbcopy/tickets.mjs`).
+
 ## When resumed
 
 1. Brief Phase 4, the reviewer: key store (ADR-14), BYOK, prompt builder, provider clients, D-16, D-21, D-26. Per plan §8, it is wired into turn-end only after the rules path has run a week on Murray's machine.
