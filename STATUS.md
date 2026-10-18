@@ -1,32 +1,34 @@
 # STATUS
 
-Snapshot, rewritten at each change. Last updated 2026-10-17 (after session restart).
+Snapshot, rewritten at each change. Last updated 2026-10-17.
 
-**Phase:** 1 — Contracts (Phase 2 corpus work started in parallel).
+**Phase:** 1 — Contracts, exit pending two verifications. Phase 2 (engine) started.
 
-## Done this phase
+## Merged to master (all gates green, 1,915 tests)
 
-- W1.1 `@prosegate/schema`: merged to master (a69e1d6); 523 package tests, all gates green.
+- W1.1 `@prosegate/schema` (exited)
+- W1.3 `@prosegate/profiles` + `core` 0.1.0 + starters (exited)
+- W1.2 `@prosegate/segmenter`, cycle 1. **Not exited** until the top-tier re-verify passes.
+- W2.1 corpus-ref rule examples (exited)
 
 ## In flight
 
 | Item | Owner (agent / model) | State |
 | --- | --- | --- |
-| W1.2 `segmenter` | implementer / sonnet, worktree `agent-aea51b47…` | conformance and adversarial reviews in; tests review resumed after restart; then cycle 1 |
-| W1.3 `profiles` + real `core` 0.1.0 | implementer / sonnet, worktree `agent-a6b58ffe…` | cycle 2 of 3 resumed after restart (partial edits were uncommitted) |
-| W2.1 corpus-ref example documents (12) | implementer / sonnet, worktree | running |
+| W1.2 re-verify | verifier / top tier | running |
+| W1.4 injected-text filter in `schema` | implementer / sonnet, worktree `agent-afa4d439…` | cycle 1 of 3 (filter-as-rendered must-fix) |
+| W2.2 `@prosegate/engine` | implementer / sonnet, worktree | running |
 
-## Queued
+## Phase 1 exit needs
 
-- W1.4 (after W1.3 merges): move the injected-text filter to `schema` (ADR-20); fix its bypasses (accent folding, confusables skeleton, spaced/leet product names, command flags, injection phrasing) and false positives (`Data:`, `#123`, `$20`, CJK punctuation); wire into `findingProblems`; denylist-only pass on ids; final top-tier privacy verify of schema + filter.
-- Phase 2 engine brief: S4 pipeline against the real `core.yaml` and the W2.1 documents.
+W1.2 re-verify clear, W1.4 merged, then the proving run: `pnpm install --frozen-lockfile && pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm check:deps && pnpm check:secrets && pnpm check:bundle`, plus JSON Schema emitted (`pnpm --filter @prosegate/schema build:schema` with no diff).
 
 ## Waiting on Murray
 
-HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-7, HQ-8. None blocks Phases 1–2.
+HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-7, HQ-8. Soonest useful: HQ-6 (private remote → CI and macOS), HQ-7 (corpus licensing, week 4).
 
 ## Next three actions
 
-1. Run W1.2's fix cycle once its tests review lands.
-2. Accept W1.3 after cycle 2, merge it, and launch W1.4.
-3. Brief and launch the Phase 2 engine.
+1. Close W1.2 and W1.4; run the Phase 1 exit; send the Phase 1 status message.
+2. Review W2.2 (conformance, correctness + top-tier verify, tests, performance).
+3. Brief W2.3 `eval:rules` runner against the engine API.
