@@ -15,6 +15,7 @@
     "@prosegate/engine": "workspace:*",
     "@prosegate/profiles": "workspace:*",
     "@prosegate/reviewer": "workspace:*",
-    "prosegate": "workspace:*"
+    "prosegate": "workspace:*",
+    "zod": "4.6.7"
   }
 }
