@@ -47,10 +47,10 @@ describe("run", () => {
     expect(r.out).toBe("");
   });
 
-  it("reports init as unavailable on stderr with exit 1", async () => {
+  it("init without --harness prints the usage on stderr with exit 1 and installs nothing", async () => {
     const r = await exec(["init"]);
     expect(r.code).toBe(1);
-    expect(r.err).toBe("prosegate init is not available in this build yet.\n");
+    expect(r.err).toBe("Prosegate: init needs a harness. usage: prosegate init --harness claude-code [--scope project|user] [--local]\n");
     expect(r.out).toBe("");
   });
 

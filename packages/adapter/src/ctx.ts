@@ -44,6 +44,8 @@ export interface TestHooks {
   engineBudgetMs?: number;
   /** Override of the 8 s hard deadline. */
   hardDeadlineMs?: number;
+  /** A fake reviewer stage that reports these spans as unsupported claims (09 mock 2; the real reviewer is Phase 4). */
+  fakeUnsupportedClaims?: string[];
 }
 
 /**
@@ -61,6 +63,8 @@ export function parseTestHooks(raw: string | undefined): TestHooks {
     const o = v as Record<string, unknown>;
     const out: TestHooks = {};
     if (typeof o["crash"] === "string") out.crash = o["crash"];
+    const claims = o["fakeUnsupportedClaims"];
+    if (Array.isArray(claims) && claims.every((c) => typeof c === "string")) out.fakeUnsupportedClaims = claims as string[];
     for (const k of ["delayMs", "budgetMs", "engineBudgetMs", "hardDeadlineMs"] as const) {
       if (typeof o[k] === "number") out[k] = o[k];
     }

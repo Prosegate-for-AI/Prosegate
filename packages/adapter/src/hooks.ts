@@ -21,7 +21,7 @@ import {
   resolveBaseline,
   type LoadedSession,
 } from "./profiles.js";
-import { buildTurnReport } from "./report.js";
+import { buildTurnReport, summaryLine } from "./report.js";
 import type { LastTurn, SessionStartInput, SessionState, TurnEndInput, TurnRecord, TurnStartInput } from "./schemas.js";
 import {
   SessionStore,
@@ -35,6 +35,7 @@ import {
   sweepSessions,
   turnKey,
 } from "./store.js";
+import { withFakeReviewer } from "./test-seam.js";
 import { timed, timingsLine } from "./timing.js";
 import {
   enforcementEvent,
@@ -357,6 +358,7 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
           result = trip("turn_budget_exceeded", "the review finished after the 6 s cap");
         } else {
           result = detailed.result;
+          result = withFakeReviewer(result, ctx, { text: input.assistant_text, pass, capCheck, enforce, priorIds: request.prior_findings, profileId: resolved.id });
           reviewed = true;
           truncated = detailed.diagnostics.truncated;
           if (truncated) {
@@ -392,7 +394,7 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
     if (reviewNotice !== null) reviewNotice = withCap(reviewNotice, cap);
   }
   const firstNoticeSpent = reviewNotice !== null && phase === "pass1" && eff.mode === "enforce";
-  const shippedShownNow = capCheck && reviewNotice !== null;
+  const shippedShownNow = capCheck && (reviewNotice !== null || (eff.headless && reviewed));
 
   // Once-per-session lines (09, ADR-18, ADR-30) wait for a turn with no review notice of its own and are
   // hidden in quiet, off and headless; the lowered-enforcement and debug lines are about the user's own
@@ -476,9 +478,10 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
   if (eff.headless && reviewed) {
     try {
       const shippedRemaining = capCheck ? result.findings.length : 0;
-      timed("store", () =>
-        store.upsertReport(buildTurnReport({ turn: key, ordinal: saved.turn_ordinal, result, decision, passes: capCheck ? 2 : pass, shippedRemaining, ts: ctx.now() })),
-      );
+      const entry = buildTurnReport({ turn: key, ordinal: saved.turn_ordinal, result, decision, passes: capCheck ? 2 : pass, shippedRemaining, ts: ctx.now() });
+      timed("store", () => store.upsertReport(entry));
+      // One line per reviewed turn, when the turn ends (09 "Headless and CI"); the shim passes adapter stderr through.
+      if (decision === "allow" && !(capCheck && rec.shipped_shown)) stderr.push(summaryLine(entry));
     } catch {
       // The decision is already persisted; a report that cannot be written must not undo it.
       log(ctx, "warn", "report_failed", "could not write report.json");

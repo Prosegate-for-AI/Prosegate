@@ -438,14 +438,14 @@ describe("--debug (07, ADR-30)", () => {
 });
 
 describe("the CLI surface", () => {
-  it("prints the version and the help (80 columns, no init) without touching the store", () => {
+  it("prints the version and the help (80 columns) without touching the store", () => {
     const home = tmpDir();
     expect(pg(bundle, ["--version"], { home }).stdout).toMatch(/^\S+\n$/);
     const help = pg(bundle, ["--help"], { home });
     expect(help.code).toBe(0);
     expect(help.stdout).toContain("rule off <id>    switch one rule off in every session");
     expect(help.stdout).toContain("a command typed after ! counts as the agent");
-    expect(help.stdout).not.toMatch(/\binit\b/);
+    expect(help.stdout).toContain("init --harness claude-code");
     for (const line of help.stdout.split("\n")) expect(line.length, line).toBeLessThanOrEqual(80);
     expect(existsSync(join(home, "sessions"))).toBe(false);
   });
@@ -470,8 +470,8 @@ describe("the CLI surface", () => {
     for (const name of ["toString", "__proto__", "hasOwnProperty"]) expect(pg(bundle, [name], { home }).stderr).toContain("unknown command");
   });
 
-  it("init says it is not available yet and exits 1", () => {
-    const r = pg(bundle, ["init"], { home: tmpDir() });
-    expect(r).toMatchObject({ code: 1, stdout: "", stderr: "prosegate init is not available in this build yet.\n" });
+  it("init without --harness prints the usage and exits 1, and installs nothing", () => {
+    const r = pg(bundle, ["init"], { home: tmpDir(), env: { PROSEGATE_CLAUDE_HOME: tmpDir() } });
+    expect(r).toMatchObject({ code: 1, stdout: "", stderr: "Prosegate: init needs a harness. usage: prosegate init --harness claude-code [--scope project|user] [--local]\n" });
   });
 });

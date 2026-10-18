@@ -281,7 +281,7 @@ describe("adapter bundle (built with the real tsup config)", () => {
     expect(run("--version")).toEqual({ code: 0, out: `${pkg.version}\n`, err: "" });
     expect(run("--help").code).toBe(0);
     expect(run().out).toContain("usage: prosegate");
-    expect(run("init")).toMatchObject({ code: 1, out: "", err: "prosegate init is not available in this build yet.\n" });
+    expect(run("init")).toMatchObject({ code: 1, out: "", err: "Prosegate: init needs a harness. usage: prosegate init --harness claude-code [--scope project|user] [--local]\n" });
     expect(run("nope")).toMatchObject({ code: 1, err: 'prosegate: unknown command "nope". Run prosegate --help.\n' });
   });
 });
