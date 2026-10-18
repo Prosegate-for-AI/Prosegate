@@ -210,3 +210,24 @@ Consequence: 03 gains `Finding.scope`, and the schema validator exempts document
 ## ADR-25 · `core.structure.004` threshold 0.75
 
 2026-10-17. After ADR-24's three-block floor, the reviewer's five canonical "diagnosis, details, one-line fix" answers still scored a closing similarity of 0.60, 0.62 and 0.67, so three of the five were blocked. These are 08's own miss shape: a last paragraph that gives the next step. 08's hit example, a closing that restates the opening, scores 0.89. The threshold rises from 0.6 to 0.75. That clears every measured miss shape with a margin of 0.08 and keeps the hit at a margin of 0.14. Severity stays `block`. This corrects the rule's definition to what it claims to detect, measured on its own examples. It is not a softening, since no severity changes and 10's gate still applies. The rule stays on the Phase 6 watchlist (ADR-24) and is pulled if the human control set puts it over 1%. Rejected: requiring four blocks (it would ignore real restatements in three-paragraph replies); exempting imperative closings (a heuristic with its own false negatives).
+
+## ADR-26 · Normalised id keys, label bold, sentence-start filler, wider filler lists
+
+2026-10-18. Findings of the W2.2 re-verification, which used a fresh 71-reply clean sample and 20 fresh tic-dense replies:
+- **Id key.** The `span_key` (ADR-23) is the span's text as matched: ASCII-lowercased, typography folded and whitespace runs collapsed to one space, i.e. the engine's matching copy. A tic that survives revision re-typed with different case, a curly apostrophe, a line wrap or a double space used to get a new id. It was "cleared" and shipped. A genuinely reworded tic ("It is" → "It's also") still gets a new id; that is 03's rule, and it is the reviewer's and pass 1's job to catch the rewording.
+- **Label bold.** `bold_per_100_words` does not count a bold span that starts a paragraph or a list item and is at most four words. Such spans are labels ("**Root cause:**", "**Summary**"), not emphasis. The `chat-reply` profile blocked the common labelled-answer layout. Emphasis bold inside running text still counts.
+- **Literal phrases.** `core.filler.003`'s "in this response" and "the following is" match only at sentence start. Mid-sentence they are literal ("the header in this response"; "check whether the following is set"), and five of five such literal uses were blocked. This makes the rule mean what 08 describes (meta-commentary), as ADR-25 did for structure.004; severity is unchanged.
+- **Wider filler lists.** Filler recall on fresh text was 24% against 10's 70% target. 08 and `core.yaml` add these:
+  - **filler.001** (sentence-initial): excellent question, really good question, good catch, you're absolutely right, of course!, sure!, happy to help.
+  - **filler.002** (closing): hope that helps, i hope that helps, hopefully this helps, feel free to ask.
+  - **filler.004** (sentence-initial, short documents): in short, to sum up, in a nutshell, simply put, the bottom line is.
+  - **hedge.001**: keep in mind that and it's important to remember, both sentence-initial.
+  - **hedge.003**: notably and interestingly, sentence-initial with a comma.
+  - **hedge.004**: can potentially.
+  - **vocab**: empowers, blazing-fast, silver bullet.
+  - **triad.002**: "not only … but also" without a comma.
+
+  Each addition gets a hit and a miss example, and each is subject to 10's budgets; a phrase that over-fires is removed.
+- **`allow_terms`.** An allowed term exempts a vocab match only when it equals the whole span, ignoring a leading determiner (the, this, a, an, today's), or the rule's matched key word. A team allowing "security" no longer switches off "the evolving security landscape", and "a" no longer exempts "a number of".
+
+Rejected: semantic matching for filler, which belongs to the reviewer stage (Phase 4), not the deterministic rules. Consequence: 08's filler, hedge, vocab and triad rows change; 04's metric note for `bold_per_100_words` changes; engine cycle 2 implements this.
