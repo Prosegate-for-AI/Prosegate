@@ -137,7 +137,7 @@ Rendered by the adapter, not the reviewer, so every harness shows the same thing
 {i}. {category label}{ (rule_id)} — "{span.text, trimmed to 80 chars}" → {instruction.text | same as <j>.}
 …
 Reply with the revised response only. Do not run prosegate commands.
-To pause these revisions for this session, the user can run: prosegate advisory
+(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)
 ```
 
 On pass 2 the header reads `[Prosegate] {n} finding(s) remain(s) after your revision, against profile "{profile.id}" (pass 2 of 2). Revise your last response.` Details in ADR-12 and ADR-16.

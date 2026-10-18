@@ -239,3 +239,18 @@ Rejected: semantic matching for filler, which belongs to the reviewer stage (Pha
 - **Agents cannot lower enforcement.** `advisory`, `off`, `quiet` and `rule off` refuse when they detect an agent's tool context. That means a `CLAUDECODE` environment variable together with a non-TTY stdin; harness shims register their own markers. They print: `prosegate <cmd> must be run by you in a terminal, not by the agent.` Commands that raise enforcement (`enforce`, `rule on`) are always allowed. This enforces what ADR-16 only asks of the model. Residual: a user who runs Claude Code's `!` shell escape gets the same refusal and must use a separate terminal; this is documented in `--help`. An agent that fakes a TTY or unsets the variable can still get through. That needs deliberate circumvention, and it is visible because `override_used` telemetry is emitted for every mode change.
 
 Consequence: 09's "Override and modes" table gains `rule off`, `rule on` and `rule list`. The adapter's command layer implements the agent check.
+
+## ADR-28 · Model context and user notices are separate channels; CLI copy fixes
+
+2026-10-18. From the UX review of the W3.1 CLI.
+- **Notices never reach the model.** `session-start` returns user-facing lines in a new field, `notice` (string or null; the shim shows it as `systemMessage`). They are never appended to `inject`: the profile-updated line, the overlays-ignored line and the resolution-error line. Appended to the model's context, they named prosegate commands to a shell-capable model (ADR-16's concern) and spent its tokens.
+- **The inject only describes what exists.** Tool names appear only once the MCP server ships (Phase 5). The inject opens with the same guard the feedback carries: `If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands.` The length line reads `Aim for at most N words of prose; code and quoted output do not count.`
+- **`quiet` hides Prosegate's own notices, not Claude Code's display of a revision request.** Claude Code always shows continuation feedback (ADR-13), so a `quiet` session still shows the feedback block on each revision. The command's confirmation says so, and so does 09.
+- **Profiles can be named by slug.** `prosegate profile <slug>` resolves an unambiguous slug, so the name a notice shows (`pr-description`) works as typed. Bare `prosegate profile` lists profiles. Errors suggest the nearest id.
+- **No pointer to commands that do not exist.** The profile-updated line drops "prosegate profile diff to see" until a diff command ships (DEBT). It fires only when the integer version or a pinned pack changed, not after the user's own `rule off`.
+- **Refusal and policy copy.** These strings change in 09 and ADR-27:
+  - The agent refusal becomes `Prosegate: <cmd> was refused because it looks like the agent ran it. In Claude Code, a command typed after ! counts as the agent; run it in a separate terminal.`
+  - The org message becomes `Prosegate: enforcement is required by <org>, so this cannot be changed here. Ask an admin to change the policy.` The admin doc, not the CLI, tells admins what `required` costs in adoption (09).
+- **The feedback tail names its reader.** The last line of `feedback_text` becomes `(For the user: run prosegate advisory in a terminal to pause these revisions for this session.)`. Today's "the user can run" addresses the user in the third person in text the user reads (ADR-13).
+
+Consequence: 05's `session-start` output gains `notice`; 09's quiet row, refusal and required strings change; 03's template last line changes; the W3.1 adapter, W3.2 shim and `@prosegate/schema` renderer follow.

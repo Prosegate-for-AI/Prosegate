@@ -10,7 +10,7 @@ Every entry point reads one JSON object on stdin and writes one on stdout. Exit 
 
 | Command | When the shim calls it | Input (stdin) | Output (stdout) |
 | --- | --- | --- | --- |
-| `prosegate session-start` | Once, when the harness starts a session | `{harness, session_id, cwd, mode}` | `{inject: string, active_profile, offline: bool}` |
+| `prosegate session-start` | Once, when the harness starts a session | `{harness, session_id, cwd, mode}` | `{inject: string, notice: string \| null, active_profile, offline: bool}`; `notice` is for the user, never the model (ADR-28) |
 | `prosegate turn-start` | After the user submits a prompt, before the model runs | `{session_id, user_message, tool_calls_so_far: string[]}` | `{inject: string \| null, candidate: string \| null}` |
 | `prosegate turn-end` | When the model has produced its final text for the turn | `{session_id, turn_id, assistant_text, user_message, tool_calls: string[], continuation: bool}` | `{decision: 'allow' \| 'continue', feedback_text, render: 'diff' \| 'summary' \| 'none', result: ReviewResult}` |
 | `prosegate mcp` | Started once by the harness as a stdio MCP server | MCP protocol | MCP protocol |
