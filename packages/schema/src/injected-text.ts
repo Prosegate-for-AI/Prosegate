@@ -342,7 +342,6 @@ const PHRASES = new RegExp(
       'you are now',
       'you re now',
       'you (?:only )?answer to',
-      'you work for',
       'your (?:only|new|real|true) (?:job|role|task|purpose) is',
       'you no longer',
       'act as',
@@ -385,8 +384,8 @@ function overridePhrase(words: readonly string[]): boolean {
 
 type Mode = 'text' | 'id';
 
-const FETCH_VERBS = new Set(['fetch', 'open', 'download', 'load', 'read', 'visit']);
-/** True when fetch, open, download, load, read or visit is one of the two words right before `index`. */
+const FETCH_VERBS = new Set(['fetch', 'open', 'download', 'load', 'visit']);
+/** True when fetch, open, download, load or visit is one of the two words right before `index`. */
 function fetchVerbBefore(text: string, index: number): boolean {
   const prior = text.slice(Math.max(0, index - 40), index).match(/[a-z0-9]+/g) ?? [];
   return prior.slice(-2).some((w) => FETCH_VERBS.has(w));
