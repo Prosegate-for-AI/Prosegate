@@ -4,29 +4,52 @@
 // stdout, stderr and the exit code. Nothing here touches the real ~/.claude or ~/.prosegate.
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { buildBundle, cleanEnv, pg, tmpDir, ADAPTER_DIR, type Proc } from "../helpers.js";
 
 export const SHIM_SOURCE = join(ADAPTER_DIR, "shims", "claude-code", "hook.mjs");
+export const LAUNCHER_SOURCE = join(ADAPTER_DIR, "shims", "claude-code", "launcher.mjs");
 
 export interface Pkg {
   dir: string;
   bundle: string;
   shim: string;
+  launcher: string;
 }
 
-/** An installed package layout around `bundleFile` (the shim finds the adapter at ../../dist/prosegate.mjs). */
-export function layoutPkg(bundleFile: string | null, dirName = "node_modules-prosegate", shimSource = SHIM_SOURCE): Pkg {
+/** An installed package layout around `bundleFile`: dist/prosegate.mjs, shims/claude-code/{hook,launcher}.mjs, package.json. */
+export function layoutPkg(bundleFile: string | null, dirName = "node_modules-prosegate", shimSource = SHIM_SOURCE, version = "1.0.0"): Pkg {
   const dir = join(tmpDir("pg-pkg-"), dirName);
   const bundle = join(dir, "dist", "prosegate.mjs");
   const shim = join(dir, "shims", "claude-code", "hook.mjs");
+  const launcher = join(dir, "shims", "claude-code", "launcher.mjs");
   mkdirSync(dirname(bundle), { recursive: true });
   mkdirSync(dirname(shim), { recursive: true });
   if (bundleFile !== null) copyFileSync(bundleFile, bundle);
   copyFileSync(shimSource, shim);
-  return { dir, bundle, shim };
+  copyFileSync(LAUNCHER_SOURCE, launcher);
+  writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "prosegate", version }));
+  return { dir, bundle, shim, launcher };
 }
+
+/** What `prosegate init` leaves in the Prosegate home: app/hook.mjs (the launcher), app/<version>/ (a copy of the package) and app/current. */
+export function installApp(pkg: Pkg, home: string, version = "1.0.0"): string {
+  const app = join(home, "app");
+  mkdirSync(join(app, version), { recursive: true });
+  cpSync(join(pkg.dir, "dist"), join(app, version, "dist"), { recursive: true });
+  cpSync(join(pkg.dir, "shims"), join(app, version, "shims"), { recursive: true });
+  copyFileSync(pkg.launcher, join(app, "hook.mjs"));
+  writeFileSync(join(app, "current"), `${version}\n`);
+  return join(app, "hook.mjs");
+}
+
+/** Deletes an installed version while `current` still names it (a pruned or half-removed install). */
+export function deleteVersion(home: string, version = "1.0.0"): void {
+  rmSync(join(home, "app", version), { recursive: true, force: true });
+}
+
+export { existsSync };
 
 export async function releasePkg(): Promise<Pkg> {
   return layoutPkg(await buildBundle("release"));
@@ -72,22 +95,26 @@ export class FakeClaudeCode {
   env: Record<string, string | undefined>;
   sessionId: string;
 
-  constructor(pkg: Pkg, opts: { home?: string; env?: Record<string, string | undefined>; sessionId?: string; cwd?: string } = {}) {
+  /** ~/.prosegate/app/hook.mjs: what Claude Code's settings name. */
+  readonly launcher: string;
+
+  constructor(pkg: Pkg, opts: { home?: string; env?: Record<string, string | undefined>; sessionId?: string; cwd?: string; install?: boolean } = {}) {
     this.pkg = pkg;
     this.home = opts.home ?? join(tmpDir("pg-home-"), ".prosegate");
     this.cwd = opts.cwd ?? tmpDir("pg-proj-");
     this.transcript = join(tmpDir("pg-transcript-"), "t.jsonl");
     this.env = opts.env ?? {};
     this.sessionId = opts.sessionId ?? SESSION;
+    this.launcher = opts.install === false ? join(this.home, "app", "hook.mjs") : installApp(pkg, this.home);
   }
 
   private common(event: string): Record<string, unknown> {
     return { session_id: this.sessionId, transcript_path: this.transcript, cwd: this.cwd, hook_event_name: event };
   }
 
-  /** The shim as Claude Code runs it: `node <shim> <Event>`, JSON on stdin, a fresh process each time. */
+  /** The hook as Claude Code runs it: `node <launcher> <Event>`, JSON on stdin, a fresh process each time. */
   hook(event: "SessionStart" | "UserPromptSubmit" | "Stop", fields: Record<string, unknown>, flags: string[] = []): HookRun {
-    const r = spawnSync(process.execPath, [this.pkg.shim, event, ...flags], {
+    const r = spawnSync(process.execPath, [this.launcher, event, ...flags], {
       input: JSON.stringify({ ...this.common(event), ...fields }),
       encoding: "utf8",
       env: cleanEnv(this.home, this.env),

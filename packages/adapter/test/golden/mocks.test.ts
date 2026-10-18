@@ -224,18 +224,17 @@ describe("09 advisory mode", () => {
     expect(stop.code).toBe(0);
     expect(Object.keys(stop.json ?? {})).toEqual(["systemMessage"]);
     expect(stop.stdout).not.toContain("additionalContext");
-    // ADR-30: the first turn of a lowered session also says so, once.
+    // ADR-30, ADR-33: the first turn of a lowered session says so inside the one notice's header; exactly three finding lines fit.
     expect((stop.json as { systemMessage: string }).systemMessage).toBe(
       [
-        `Prosegate ${DOT} enforcement is lowered in this session (advisory) ${DOT} prosegate status`,
-        `Prosegate ${DOT} profile pr-description ${DOT} 3 findings (hedge 1, vocab 1, triad 1) ${DOT} advisory, not enforced`,
+        `Prosegate ${DOT} profile pr-description ${DOT} 3 findings (hedge 1, vocab 1, triad 1) ${DOT} advisory, not enforced ${DOT} enforcement is lowered in this session (advisory)`,
         '  hedge   core.hedge.001  "It\'s worth noting that"',
         '  vocab   core.vocab.003  "robust"',
         '  triad   core.triad.001  "fast, simple, and reliable"',
       ].join("\n"),
     );
 
-    // The lowered line is shown once; the advisory notice is shown on every turn that has findings.
+    // The lowered text is shown once; the advisory notice is shown on every turn that has findings.
     const again = cc.stop(MOCK1_TEXT, { prompt_id: "second-prompt" });
     expect((again.json as { systemMessage: string }).systemMessage.split("\n")[0]).toBe(
       `Prosegate ${DOT} profile pr-description ${DOT} 3 findings (hedge 1, vocab 1, triad 1) ${DOT} advisory, not enforced`,
@@ -245,6 +244,56 @@ describe("09 advisory mode", () => {
     expect(cc.cli(["enforce"]).stdout).toBe("Prosegate: enforcement restored for this session.\n");
     const back = cc.stop(MOCK1_TEXT, { prompt_id: "third-prompt" });
     expect(back.stdout).toBe(continuation(MOCK1_FEEDBACK));
+  });
+});
+
+// 09's advisory mock: profile chat-reply, filler.001 and filler.004, padded with plain sentences to clear the 60-word floor.
+const CHAT_TEXT =
+  "Great question! The cache sits in front of the catalog reads and keeps one entry per tenant. A read checks the entry first and falls back to the database on a miss. " +
+  "The entry expires after sixty seconds, so a price change reaches every tenant within a minute. In summary, writes bypass the cache and delete the tenant's entry, which keeps the two copies from drifting apart.";
+
+describe("09 advisory mock (chat-reply), byte for byte", () => {
+  it("the first advisory turn: the lowered text is in the header, two finding lines follow", () => {
+    const cc = new FakeClaudeCode(release);
+    cc.sessionStart();
+    expect(cc.cli(["profile", "chat-reply"]).code).toBe(0);
+    expect(cc.cli(["advisory"]).code).toBe(0);
+    const stop = cc.stop(CHAT_TEXT);
+    expect(stop.json).toEqual({
+      systemMessage: [
+        `Prosegate ${DOT} profile chat-reply ${DOT} 2 findings (filler 2) ${DOT} advisory, not enforced ${DOT} enforcement is lowered in this session (advisory)`,
+        // 09's mock draws these two lines with three spaces after "filler" and the punctuation inside the quotes; ADR-12's column rule
+        // (label padded to max(8, longest + 2)) gives two, and the rule phrases are "Great question" and "In summary" (HQ: fix the 09 mock).
+        '  filler  core.filler.001  "Great question"',
+        '  filler  core.filler.004  "In summary"',
+      ].join("\n"),
+    });
+    // Later advisory turns: the header without the lowered text.
+    const next = cc.stop(CHAT_TEXT, { prompt_id: "second-prompt" });
+    expect(next.json).toEqual({ systemMessage: [`Prosegate ${DOT} profile chat-reply ${DOT} 2 findings (filler 2) ${DOT} advisory, not enforced`, '  filler  core.filler.001  "Great question"', '  filler  core.filler.004  "In summary"'].join("\n") });
+  });
+
+  it("an advisory turn with no findings keeps the lowered line on its own, once", () => {
+    const cc = new FakeClaudeCode(release);
+    cc.sessionStart();
+    cc.cli(["advisory"]);
+    expect(cc.stop(MOCK1_REVISED).json).toEqual({ systemMessage: `Prosegate ${DOT} enforcement is lowered in this session (advisory) ${DOT} prosegate status` });
+    expect(cc.stop(MOCK1_REVISED, { prompt_id: "second-prompt" })).toMatchObject({ code: 0, stdout: "" });
+  });
+
+  it("more than three findings: three lines, then '  …and N more'", () => {
+    const cc = new FakeClaudeCode(release);
+    cc.sessionStart();
+    cc.cli(["profile", "pr-description"]);
+    cc.cli(["advisory"]);
+    const many =
+      "Great question! It's worth noting that this PR introduces a robust and seamless caching layer. In summary, the cache is per tenant, which makes the system fast, simple, and reliable. " +
+      "The cache sits in front of the catalog reads and keeps one entry per tenant. A read checks the entry first and falls back to the database on a miss. Writes bypass the cache and delete the tenant's entry.";
+    const lines = (cc.stop(many).json as { systemMessage: string }).systemMessage.split("\n");
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toMatch(/^Prosegate · profile pr-description · \d+ findings \(.+\) · advisory, not enforced · enforcement is lowered in this session \(advisory\)$/);
+    expect(lines.slice(1, 4).every((l) => l.startsWith("  ") && !l.includes("more"))).toBe(true);
+    expect(lines[4]).toMatch(/^ {2}…and \d+ more$/);
   });
 });
 
@@ -261,7 +310,7 @@ describe("the shim and the real adapter", () => {
     const marked = { CLAUDECODE: "1", CLAUDE_CODE_ENTRYPOINT: "cli" };
     const cc = new FakeClaudeCode(release, { env: marked });
     expect(cc.sessionStart().code).toBe(0);
-    cc.cli(["profile", "pr-description"], marked);
+    cc.cli(["profile", "pr-description"], { CLAUDECODE: undefined, CLAUDE_CODE_ENTRYPOINT: undefined }); // choosing a profile is refused to the agent too (W3.1 cycle 2), so the user does it
     const refused = cc.cli(["advisory"], marked);
     expect(refused.code).toBe(1);
     expect(refused.stderr).toBe(

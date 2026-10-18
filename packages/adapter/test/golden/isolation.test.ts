@@ -129,7 +129,7 @@ describe("the product guard (test builds and source runs only)", () => {
     expect(typeof settingsTarget(given, "user")).toBe("object");
     const temp = tmpDir();
     const underTemp = createCtx({ env: { HOME: temp, USERPROFILE: temp }, home: tmpDir() });
-    expect(settingsTarget(underTemp, "user")).toEqual({ path: join(temp, ".claude", "settings.json"), claudeDir: join(temp, ".claude") });
+    expect(settingsTarget(underTemp, "user")).toMatchObject({ path: join(temp, ".claude", "settings.json"), claudeDir: join(temp, ".claude") });
   });
 
   it("derives the default from the environment's home, never from os.homedir()", () => {

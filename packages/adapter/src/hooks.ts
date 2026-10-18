@@ -42,6 +42,7 @@ import {
   sweepSessions,
   turnKey,
 } from "./store.js";
+import { INIT_CHECK_SESSION } from "./init-check.js";
 import { withFakeReviewer } from "./test-seam.js";
 import { timed, timingsLine } from "./timing.js";
 import {
@@ -188,7 +189,7 @@ export function sessionStart(input: SessionStartInput, ctx: Ctx): HandlerOutcome
   sweepLeftovers(ctx);
 
   const events: TelemetryDraft[] = [];
-  if (isKnownHarness(input.harness)) {
+  if (isKnownHarness(input.harness) && input.session_id !== INIT_CHECK_SESSION) {
     const profileCount = new Set([...Object.keys(loaded.local.profiles), ...Object.keys(BUNDLED_PROFILE_YAML)]).size;
     events.push(sessionStartEvent({ harness: input.harness, profileCount, offline: true }));
   }

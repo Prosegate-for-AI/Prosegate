@@ -1,7 +1,10 @@
+import { foldClaudeNotice } from "./claude-notice.js";
 import { createCtx } from "./ctx.js";
+import { writeFileAtomic } from "./fs-secure.js";
 import { log } from "./log.js";
 import { InputTooLargeError, logPathFor, run } from "./run.js";
 import { recordErrorLockFree } from "./telemetry.js";
+import { toolNames } from "./transcript.js";
 
 /**
  * The bundle is both the `prosegate` command and, for the Claude Code shim, a module that exports `run`: the shim
@@ -10,7 +13,9 @@ import { recordErrorLockFree } from "./telemetry.js";
  * else that loads the file gets the command, so a failed detection can only ever leave the command working.
  */
 const embedded = (globalThis as { __prosegateEmbedded?: unknown }).__prosegateEmbedded === true;
-export { run };
+// What the Claude Code shim uses from the bundle besides `run`: the atomic owner-only write, the notice folding (ADR-33) and the
+// transcript reader. The shim stays small (05: more than 150 lines is doing the adapter's job).
+export { run, writeFileAtomic, foldClaudeNotice, toolNames };
 
 /** The hard cap on what a hook reads (ADR-30): the engine bounds the review, this bounds the bytes. */
 const MAX_STDIN_BYTES = 12 * 1024 * 1024;

@@ -84,7 +84,7 @@ function claude(extraEnv) {
   const lines = jsonl(r.stdout ?? "");
   const sessionId = lines.find((l) => l.type === "system" && l.subtype === "init")?.session_id;
   const transcript = sessionId && existsSync(join(transcriptDir, `${sessionId}.jsonl`)) ? jsonl(readFileSync(join(transcriptDir, `${sessionId}.jsonl`), "utf8")) : [];
-  const stops = transcript.filter((l) => l.type === "attachment" && l.attachment?.type === "hook_success" && l.attachment.hookEvent === "Stop" && /hook\.mjs"? Stop/.test(l.attachment.command ?? ""));
+  const stops = transcript.filter((l) => l.type === "attachment" && l.attachment?.type === "hook_success" && l.attachment.hookEvent === "Stop" && /app[\\/]hook\.mjs['"]? Stop/.test(l.attachment.command ?? ""));
   return {
     status: r.status, raw: r.stdout ?? "", stderr: r.stderr ?? "", lines, transcript, sessionId,
     texts: lines.filter((l) => l.type === "assistant").map((l) => (l.message?.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("")).filter(Boolean),
@@ -106,8 +106,11 @@ try {
   console.log(init.stdout.trimEnd());
   console.log(`(init took ${Math.round(performance.now() - t0)} ms)`);
   check(init.status === 0, `init --scope project exits 0 (${init.stderr.trim() || "ok"})`);
+  // ADR-33: project scope writes .claude/settings.local.json and leaves .claude/settings.json (the user's, committed) alone.
   const after = JSON.parse(readFileSync(join(project, ".claude", "settings.json"), "utf8"));
-  check(JSON.stringify(after.permissions) === JSON.stringify(original.permissions) && after.hooks.Stop.length === 2 && after.hooks.Stop[0].hooks[0].command.includes("recorder.mjs"), "init left the user's own permissions and hooks in place");
+  check(JSON.stringify(after) === JSON.stringify(original), "init left the project's own settings.json byte for byte as it was");
+  const local = existsSync(join(project, ".claude", "settings.local.json")) ? JSON.parse(readFileSync(join(project, ".claude", "settings.local.json"), "utf8")) : {};
+  check(["SessionStart", "UserPromptSubmit", "Stop"].every((e) => /app[\\/]hook\.mjs'? /.test(local.hooks?.[e]?.[0]?.hooks?.[0]?.command ?? "")), "init registered the launcher for all three hooks in settings.local.json");
   console.log(`claude ${spawnSync("claude", ["--version"], { encoding: "utf8" }).stdout.trim()}, model ${model}\n`);
 
   // ---- enforcing ----------------------------------------------------------------------------

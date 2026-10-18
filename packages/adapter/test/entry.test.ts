@@ -472,6 +472,6 @@ describe("the CLI surface", () => {
 
   it("init without --harness prints the usage and exits 1, and installs nothing", () => {
     const r = pg(bundle, ["init"], { home: tmpDir(), env: { PROSEGATE_CLAUDE_HOME: tmpDir() } });
-    expect(r).toMatchObject({ code: 1, stdout: "", stderr: "Prosegate: init needs a harness. usage: prosegate init --harness claude-code [--scope project|user] [--local]\n" });
+    expect(r).toMatchObject({ code: 1, stdout: "", stderr: "Prosegate: say which tool to set up, for example: prosegate init --harness claude-code\n" });
   });
 });

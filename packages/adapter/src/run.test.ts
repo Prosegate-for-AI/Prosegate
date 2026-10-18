@@ -53,7 +53,7 @@ describe("run", () => {
   it("init without --harness prints the usage on stderr with exit 1 and installs nothing", async () => {
     const r = await exec(["init"]);
     expect(r.code).toBe(1);
-    expect(r.err).toBe("Prosegate: init needs a harness. usage: prosegate init --harness claude-code [--scope project|user] [--local]\n");
+    expect(r.err).toBe("Prosegate: say which tool to set up, for example: prosegate init --harness claude-code\n");
     expect(r.out).toBe("");
   });
 

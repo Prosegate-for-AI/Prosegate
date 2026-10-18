@@ -32,9 +32,13 @@ const USAGE = `usage: prosegate <command>
 
 Set up (once):
   init --harness claude-code [--scope project|user] [--local]
-                   register the hooks in Claude Code (user scope by default)
-  uninit [--scope project|user]
+                   register the hooks in Claude Code
+      --scope user      all your folders (the default)
+      --scope project   this folder only, not committed
+      --local           skip sign-in (the only mode in this build)
+  uninit [--scope project|user] [--purge]
                    remove exactly what init added
+      --purge           also delete Prosegate's program files
 
 Run these in your own terminal, in the directory your agent works in:
   status           show mode, profile and rules switched off
