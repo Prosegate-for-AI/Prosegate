@@ -138,6 +138,15 @@ describe("init, user scope", () => {
     expect(second.stdout).not.toContain("add ");
   });
 
+  it("a `prosegate` that exists only in the PATH entries npx and pnpm exec add for their own child does not count as on PATH", () => {
+    const e = env();
+    const npxBin = join(tmpDir("pg-npx-"), "_npx", "ab12cd", "node_modules", ".bin");
+    mkdirSync(npxBin, { recursive: true });
+    writeFileSync(join(npxBin, process.platform === "win32" ? "prosegate.cmd" : "prosegate"), "");
+    const r = init(e, ["--local"], { env: { PATH: [npxBin, cleanPath()].join(delimiter) } });
+    expect(r.stdout).toContain(`To use "prosegate" directly, add ${join(e.home, "bin")} to your PATH`);
+  });
+
   it("the `prosegate` command it writes runs the current version", () => {
     const e = env();
     init(e);

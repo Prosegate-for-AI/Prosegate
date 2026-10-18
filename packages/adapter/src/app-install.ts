@@ -171,11 +171,16 @@ export function writeBin(ctx: Ctx, nodePath: string): string[] | string {
   return written;
 }
 
-/** True when typing `prosegate` finds a program on PATH (ours, or one the user installed some other way). */
+/**
+ * True when typing `prosegate` in a new terminal would find a program (ours, or one the user installed some other way). The
+ * directories `npx` and `pnpm exec` add to PATH for their own child (`.../_npx/...`, `.../node_modules/.bin`) do not outlive the
+ * command, so a `prosegate` found only there does not count.
+ */
 export function onPath(ctx: Ctx): boolean {
   const names = ctx.platform === "win32" ? ["prosegate.cmd", "prosegate.exe", "prosegate.bat", "prosegate"] : ["prosegate"];
   const path = ctx.env["PATH"] ?? ctx.env["Path"] ?? process.env["PATH"] ?? "";
-  return path.split(delimiter).some((dir) => dir !== "" && names.some((name) => existsSync(join(dir, name))));
+  const temporary = (dir: string): boolean => /[\\/]_npx[\\/]/.test(dir) || /[\\/]node_modules[\\/]\.bin[\\/]?$/.test(dir);
+  return path.split(delimiter).some((dir) => dir !== "" && !temporary(dir) && names.some((name) => existsSync(join(dir, name))));
 }
 
 /** Removes the program files and the command (`uninit --purge`). */
