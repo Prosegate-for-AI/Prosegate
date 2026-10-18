@@ -40,6 +40,8 @@ The `feedback_text` sent to the model always ends by telling the model not to ru
 - Pass 2: only `block` findings that survived from pass 1 → continue, `summary` notice: `Prosegate · 1 of 3 findings remain · revising, pass 2 of 2`.
 - After pass 2: allow regardless. If findings remain: `Prosegate · 1 finding remains after 2 passes · shipped as is` so the user knows to look.
 - A pass that produces zero findings prints nothing, even on pass 2.
+- A revision with no prose cannot be re-checked, so nothing counts as cleared: `Prosegate · 2 findings could not be re-checked (the revision has no prose) · shipped as is`.
+- A reply with more prose than the review limit: `Prosegate · only the first 100 KB of prose in this reply was reviewed`; when nothing could be read: `Prosegate · this reply is too long to review; its prose was not checked`. These join the turn's one notice on Claude Code (ADR-33).
 
 Whenever effective enforcement is weaker than the active profile defines (advisory, off, a rule switched off, a local overlay lowering severity, or local profile files changed mid-session), the user sees once per session, and again when it changes: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status` (ADR-30). The model never sees it.
 
