@@ -308,6 +308,8 @@ describe("eval:rules gates (subprocess, fixture corpora)", { timeout: 180_000 },
     expect(rep.metric_coverage.false_positive).toEqual({ "n/a": 23 });
     expect(rep.metric_coverage.precision).toEqual({ "n/a": 23 });
     expect(rep.metric_coverage.recall).toEqual({ "n/a": 6 });
+    expect(rep.fp_source).toBe("n/a"); // no human docs: neither source was used, and no misleading note
+    expect(rep.notes.some((n: string) => n.startsWith("fp_source: post_overlap"))).toBe(false);
     for (const r of rep.packs[0]?.rules ?? []) {
       expect(r.false_positive.status).toBe("n/a");
       expect(r.false_positive.value).toBeNull();

@@ -135,7 +135,8 @@ export interface GateFailure {
   message: string;
 }
 
-export type FpSource = "raw_candidates" | "post_overlap";
+/** `n/a`: no human-control documents were reviewed, so no false positive was counted from either source. */
+export type FpSource = "raw_candidates" | "post_overlap" | "n/a";
 
 /** The engine entry point; tests inject a wrapper to simulate engine diagnostics. */
 export type ReviewFn = (input: ReviewRulesInput) => DetailedReview;
@@ -586,7 +587,7 @@ export function measure(input: EvalInput): EvalMeasurements {
   const skippedAi = packs[0]?.skipped_below_floor.ai ?? 0;
   if (skippedHuman > 0) notes.push(`${skippedHuman} human-control documents were skipped by the profile's token floor or as non-prose; they are left out of every false-positive denominator`);
   if (skippedAi > 0) notes.push(`${skippedAi} AI documents were skipped by the profile's token floor or as non-prose; their gold spans count as missed`);
-  const fpSource: FpSource = postOverlap ? "post_overlap" : corpora.humanControl.length === 0 ? "post_overlap" : "raw_candidates";
+  const fpSource: FpSource = corpora.humanControl.length === 0 ? "n/a" : postOverlap ? "post_overlap" : "raw_candidates";
   if (fpSource === "post_overlap") {
     notes.push("fp_source: post_overlap. False positives are counted on the engine's post-overlap findings because diagnostics.candidates is not available yet; a rule whose hit another rule outranks is not counted as a hit.");
   }
