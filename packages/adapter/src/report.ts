@@ -17,6 +17,8 @@ export function buildTurnReport(p: {
   decision: "allow" | "continue";
   passes: number;
   shippedRemaining: number;
+  /** None of the reply's prose was within the part that could be read (N9). */
+  tooLong?: boolean;
   ts: number;
 }): TurnReport {
   const findings = p.result.findings.map((f: Finding) => ({
@@ -31,7 +33,11 @@ export function buildTurnReport(p: {
     profile: p.result.profile.id,
     passes: p.passes,
     verdict: p.result.verdict,
-    ...(p.result.skipped_reason !== undefined && p.result.skipped_reason !== "pass_cap" ? { skipped_reason: p.result.skipped_reason } : {}),
+    ...(p.tooLong === true
+      ? { skipped_reason: "too_long" }
+      : p.result.skipped_reason !== undefined && p.result.skipped_reason !== "pass_cap"
+        ? { skipped_reason: p.result.skipped_reason }
+        : {}),
     findings,
     cleared: p.result.cleared.length,
     shipped_remaining: p.shippedRemaining,
@@ -45,6 +51,7 @@ const NOT_REVIEWED: Record<string, string> = {
   no_prose: "no prose to check",
   reviewer_unavailable: "ran out of time",
   advisory_mode: "enforcement is off",
+  too_long: "the reply is too long to check",
 };
 
 /**

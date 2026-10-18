@@ -39,6 +39,7 @@ const LOWERING: Array<[string, string[]]> = [
   ["off", ["off"]],
   ["quiet", ["quiet"]],
   ["rule off", ["rule", "off", "core.hedge.001"]],
+  ["profile", ["profile", "local/chat-reply"]],
 ];
 
 describe("from an agent's tool context", () => {
@@ -94,6 +95,22 @@ describe("from an agent's tool context", () => {
     expect(pg(bundle, ["status"], { home, env: AGENT }).code).toBe(0);
     expect(pg(bundle, ["profile"], { home, env: AGENT }).code).toBe(0);
     expect(pg(bundle, ["rule", "on", "core.hedge.001"], { home, env: AGENT }).code).toBe(0);
+  });
+
+  it("profile <id> from an agent changes nothing: the active profile and the remembered one stay as they were (N1, F16)", () => {
+    const home = session();
+    const profileOf = (): string => (JSON.parse(readFileSync(join(home, "sessions", SESSION, "state.json"), "utf8")) as { active_profile: string }).active_profile;
+    expect(profileOf()).toBe("local/base");
+    for (const id of ["local/chat-reply", "chat-reply", "no-such-profile"]) {
+      const r = pg(bundle, ["profile", id], { home, env: AGENT });
+      expect(r.code, id).toBe(1);
+      expect(r.stderr, id).toBe(refusal("profile"));
+    }
+    expect(profileOf()).toBe("local/base");
+    // The user's own terminal can switch it, and the list is open to both.
+    expect(pg(bundle, ["profile", "local/chat-reply"], { home, env: TERMINAL }).code).toBe(0);
+    expect(profileOf()).toBe("local/chat-reply");
+    expect(pg(bundle, ["profile"], { home, env: AGENT }).stdout).toContain("local/chat-reply");
   });
 
   it("a user's terminal (no agent marker) can lower enforcement", () => {

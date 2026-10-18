@@ -41,9 +41,9 @@ Run these in your own terminal, in the directory your agent works in:
   rule list        list the rules switched off
   reload           re-read profiles and rule packs
 
-advisory, quiet, off and rule off are refused when the agent runs them. In
-Claude Code, a command typed after ! counts as the agent, so use a separate
-terminal for those four. enforce and the rest work anywhere.
+advisory, quiet, off, rule off and profile <id> are refused when the agent runs
+them. In Claude Code, a command typed after ! counts as the agent, so use a
+separate terminal for those. enforce and the rest work anywhere.
 
 Environment: PROSEGATE_MODE=advisory|off (CI), PROSEGATE_SESSION=<id>
 Hooks, called by the harness shim: session-start | turn-start | turn-end

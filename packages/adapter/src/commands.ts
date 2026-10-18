@@ -13,11 +13,10 @@ import type { Ctx } from "./ctx.js";
 import { createHash } from "node:crypto";
 import { ensureDirIn, writeFileAtomic } from "./fs-secure.js";
 import { profileSlug } from "./inject.js";
-import { loweredNoticeLine, type Lowering } from "./lowering.js";
-import { computeLowering, NOT_LOWERED } from "./lowering.js";
+import { loweredNoticeLine, lowerFor, type Lowering } from "./lowering.js";
 import { log } from "./log.js";
 import { effectiveMode } from "./modes.js";
-import { baseProfileId, integerVersion, listProfileIds, loadLocal, resolveAndLoad, resolveBaseline, resolveSession, type Issue } from "./profiles.js";
+import { baseProfileId, integerVersion, listProfileIds, loadLocal, resolveAndLoad, resolveSession, type Issue } from "./profiles.js";
 import type { LastTurn, Mode } from "./schemas.js";
 import { SessionStore, defaultState, findSession, readCwdProfiles, normaliseCwd, rememberCwdProfile, type SessionCandidate } from "./store.js";
 import { enforcementEvent, profileSelectEvent, recordEvents } from "./telemetry.js";
@@ -172,6 +171,12 @@ function issueText(i: Issue): string {
 function profileCommand(ctx: Ctx, args: string[]): CommandResult {
   if (args.length > 1) return fail("usage: prosegate profile [<id>]");
   const typed = args[0];
+  // Switching the profile changes what the next turn is held to, so it is the user's to do (ADR-27, ADR-30). The
+  // model's own route is the select_profile tool (Phase 5). Listing the profiles is harmless and stays open.
+  if (typed !== undefined && isAgentContext(ctx)) {
+    log(ctx, "warn", "agent_refused", "agent context refused: profile");
+    return fail(agentRefusal("profile"));
+  }
   const { all, valid } = listProfileIds(ctx);
   const t = target(ctx, typed === undefined);
   if (isResult(t)) return t;
@@ -277,6 +282,8 @@ const LAST_TURN_TEXT = (l: LastTurn | null): string => {
       return "not reviewed (the review ran out of time)";
     case "truncated":
       return `only the first 100 KB of prose was reviewed, ${n(l.findings, "finding")}`;
+    case "too_long":
+      return "not reviewed (the reply is too long to check)";
     case "off":
       return "not reviewed (off)";
   }
@@ -298,12 +305,7 @@ function statusCommand(ctx: Ctx): CommandResult {
   const loaded = resolveAndLoad(ctx, state.active_profile);
   const { resolved } = loaded;
   const eff = effectiveMode(ctx, state, resolved);
-  let lowering: Lowering = NOT_LOWERED;
-  if (!eff.required) {
-    const usesLocal = resolved.sources.some((s) => s.origin === "local") || resolved.packs.some((p) => p.origin === "local");
-    const baseline = usesLocal ? resolveBaseline(ctx, resolved.id) : resolved;
-    lowering = computeLowering({ state, eff, resolved, baseline, packs: loaded.packs, currentHashes: loaded.local.hashes });
-  }
+  const lowering: Lowering = lowerFor(ctx, state, eff, loaded);
   const off: string[] = [];
   for (const pack of loaded.packs) for (const rule of pack.rules) if (!effectiveRule(resolved, rule).enabled) off.push(rule.id);
   const rulesOff = off.length === 0 ? "none" : off.length <= 4 ? off.join(", ") : `${off.slice(0, 4).join(", ")} (+${off.length - 4} more; prosegate rule list)`;

@@ -37,6 +37,8 @@ import {
 export const SESSION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 /** A session active this recently counts as live when a command has to pick one (ADR-31). */
 export const SESSION_LIVE_MS = 4 * 60 * 60 * 1000;
+/** turn.json (the user's message) is deleted at session start once it is this old, whatever happened to the turn (ADR-31). */
+export const TURN_FILE_TTL_MS = 60 * 60 * 1000;
 const MAX_TURNS_KEPT = 20;
 const MAX_REPORT_TURNS = 100;
 const MAX_CWD_ENTRIES = 200;
@@ -135,10 +137,12 @@ export class SessionStore {
         const current = this.readState() ?? fallback();
         const next = change(current);
         const stamped = { ...next, updated_at: this.ctx.now() };
-        // Keep the turns map bounded: the newest MAX_TURNS_KEPT by update time.
+        // Keep the turns map bounded: records that hold a pass count first, then the newest by update time. An
+        // empty record (turn-start's) is dropped before a real one, so a flood of turn-starts cannot push
+        // the real turn's count out.
         const entries = Object.entries(stamped.turns);
         if (entries.length > MAX_TURNS_KEPT) {
-          entries.sort((a, b) => b[1].updated_at - a[1].updated_at);
+          entries.sort((a, b) => Number(b[1].count > 0) - Number(a[1].count > 0) || b[1].updated_at - a[1].updated_at);
           stamped.turns = Object.fromEntries(entries.slice(0, MAX_TURNS_KEPT));
         }
         writeFileAtomic(this.path("state.json"), `${JSON.stringify(stamped, null, 2)}\n`);
@@ -326,6 +330,12 @@ export function sweepLeftovers(ctx: Ctx): void {
     pruneValidated(ctx);
     for (const s of listSessions(ctx)) {
       removeTree(join(s.dir, "report.json"));
+      // turn.json holds the user's message: a turn that never ended cleanly (a kill, a fail-open) leaves it behind.
+      try {
+        if (now - statSync(join(s.dir, "turn.json")).mtimeMs >= TURN_FILE_TTL_MS) removeTree(join(s.dir, "turn.json"));
+      } catch {
+        // none, or in use
+      }
       sweepTempFiles(s.dir, now);
     }
   } catch {

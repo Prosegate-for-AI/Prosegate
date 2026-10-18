@@ -68,7 +68,7 @@ describe("the profile's pass cap (ADR-31)", () => {
     const b = end(ctx, BAD, { continuation: true });
     expect(b.decision).toBe("allow");
     expect(b.result.skipped_reason).toBe("pass_cap");
-    expect(b.notice).toMatch(/^Prosegate · 2 findings remain after 2 passes · shipped as is/);
+    expect(b.notice).toMatch(/^Prosegate · 2 findings remain after 1 pass · shipped as is/);
     expect(end(ctx, BAD, { continuation: true }).decision).toBe("allow");
   });
 
