@@ -4,11 +4,11 @@
 // Exit codes: 0 every gate that could be evaluated passed; 1 a gate failed; 2 harness error (bad meta,
 // unreadable corpus, pack that does not compile, missing baseline).
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseRulePackYaml, BUNDLED_PACK_YAML } from "@prosegate/profiles";
 import { STOP_WORDS_VERSION } from "@prosegate/engine";
-import { BUNDLED_PROFILE_NAMES, loadPack, measure, type EvalMeasurements, type GateFailure, type LoadedPack, type PackReport, type RuleReport } from "./rules-eval.js";
+import { BUNDLED_PROFILE_NAMES, loadPack, measure, type EvalMeasurements, type FpSource, type GateFailure, type LoadedPack, type PackReport, type ReviewFn, type RuleReport } from "./rules-eval.js";
 import { HarnessError, loadCorpora } from "./rules-corpus.js";
 import { compareToBaseline, type Baseline, type BaselineRule } from "./rules-gates.js";
 import { formatReport } from "./rules-report.js";
@@ -19,8 +19,10 @@ export interface RunOptions {
   ruleExamplesDir: string;
   /** Extra packs: YAML file paths (--pack). */
   packPaths: string[];
-  /** Evaluate the packs under packages/profiles/bundled/packs (default true). */
+  /** Evaluate the packs found in `bundledPacksDir` (default true). */
   useBundled: boolean;
+  /** Where bundled packs are discovered; it must hold exactly the packs the bundled registry holds. */
+  bundledPacksDir: string;
   /** null: no baseline comparison at all (never the default). */
   baselinePath: string | null;
   reportsDir: string;
@@ -29,7 +31,9 @@ export interface RunOptions {
   local: boolean;
   /** Engine clock (tests inject a fake one); default performance.now. */
   clock?: (() => number) | undefined;
-  /** Git identity override (tests); default read from the repo. */
+  /** Test hook: replaces the engine entry point. */
+  review?: ReviewFn | undefined;
+  /** Repository identity override (tests); default read from the repo. */
   git?: { sha: string; dirty: boolean } | undefined;
   today?: (() => Date) | undefined;
 }
@@ -40,8 +44,11 @@ export interface Report {
   schema: "prosegate.eval-rules-report/1";
   generated_at: string;
   wall_ms: number;
-  result: "pass" | "fail";
+  /** pass: every rule PASS. partial: nothing failed, but some rule has an unmeasured gate. fail: a gate failed. */
+  result: "pass" | "partial" | "fail";
   exit_code: 0 | 1;
+  /** Where false positives were counted: the engine's raw candidates, or the post-overlap findings. */
+  fp_source: FpSource;
   git: { sha: string; dirty: boolean | null };
   engine: { package: string; version: string; stop_words_version: string | number; node: string };
   corpora_root: string;
@@ -148,7 +155,28 @@ function loadPacks(opts: RunOptions): LoadedPack[] {
     if (!parsed.ok) throw new HarnessError(`pack ${source} does not parse: ${parsed.error.message}`);
     packs.push(loadPack(parsed.value, source));
   };
-  if (opts.useBundled) for (const [key, yaml] of Object.entries(BUNDLED_PACK_YAML)) add(yaml, `bundled:${key}`);
+  if (opts.useBundled) {
+    // Discover the packs on disk rather than trusting the generated registry, then require the two to
+    // agree: a pack added to packages/profiles/bundled/packs but not registered (or the reverse) would
+    // otherwise be shipped, or silently skipped, without ever being evaluated.
+    if (!existsSync(opts.bundledPacksDir)) throw new HarnessError(`bundled packs directory not found: ${opts.bundledPacksDir}`);
+    const files = readdirSync(opts.bundledPacksDir).filter((f) => /\.ya?ml$/.test(f)).sort();
+    const found: string[] = [];
+    for (const file of files) {
+      const yaml = readFileSync(join(opts.bundledPacksDir, file), "utf8");
+      const parsed = parseRulePackYaml(yaml);
+      if (!parsed.ok) throw new HarnessError(`bundled pack ${file} does not parse: ${parsed.error.message}`);
+      found.push(`${parsed.value.id}@${parsed.value.version}`);
+      packs.push(loadPack(parsed.value, `bundled:${file}`));
+    }
+    const registered = Object.keys(BUNDLED_PACK_YAML).sort();
+    const same = found.length === registered.length && [...found].sort().every((k, i) => k === registered[i]);
+    if (!same) {
+      throw new HarnessError(
+        `bundled packs on disk (${found.length}: ${found.join(", ") || "none"}) do not match the bundled registry (${registered.length}: ${registered.join(", ")}); run pnpm --filter @prosegate/profiles gen:bundled, or register or remove the pack`,
+      );
+    }
+  }
   for (const path of opts.packPaths) {
     if (!existsSync(path)) throw new HarnessError(`--pack ${path}: file not found`);
     add(readFileSync(path, "utf8"), path);
@@ -198,17 +226,26 @@ export function runEval(opts: RunOptions): RunOutcome {
       }
     }
 
-    const m = measure({ packs, corpora, ruleExamplesDir: opts.ruleExamplesDir, clock: opts.clock });
+    const m = measure({ packs, corpora, ruleExamplesDir: opts.ruleExamplesDir, clock: opts.clock, review: opts.review });
     const failures = [...m.failures];
     const notes = [...m.notes];
 
     const newRules: string[] = [];
     if (baseline !== null) {
+      const measured = (s: string): boolean => s === "pass" || s === "fail";
       for (const pack of m.packs) {
         for (const r of pack.rules) {
-          const v = compareToBaseline(r.id, baseline.rules[r.id], r.precision);
+          const entry = baseline.rules[r.id];
+          const v = compareToBaseline(r.id, entry, r.precision);
           if (!v.ok) failures.push({ scope: "baseline", id: r.id, metric: "baseline", message: v.message });
-          else if (v.note !== undefined && baselineStatus === "compared") newRules.push(r.id);
+          else if (entry === undefined) {
+            // A rule with a measured metric and no baseline entry would escape the regression check
+            // for ever. It must be recorded in the same PR (--update-baseline adds it). A rule with
+            // nothing measured yet has nothing to protect.
+            if (!opts.updateBaseline && (measured(r.precision.status) || measured(r.false_positive.status))) {
+              failures.push({ scope: "baseline", id: r.id, metric: "baseline", message: `${r.id}: new rule with a measured metric and no baseline entry; run --update-baseline in this PR` });
+            } else newRules.push(r.id);
+          }
         }
         const ids = new Set(pack.rules.map((r) => r.id));
         for (const id of Object.keys(baseline.rules)) {
@@ -253,19 +290,22 @@ export function runEval(opts: RunOptions): RunOutcome {
       for (const c of p.categories) bump(coverage.recall, c.recall.status);
     }
 
+    const verdictsByPack = m.packs.map((p) => verdicts(p, failures));
+    const allPass = verdictsByPack.every((v) => Object.values(v).every((x) => x === "PASS"));
     const git = opts.git ?? gitInfo(opts.repoRoot);
     const now = (opts.today ?? (() => new Date()))();
     const report: Report = {
       schema: "prosegate.eval-rules-report/1",
       generated_at: now.toISOString(),
       wall_ms: 0,
-      result: passed ? "pass" : "fail",
+      result: !passed ? "fail" : allPass ? "pass" : "partial",
       exit_code: exitCode,
+      fp_source: m.fp_source,
       git,
       engine: { package: "@prosegate/engine", version: engineVersion(opts.repoRoot), stop_words_version: STOP_WORDS_VERSION, node: process.version },
       corpora_root: opts.corporaDir,
       corpora: m.corpora,
-      packs: m.packs.map((p) => ({ ...p, rule_verdicts: verdicts(p, failures) })),
+      packs: m.packs.map((p, i) => ({ ...p, rule_verdicts: verdictsByPack[i] as Record<string, Verdict> })),
       metric_coverage: coverage,
       baseline: { path: opts.baselinePath, status: baselineStatus, entries: baselineEntries },
       failures,

@@ -8,6 +8,8 @@ export type Severity = "block" | "warn" | "info";
 
 /** A metric with fewer items than this is reported as `insufficient` and does not gate (docs/10, brief). */
 export const MIN_ITEMS = 30;
+/** Precision additionally needs this many hits; fewer and it is `insufficient` (a rate over 3 hits is noise). */
+export const MIN_PRECISION_HITS = 20;
 
 /** False-positive rate budgets, percent of human-control documents (docs/10). */
 export const FP_BUDGET_PCT: Readonly<Record<Severity, number>> = { block: 1, warn: 3, info: 10 };
@@ -68,7 +70,9 @@ export function gateFalsePositive(hitDocs: number, docs: number, severity: Sever
 export function gatePrecision(confirmed: number, hits: number, docs: number, severity: Severity): MetricResult {
   const pct = PRECISION_MIN_PCT[severity];
   // No documents, or documents but no hits, is n/a: nothing was measured.
-  return result(confirmed, hits, docs, { kind: "min", pct }, confirmed * 100 >= pct * hits);
+  const r = result(confirmed, hits, docs, { kind: "min", pct }, confirmed * 100 >= pct * hits);
+  // Enough documents but too few hits to call a rate: shown, not gated.
+  return (r.status === "pass" || r.status === "fail") && hits < MIN_PRECISION_HITS ? { ...r, status: "insufficient" } : r;
 }
 
 /** Category recall: caught gold spans / gold spans of the category. */
@@ -86,6 +90,17 @@ export function percentile(values: readonly number[], p: number): number {
 
 export function median(values: readonly number[]): number {
   return percentile(values, 0.5);
+}
+
+/** Number of UTF-16 units two half-open spans share (0 when they do not overlap). */
+export function overlapLength(a: { start: number; end: number }, b: { start: number; end: number }): number {
+  return Math.max(0, Math.min(a.end, b.end) - Math.max(a.start, b.start));
+}
+
+/** A gold span confirms a finding only when it covers at least half of the finding span. */
+export function confirms(finding: { start: number; end: number }, gold: { start: number; end: number }): boolean {
+  const len = finding.end - finding.start;
+  return len > 0 && overlapLength(finding, gold) * 2 >= len;
 }
 
 /** Half-open span overlap with at least one shared UTF-16 unit. */

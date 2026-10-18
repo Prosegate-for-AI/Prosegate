@@ -11,7 +11,7 @@ import {
   type ResolvedProfile,
   type RulePack,
 } from "@prosegate/profiles";
-import { compilePack, reviewRulesDetailed, type CompiledPack, type DetailedReview } from "@prosegate/engine";
+import { compilePack, reviewRulesDetailed, type CompiledPack, type DetailedReview, type ReviewRulesInput } from "@prosegate/engine";
 import type { Category, Finding, ReviewRequest } from "@prosegate/schema";
 import { analyse } from "@prosegate/segmenter";
 import { HarnessError, isCorpusRef, readExampleRef, type Corpora, type CorpusDoc } from "./rules-corpus.js";
@@ -20,6 +20,7 @@ import {
   LATENCY_GATE_MS,
   LATENCY_MIN_DOCS,
   LATENCY_TARGET_MS,
+  confirms,
   gateFalsePositive,
   gatePrecision,
   gateRecall,
@@ -46,21 +47,36 @@ export interface ExampleReport {
   failures: string[];
 }
 
+export interface FpProfileReport extends MetricResult {
+  hit_docs: number;
+  /** The rule's effective severity in this profile: the severity its per-profile gate uses. */
+  effective_severity: Severity;
+}
+
 export interface FpReport extends MetricResult {
   hit_docs: number;
-  by_profile: Record<string, { docs: number; hit_docs: number }>;
+  /** The severity the pooled gate used: the strictest effective severity across the bundled profiles. */
+  gate_severity: Severity;
+  /** Documents on which the rule did not finish inside the engine's budget. Any non-zero count fails the rule. */
+  unfinished_docs: number;
+  /** Per profile that has human-control documents; gated at the profile's effective severity from 30 documents. */
+  by_profile: Record<string, FpProfileReport>;
 }
 
 export interface PrecisionReport extends MetricResult {
   hits: number;
   confirmed: number;
+  /** Of `confirmed`: confirmations by a gold span with no rule_id, matched on category alone. */
+  confirmed_by_category: number;
 }
 
 export interface RuleReport {
   id: string;
   category: Category;
-  /** The pack severity: what docs/10 gates on. */
+  /** The severity the pack publishes. */
   severity: Severity;
+  /** The strictest effective severity in any bundled profile: what the gates use (D1). */
+  gate_severity: Severity;
   /** Effective severity per bundled profile; `disabled` when the profile switches the rule off. */
   effective_severity: Record<string, Severity | "disabled">;
   severity_differs_by_profile: boolean;
@@ -78,7 +94,7 @@ export interface RuleReport {
 
 export interface CategoryReport {
   category: Category;
-  /** Strictest pack severity among the category's rules in this pack. */
+  /** Strictest gate severity among the category's rules in this pack. */
   severity: Severity;
   rules: string[];
   recall: MetricResult & { caught: number; spans: number };
@@ -108,14 +124,21 @@ export interface PackReport {
   examples: { pass: number; total: number; rules_pass: number; rules_total: number; status: "pass" | "fail" };
   latency: LatencyReport;
   skipped_below_floor: { human_control: number; ai: number };
+  /** Findings the engine dropped on its own span self-check. Expected 0; non-zero fails the pack. */
+  invalid_findings_dropped: number;
 }
 
 export interface GateFailure {
   scope: "rule" | "category" | "pack" | "baseline";
   id: string;
-  metric: "example" | "false_positive" | "precision" | "recall" | "latency" | "baseline";
+  metric: "example" | "false_positive" | "precision" | "recall" | "latency" | "baseline" | "unfinished" | "engine_drops";
   message: string;
 }
+
+export type FpSource = "candidates" | "post_overlap";
+
+/** The engine entry point; tests inject a wrapper to simulate engine diagnostics. */
+export type ReviewFn = (input: ReviewRulesInput) => DetailedReview;
 
 export interface EvalInput {
   packs: LoadedPack[];
@@ -123,12 +146,16 @@ export interface EvalInput {
   ruleExamplesDir: string;
   /** Test hook: the clock handed to the engine (default performance.now). */
   clock?: (() => number) | undefined;
+  /** Test hook: replaces reviewRulesDetailed. */
+  review?: ReviewFn | undefined;
 }
 
 export interface EvalMeasurements {
   packs: PackReport[];
   failures: GateFailure[];
   notes: string[];
+  /** Where the false-positive hits came from: the engine's raw candidates, or (until it offers them) the post-overlap findings. */
+  fp_source: FpSource;
   corpora: {
     human_control: { docs: number; by_profile: Record<string, number> };
     ai: { docs: number; gold_spans: number; gold_spans_in_rule_categories: number; by_profile: Record<string, number> };
@@ -180,6 +207,15 @@ class ProfileCache {
   }
 }
 
+// ---- engine access -----------------------------------------------------------------------------------
+
+interface Env {
+  clock: (() => number) | undefined;
+  reviewFn: ReviewFn;
+  /** Findings the engine dropped on its span self-check, summed over every review of the current pack. */
+  dropped: number;
+}
+
 function request(text: string): ReviewRequest {
   return {
     schema: "prosegate.review/1",
@@ -194,8 +230,37 @@ function request(text: string): ReviewRequest {
   };
 }
 
-function review(pack: LoadedPack, resolved: ResolvedProfile, text: string, clock: (() => number) | undefined): DetailedReview {
-  return reviewRulesDetailed({ request: request(text), resolved, packs: [pack.compiled], enforce: true, now: clock });
+function review(env: Env, pack: LoadedPack, resolved: ResolvedProfile, text: string): DetailedReview {
+  const r = env.reviewFn({ request: request(text), resolved, packs: [pack.compiled], enforce: true, now: env.clock });
+  env.dropped += r.diagnostics.invalid_findings_dropped;
+  return r;
+}
+
+/**
+ * The rule ids with at least one raw hit in a review (docs/10: "documents with at least one hit"). The
+ * engine is adding `diagnostics.candidates`, the per-rule matches before overlap resolution and before
+ * caps; when it is there this reads it. Until then the post-overlap `all_findings` stand in, and the
+ * report says `fp_source: post_overlap`. This is the one place that changes when the engine lands it.
+ * The shape of `candidates` is not fixed yet: an array of objects with a `rule_id`, or a record keyed by
+ * rule id whose value is a count or a list, are both read.
+ */
+export function rawHitRules(d: DetailedReview): { rules: Set<string>; source: FpSource } {
+  const candidates = (d.diagnostics as unknown as { candidates?: unknown }).candidates;
+  if (candidates === undefined || candidates === null) {
+    return { rules: new Set(d.diagnostics.all_findings.map((f) => f.rule_id ?? "")), source: "post_overlap" };
+  }
+  const rules = new Set<string>();
+  if (Array.isArray(candidates)) {
+    for (const c of candidates as unknown[]) {
+      const id = typeof c === "string" ? c : (c as { rule_id?: unknown } | null)?.rule_id;
+      if (typeof id === "string") rules.add(id);
+    }
+  } else if (typeof candidates === "object") {
+    for (const [id, v] of Object.entries(candidates as Record<string, unknown>)) {
+      if (Array.isArray(v) ? v.length > 0 : typeof v === "number" ? v > 0 : Boolean(v)) rules.add(id);
+    }
+  }
+  return { rules, source: "candidates" };
 }
 
 // ---- loading packs -----------------------------------------------------------------------------------
@@ -214,19 +279,20 @@ interface RuleAcc {
   fpDocs: number;
   fpHitDocs: number;
   fpBy: Record<string, { docs: number; hit_docs: number }>;
+  unfinished: number;
   aiDocs: number;
   hits: number;
   confirmed: number;
+  confirmedByCategory: number;
   advHuman: { docs: number; hit_docs: number };
   advAi: { docs: number; hit_docs: number };
-  ms: number[];
 }
 
 function newAcc(): RuleAcc {
-  return { fpDocs: 0, fpHitDocs: 0, fpBy: {}, aiDocs: 0, hits: 0, confirmed: 0, advHuman: { docs: 0, hit_docs: 0 }, advAi: { docs: 0, hit_docs: 0 }, ms: [] };
+  return { fpDocs: 0, fpHitDocs: 0, fpBy: {}, unfinished: 0, aiDocs: 0, hits: 0, confirmed: 0, confirmedByCategory: 0, advHuman: { docs: 0, hit_docs: 0 }, advAi: { docs: 0, hit_docs: 0 } };
 }
 
-function evaluateExamples(pack: LoadedPack, ruleExamplesDir: string, clock: (() => number) | undefined): Map<string, ExampleReport> {
+function evaluateExamples(env: Env, pack: LoadedPack, ruleExamplesDir: string): Map<string, ExampleReport> {
   // Same semantics as packages/engine/test/examples.test.ts: each example is a standalone document, the
   // token floor is bypassed, the profile is local/base, and only this pack runs. A hit must produce a
   // finding of the rule (any severity); a miss must produce none.
@@ -236,7 +302,7 @@ function evaluateExamples(pack: LoadedPack, ruleExamplesDir: string, clock: (() 
   for (const rule of pack.parsed.rules) {
     const fires = (example: string): boolean => {
       const text = isCorpusRef(example) ? readExampleRef(example, ruleExamplesDir) : example;
-      return review(pack, standalone, text, clock).diagnostics.all_findings.some((f) => f.rule_id === rule.id);
+      return review(env, pack, standalone, text).diagnostics.all_findings.some((f) => f.rule_id === rule.id);
     };
     const rep: ExampleReport = { hit: { pass: 0, total: rule.examples.hit.length }, miss: { pass: 0, total: rule.examples.miss.length }, status: "pass", failures: [] };
     for (const ex of rule.examples.hit) {
@@ -257,7 +323,7 @@ function proseWords(text: string): number {
   return analyse(text).prose_words;
 }
 
-function measureLatency(pack: LoadedPack, corpora: Corpora, cache: ProfileCache, clock: (() => number) | undefined, rulesMs: Map<string, number[]>): LatencyReport {
+function measureLatency(env: Env, pack: LoadedPack, corpora: Corpora, cache: ProfileCache, rulesMs: Map<string, number[]>): LatencyReport {
   // D7: warm latency (ADR-10). Each sample is stats.rules_latency_ms, the pack's total rule time, from
   // a review whose pack and segmenter paths have already run. Real floors, the document's own profile.
   const long = corpora.ai.filter((d) => proseWords(d.text) >= LATENCY_DOC_WORDS);
@@ -280,10 +346,10 @@ function measureLatency(pack: LoadedPack, corpora: Corpora, cache: ProfileCache,
     note = `${long.length} AI-corpus documents of at least ${LATENCY_DOC_WORDS} words; per document the median of 5 warm runs after 2 warm-ups`;
     samples = long.map((d) => {
       const resolved = cache.profile(d.profile, pack);
-      for (let i = 0; i < 2; i++) review(pack, resolved, d.text, clock);
+      for (let i = 0; i < 2; i++) review(env, pack, resolved, d.text);
       const runs: number[] = [];
       for (let i = 0; i < 5; i++) {
-        const r = review(pack, resolved, d.text, clock);
+        const r = review(env, pack, resolved, d.text);
         gather(r);
         runs.push(r.result.stats.rules_latency_ms);
       }
@@ -296,12 +362,12 @@ function measureLatency(pack: LoadedPack, corpora: Corpora, cache: ProfileCache,
     words = proseWords(doc);
     note = `fallback: ${long.length} AI-corpus documents of at least ${LATENCY_DOC_WORDS} words (need ${LATENCY_MIN_DOCS}); measured on the engine's 2,000-word perf fixture (realisticDoc, seed 7) under local/base: 20 warm-ups, then 5 trials of 25 runs, the trial with the median p95`;
     const resolved = cache.profile("base", pack);
-    for (let i = 0; i < 20; i++) review(pack, resolved, doc, clock);
+    for (let i = 0; i < 20; i++) review(env, pack, resolved, doc);
     const trials: number[][] = [];
     for (let t = 0; t < 5; t++) {
       const ts: number[] = [];
       for (let i = 0; i < 25; i++) {
-        const r = review(pack, resolved, doc, clock);
+        const r = review(env, pack, resolved, doc);
         gather(r);
         ts.push(r.result.stats.rules_latency_ms);
       }
@@ -327,18 +393,22 @@ function measureLatency(pack: LoadedPack, corpora: Corpora, cache: ProfileCache,
   };
 }
 
+const pct1 = (num: number, den: number): string => `${((num / den) * 100).toFixed(1)}%`;
+
 export function measure(input: EvalInput): EvalMeasurements {
-  const { corpora, ruleExamplesDir, clock } = input;
+  const { corpora, ruleExamplesDir } = input;
   const failures: GateFailure[] = [];
   const notes: string[] = [];
   const packs: PackReport[] = [];
+  let postOverlap = false;
 
   const goldSpans = corpora.ai.flatMap((d) => d.gold);
   const ruleCategories = new Set<string>(input.packs.flatMap((p) => p.parsed.rules.map((r) => r.category)));
 
   for (const pack of input.packs) {
+    const env: Env = { clock: input.clock, reviewFn: input.review ?? reviewRulesDetailed, dropped: 0 };
     const cache = new ProfileCache();
-    const examples = evaluateExamples(pack, ruleExamplesDir, clock);
+    const examples = evaluateExamples(env, pack, ruleExamplesDir);
     const acc = new Map<string, RuleAcc>(pack.parsed.rules.map((r) => [r.id, newAcc()]));
     const catRules = new Map<Category, RulePack["rules"][number][]>();
     for (const r of pack.parsed.rules) catRules.set(r.category, [...(catRules.get(r.category) ?? []), r]);
@@ -346,29 +416,36 @@ export function measure(input: EvalInput): EvalMeasurements {
     const skipped = { human_control: 0, ai: 0 };
 
     const ran = (d: CorpusDoc): { r: DetailedReview; findings: Finding[]; skipped: boolean } => {
-      const r = review(pack, cache.profile(d.profile, pack), d.text, clock);
+      const r = review(env, pack, cache.profile(d.profile, pack), d.text);
       return { r, findings: r.diagnostics.all_findings, skipped: r.result.verdict === "skipped" };
     };
-    // A rule "ran" on a document when the document reached the rule stage, the profile has the rule on,
-    // and the rule finished inside the budget.
-    const ruleRan = (d: CorpusDoc, r: DetailedReview, rule: RulePack["rules"][number]): boolean =>
-      cache.rule(d.profile, pack, rule).enabled && !r.diagnostics.rules_unfinished.includes(rule.id);
+    // Whether the rule is switched on for the document's profile.
+    const enabled = (d: CorpusDoc, rule: RulePack["rules"][number]): boolean => cache.rule(d.profile, pack, rule).enabled;
+    // D8: a rule that did not finish on a document must not shrink its own denominator by being slow. Each
+    // such document is counted, the document is left out of the rule's measures, and any count fails the rule.
+    const finished = (d: CorpusDoc, r: DetailedReview, rule: RulePack["rules"][number]): boolean => {
+      if (!r.diagnostics.rules_unfinished.includes(rule.id)) return true;
+      (acc.get(rule.id) as RuleAcc).unfinished++;
+      return false;
+    };
 
     // D4 (false positives): a human-control document counts for a rule when it reached the rule stage
     // (not skipped below the floor or as non-prose) and the rule was enabled and finished. Skipped
     // documents are counted in `skipped_below_floor` and left out of the denominator: they say nothing
-    // about the rule. The hit test is "at least one finding of the rule in all_findings", info included,
-    // after overlap resolution (a finding another rule outranks is not a finding the user would see).
+    // about the rule. The hit test is "at least one raw hit of the rule" (any severity, info included):
+    // `diagnostics.candidates` when the engine offers it, else the post-overlap `all_findings` (rawHitRules).
     for (const d of corpora.humanControl) {
-      const { r, findings, skipped: skip } = ran(d);
+      const { r, skipped: skip } = ran(d);
       if (skip) {
         skipped.human_control++;
         continue;
       }
+      const raw = rawHitRules(r);
+      if (raw.source === "post_overlap") postOverlap = true;
       for (const rule of pack.parsed.rules) {
-        if (!ruleRan(d, r, rule)) continue;
+        if (!enabled(d, rule) || !finished(d, r, rule)) continue;
         const a = acc.get(rule.id) as RuleAcc;
-        const hit = findings.some((f) => f.rule_id === rule.id);
+        const hit = raw.rules.has(rule.id);
         a.fpDocs++;
         if (hit) a.fpHitDocs++;
         const bp = (a.fpBy[d.profile] ??= { docs: 0, hit_docs: 0 });
@@ -377,12 +454,14 @@ export function measure(input: EvalInput): EvalMeasurements {
       }
     }
 
-    // D5 (precision and recall). A finding is confirmed when a gold span overlaps it (at least one shared
-    // UTF-16 unit) and either carries the finding's rule_id, or carries no rule_id and the finding's
-    // category. A gold span naming another rule never confirms. Hits are findings (not documents), info
-    // included. D6 (recall): a gold span is caught when any finding of its category overlaps it; the
-    // rule_id of the gold span is ignored, the finding may come from any rule of the category in this pack.
-    // Gold spans in skipped documents count as missed, since the product would not lint those documents.
+    // D5 (precision). A finding is confirmed when a gold span covers at least half of the finding's span
+    // (UTF-16 units) and either carries the finding's rule_id, or carries no rule_id and the finding's
+    // category. A gold span naming another rule never confirms. A confirmation that only a rule_id-less
+    // gold span supports is also counted in `confirmed_by_category`. Hits are findings (not documents),
+    // info included, after overlap resolution: what the user would see.
+    // D6 (recall): a gold span is caught when any finding of its category overlaps it; the rule_id of the
+    // gold span is ignored, the finding may come from any rule of the category in this pack. Gold spans in
+    // skipped documents count as missed, since the product would not lint those documents.
     for (const d of corpora.ai) {
       const { r, findings, skipped: skip } = ran(d);
       if (skip) skipped.ai++;
@@ -394,14 +473,16 @@ export function measure(input: EvalInput): EvalMeasurements {
       }
       if (skip) continue;
       for (const rule of pack.parsed.rules) {
-        if (!ruleRan(d, r, rule)) continue;
+        if (!enabled(d, rule) || !finished(d, r, rule)) continue;
         const a = acc.get(rule.id) as RuleAcc;
         a.aiDocs++;
         for (const f of findings) {
           if (f.rule_id !== rule.id) continue;
           a.hits++;
-          const confirmed = d.gold.some((g) => (g.rule_id === undefined ? g.category === f.category : g.rule_id === f.rule_id) && spansOverlap(f.span, g));
-          if (confirmed) a.confirmed++;
+          const byRule = d.gold.some((g) => g.rule_id === f.rule_id && confirms(f.span, g));
+          const byCategory = d.gold.some((g) => g.rule_id === undefined && g.category === f.category && confirms(f.span, g));
+          if (byRule || byCategory) a.confirmed++;
+          if (!byRule && byCategory) a.confirmedByCategory++;
         }
       }
     }
@@ -411,7 +492,7 @@ export function measure(input: EvalInput): EvalMeasurements {
         const { r, findings, skipped: skip } = ran(d);
         if (skip) continue;
         for (const rule of pack.parsed.rules) {
-          if (!ruleRan(d, r, rule)) continue;
+          if (!enabled(d, rule) || !finished(d, r, rule)) continue;
           const a = acc.get(rule.id) as RuleAcc;
           a[field].docs++;
           if (findings.some((f) => f.rule_id === rule.id)) a[field].hit_docs++;
@@ -420,9 +501,12 @@ export function measure(input: EvalInput): EvalMeasurements {
     }
 
     const rulesMs = new Map<string, number[]>();
-    const latency = measureLatency(pack, corpora, cache, clock, rulesMs);
+    const latency = measureLatency(env, pack, corpora, cache, rulesMs);
     if (latency.status === "fail") {
       failures.push({ scope: "pack", id: pack.parsed.id, metric: "latency", message: `${pack.parsed.id}: rules_latency_ms p95 ${latency.p95_ms.toFixed(1)} ms exceeds the ${LATENCY_GATE_MS} ms gate (${latency.source})` });
+    }
+    if (env.dropped > 0) {
+      failures.push({ scope: "pack", id: pack.parsed.id, metric: "engine_drops", message: `${pack.parsed.id}: the engine dropped ${env.dropped} finding${env.dropped === 1 ? "" : "s"} on its own span self-check (invalid_findings_dropped; expected 0)` });
     }
 
     const rules: RuleReport[] = pack.parsed.rules.map((rule) => {
@@ -433,41 +517,59 @@ export function measure(input: EvalInput): EvalMeasurements {
         const e = cache.rule(name, pack, rule);
         effective[name] = e.enabled ? e.severity : "disabled";
       }
-      // The gate uses the pack severity (D1): docs/10 gates the rule as published, so a profile that
-      // softens it cannot launder a rule over budget.
-      const fp = gateFalsePositive(a.fpHitDocs, a.fpDocs, rule.severity);
-      const precision = gatePrecision(a.confirmed, a.hits, a.aiDocs, rule.severity);
+      // D1: the gates use the strictest effective severity the rule has in any bundled profile. Profiles
+      // promote rules (email: structure.001 -> block), and a rule that ships as block somewhere must meet
+      // the block budget on the pooled corpus. Docs/10 gates the rule as users run it.
+      const live = Object.values(effective).filter((s): s is Severity => s !== "disabled");
+      const gateSeverity = live.length === 0 ? rule.severity : strictest(live);
+      const fp = gateFalsePositive(a.fpHitDocs, a.fpDocs, gateSeverity);
+      const precision = gatePrecision(a.confirmed, a.hits, a.aiDocs, gateSeverity);
       const ms = rulesMs.get(rule.id);
+      // Per-profile: a profile with at least 30 documents gates at its own effective severity.
+      const byProfile: Record<string, FpProfileReport> = {};
+      for (const [name, t] of Object.entries(a.fpBy)) {
+        const sev = effective[name];
+        const profSeverity: Severity = sev === undefined || sev === "disabled" ? rule.severity : sev;
+        const m = gateFalsePositive(t.hit_docs, t.docs, profSeverity);
+        byProfile[name] = { ...m, hit_docs: t.hit_docs, effective_severity: profSeverity };
+        if (m.status === "fail") {
+          failures.push({ scope: "rule", id: rule.id, metric: "false_positive", message: `${rule.id} [profile ${name}]: false-positive rate ${t.hit_docs}/${t.docs} = ${pct1(t.hit_docs, t.docs)} exceeds the ${m.budget?.pct}% budget for ${profSeverity}, the rule's severity in ${name}` });
+        }
+      }
       if (ex.status === "fail") {
         failures.push({ scope: "rule", id: rule.id, metric: "example", message: `${rule.id}: ${ex.hit.total - ex.hit.pass} hit and ${ex.miss.total - ex.miss.pass} miss examples fail (${ex.failures.join("; ")})` });
       }
       if (fp.status === "fail") {
-        failures.push({ scope: "rule", id: rule.id, metric: "false_positive", message: `${rule.id}: false-positive rate ${a.fpHitDocs}/${a.fpDocs} = ${((a.fpHitDocs / a.fpDocs) * 100).toFixed(1)}% exceeds the ${fp.budget?.pct}% budget for ${rule.severity} (a rule over budget is pulled from the pack, not softened)` });
+        failures.push({ scope: "rule", id: rule.id, metric: "false_positive", message: `${rule.id}: false-positive rate ${a.fpHitDocs}/${a.fpDocs} = ${pct1(a.fpHitDocs, a.fpDocs)} exceeds the ${fp.budget?.pct}% budget for ${gateSeverity}${gateSeverity === rule.severity ? "" : ` (pack severity ${rule.severity}; a bundled profile promotes it)`}; a rule over budget is pulled from the pack, not softened` });
+      }
+      if (a.unfinished > 0) {
+        failures.push({ scope: "rule", id: rule.id, metric: "unfinished", message: `${rule.id}: rule did not finish on ${a.unfinished} docs (engine budget exceeded); those documents are not counted, so the rule's rates cannot be trusted` });
       }
       if (precision.status === "fail") {
-        failures.push({ scope: "rule", id: rule.id, metric: "precision", message: `${rule.id}: precision ${a.confirmed}/${a.hits} = ${((a.confirmed / a.hits) * 100).toFixed(1)}% is under the ${precision.budget?.pct}% floor for ${rule.severity}` });
+        failures.push({ scope: "rule", id: rule.id, metric: "precision", message: `${rule.id}: precision ${a.confirmed}/${a.hits} = ${pct1(a.confirmed, a.hits)} is under the ${precision.budget?.pct}% floor for ${gateSeverity}` });
       }
       return {
         id: rule.id,
         category: rule.category,
         severity: rule.severity,
+        gate_severity: gateSeverity,
         effective_severity: effective,
         severity_differs_by_profile: Object.values(effective).some((s) => s !== rule.severity),
         example: ex,
-        false_positive: { ...fp, hit_docs: a.fpHitDocs, by_profile: a.fpBy },
-        precision: { ...precision, hits: a.hits, confirmed: a.confirmed },
+        false_positive: { ...fp, hit_docs: a.fpHitDocs, gate_severity: gateSeverity, unfinished_docs: a.unfinished, by_profile: byProfile },
+        precision: { ...precision, hits: a.hits, confirmed: a.confirmed, confirmed_by_category: a.confirmedByCategory },
         adversarial: { human_machinelike: a.advHuman, ai_passed: a.advAi },
         latency_p95_ms: ms === undefined ? null : percentile(ms, 0.95),
       };
     });
 
-    // D6: a category is judged by the strictest pack severity of its rules.
+    // D6: a category is judged by the strictest gate severity of its rules.
     const categories: CategoryReport[] = [...catRules.entries()].map(([category, rs]) => {
-      const severity = strictest(rs.map((r) => r.severity));
+      const severity = strictest(rs.map((r) => (rules.find((x) => x.id === r.id) as RuleReport).gate_severity));
       const t = recall.get(category) as { caught: number; spans: number };
       const metric = gateRecall(t.caught, t.spans, severity);
       if (metric.status === "fail") {
-        failures.push({ scope: "category", id: `${pack.parsed.id}:${category}`, metric: "recall", message: `category ${category} (${pack.parsed.id}, strictest severity ${severity}): recall ${t.caught}/${t.spans} = ${((t.caught / t.spans) * 100).toFixed(1)}% is under the ${metric.budget?.pct}% floor` });
+        failures.push({ scope: "category", id: `${pack.parsed.id}:${category}`, metric: "recall", message: `category ${category} (${pack.parsed.id}, strictest severity ${severity}): recall ${t.caught}/${t.spans} = ${pct1(t.caught, t.spans)} is under the ${metric.budget?.pct}% floor` });
       }
       return { category, severity, rules: rs.map((r) => r.id), recall: { ...metric, caught: t.caught, spans: t.spans } };
     });
@@ -483,6 +585,7 @@ export function measure(input: EvalInput): EvalMeasurements {
       examples: { pass: exPass, total: exTotal, rules_pass: rules.filter((r) => r.example.status === "pass").length, rules_total: rules.length, status: exPass === exTotal ? "pass" : "fail" },
       latency,
       skipped_below_floor: skipped,
+      invalid_findings_dropped: env.dropped,
     });
   }
 
@@ -490,6 +593,10 @@ export function measure(input: EvalInput): EvalMeasurements {
   const skippedAi = packs[0]?.skipped_below_floor.ai ?? 0;
   if (skippedHuman > 0) notes.push(`${skippedHuman} human-control documents were skipped by the profile's token floor or as non-prose; they are left out of every false-positive denominator`);
   if (skippedAi > 0) notes.push(`${skippedAi} AI documents were skipped by the profile's token floor or as non-prose; their gold spans count as missed`);
+  const fpSource: FpSource = postOverlap ? "post_overlap" : corpora.humanControl.length === 0 ? "post_overlap" : "candidates";
+  if (fpSource === "post_overlap") {
+    notes.push("fp_source: post_overlap. False positives are counted on the engine's post-overlap findings because diagnostics.candidates is not available yet; a rule whose hit another rule outranks is not counted as a hit.");
+  }
   const byProfile = (docs: CorpusDoc[]): Record<string, number> => {
     const m: Record<string, number> = {};
     for (const d of docs) m[d.profile] = (m[d.profile] ?? 0) + 1;
@@ -499,6 +606,7 @@ export function measure(input: EvalInput): EvalMeasurements {
     packs,
     failures,
     notes,
+    fp_source: fpSource,
     corpora: {
       human_control: { docs: corpora.humanControl.length, by_profile: byProfile(corpora.humanControl) },
       ai: {
@@ -511,4 +619,3 @@ export function measure(input: EvalInput): EvalMeasurements {
     },
   };
 }
-

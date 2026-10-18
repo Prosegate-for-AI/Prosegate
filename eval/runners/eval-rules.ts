@@ -8,7 +8,8 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const USAGE = `usage: pnpm eval:rules [options]
   --pack <file>           also evaluate this rule pack YAML (repeatable)
-  --no-bundled            skip the packs under packages/profiles/bundled/packs
+  --no-bundled            skip the bundled packs
+  --bundled-packs <dir>   where bundled packs are discovered (default packages/profiles/bundled/packs); must match the registry
   --corpora <dir>         corpora root (default eval/corpora)
   --rule-examples <dir>   where <eval corpus ref: pack/name> files live (default <corpora>/rule-examples)
   --baseline <file>       baseline JSON (default eval/baseline.json)
@@ -24,6 +25,7 @@ function parseArgs(argv: string[]): RunOptions | string {
     ruleExamplesDir: "",
     packPaths: [],
     useBundled: true,
+    bundledPacksDir: resolve(REPO_ROOT, "packages", "profiles", "bundled", "packs"),
     baselinePath: resolve(REPO_ROOT, "eval", "baseline.json"),
     reportsDir: resolve(REPO_ROOT, "eval", "reports"),
     updateBaseline: false,
@@ -40,6 +42,12 @@ function parseArgs(argv: string[]): RunOptions | string {
         const v = value();
         if (v === undefined) return "--pack needs a file";
         o.packPaths.push(resolve(v));
+        break;
+      }
+      case "--bundled-packs": {
+        const v = value();
+        if (v === undefined) return "--bundled-packs needs a directory";
+        o.bundledPacksDir = resolve(v);
         break;
       }
       case "--no-bundled":

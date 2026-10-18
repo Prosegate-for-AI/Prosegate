@@ -41,9 +41,9 @@ export function formatReport(report: Report, reportPath: string): string {
       const recall = cat === undefined ? "n/a" : cat.recall.status === "ungated" ? `${cat.recall.num}/${cat.recall.den} ${fmtPct(cat.recall.value)} (no gate)` : cell(cat.recall, "0 items");
       rows.push([
         r.id,
-        r.severity + (r.severity_differs_by_profile ? "*" : ""),
+        r.gate_severity === r.severity ? r.severity + (r.severity_differs_by_profile ? "*" : "") : `${r.severity}>${r.gate_severity}`,
         `${r.example.hit.pass + r.example.miss.pass}/${r.example.hit.total + r.example.miss.total}${r.example.status === "fail" ? " FAIL" : ""}`,
-        cell(r.false_positive, "0 items"),
+        cell(r.false_positive, "0 items") + (r.false_positive.unfinished_docs > 0 ? ` UNFINISHED(${r.false_positive.unfinished_docs})` : ""),
         cell(r.precision, r.precision.items === 0 ? "0 items" : "0 hits"),
         recall,
         r.latency_p95_ms === null ? "-" : r.latency_p95_ms.toFixed(2),
@@ -54,8 +54,8 @@ export function formatReport(report: Report, reportPath: string): string {
     for (const row of rows) out.push(row.map((v, i) => pad(v, widths[i] as number)).join("  ").trimEnd());
   }
   out.push("");
-  out.push("verdict: PASS = example, FP and precision all measured and within budget; PARTIAL = nothing failed but a gate was n/a or insufficient (< 30 items); FAIL = a gate failed.");
-  out.push("sev*: a bundled profile changes this rule's severity or disables it (see effective_severity in the report); the gate uses the pack severity.");
+  out.push("verdict: PASS = example, FP and precision all measured and within budget; PARTIAL = nothing failed but a gate was n/a or insufficient (under 30 items, or under 20 hits for precision); FAIL = a gate failed.");
+  out.push("sev: pack severity. warn>block = a bundled profile promotes the rule, so the pooled gate uses the strictest effective severity (and each profile with 30+ documents gates at its own). sev* = a profile softens or disables it; the report lists effective_severity per profile.");
 
   if (report.failures.length > 0) {
     out.push("");
@@ -76,11 +76,13 @@ export function formatReport(report: Report, reportPath: string): string {
     const b = cov[k as "false_positive" | "precision" | "recall"];
     return (b["pass"] ?? 0) + (b["fail"] ?? 0) === 0;
   });
-  if (report.result === "pass" && unmeasured.length > 0) {
+  if (report.result !== "fail" && unmeasured.length > 0) {
     out.push(`NOTE: ${unmeasured.join(", ")} could not be measured on these corpora (n/a or insufficient); this exit 0 says nothing about them.`);
   }
   out.push(`baseline: ${report.baseline.status}${report.baseline.path === null ? "" : ` (${report.baseline.entries} entries)`}`);
-  const partial = report.result === "pass" && unmeasured.length > 0 ? ` (partial: ${unmeasured.join(", ")} not measured)` : "";
+  const notPass = report.packs.reduce((n, p) => n + Object.values(p.rule_verdicts).filter((v) => v !== "PASS").length, 0);
+  const total = report.packs.reduce((n, p) => n + p.rules.length, 0);
+  const partial = report.result === "partial" ? ` (${notPass} of ${total} rules are not PASS${unmeasured.length > 0 ? `; ${unmeasured.join(", ")} not measured` : ""})` : "";
   out.push(`RESULT: ${report.result.toUpperCase()}${partial}  wall ${(report.wall_ms / 1000).toFixed(2)} s  report ${reportPath}`);
   return out.join("\n");
 }

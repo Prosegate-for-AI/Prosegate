@@ -3,11 +3,11 @@
 // Every problem found is collected (not just the first) and thrown as one HarnessError, which the CLI
 // maps to exit code 2: a corrupt corpus must never turn into a quiet pass.
 //
-// The meta and gold schemas are strict: unknown keys are rejected. They are hand-written rather than
-// zod because eval/package.json has no zod dependency and this item may add none; the checks are
-// the ones a strict zod object would make.
+// The meta and gold schemas are strict zod objects: unknown keys are rejected.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { z } from "zod";
+import { isCorpusRef } from "@prosegate/profiles";
 import { CATEGORIES, type Category } from "@prosegate/schema";
 
 export class HarnessError extends Error {
@@ -50,29 +50,11 @@ export interface Corpora {
 
 export const EMPTY_CORPORA: Corpora = { humanControl: [], ai: [], advHumanMachinelike: [], advAiPassed: [] };
 
-const RULE_ID_RE = /^[a-z0-9-]{1,31}\.(filler|hedge|vocab|triad|structure|repetition)\.\d{3}$/;
-
-// ---- tiny strict-object helpers ------------------------------------------------------------------
-
 type Rec = Record<string, unknown>;
 
-function isRec(x: unknown): x is Rec {
-  return typeof x === "object" && x !== null && !Array.isArray(x);
-}
+// ---- strict zod schemas ------------------------------------------------------------------------------------
 
-function checkKeys(raw: Rec, required: readonly string[], optional: readonly string[], where: string, problems: string[]): void {
-  for (const k of required) if (!(k in raw)) problems.push(`${where}: missing required field '${k}'`);
-  const known = new Set([...required, ...optional]);
-  for (const k of Object.keys(raw)) if (!known.has(k)) problems.push(`${where}: unknown field '${k}' (strict schema)`);
-}
-
-function nonEmptyString(raw: Rec, key: string, where: string, problems: string[], required: boolean): void {
-  if (!(key in raw)) return;
-  const v = raw[key];
-  if (typeof v !== "string" || v.trim() === "") {
-    problems.push(`${where}: '${key}' must be a non-empty string${required ? "" : " when present"}`);
-  }
-}
+const RULE_ID_RE = /^[a-z0-9-]{1,31}\.(filler|hedge|vocab|triad|structure|repetition)\.\d{3}$/;
 
 /** YYYY, YYYY-MM or YYYY-MM-DD, a real calendar date. */
 export function isPartialDate(s: string): boolean {
@@ -90,50 +72,42 @@ function isIsoInstant(s: string): boolean {
   return m !== null && isPartialDate(m[1] as string) && !Number.isNaN(Date.parse(s));
 }
 
-/** The human-control licence record (docs/10 "Licensing"). Missing licence or date is the licensing gate. */
-export function validateHumanMeta(raw: unknown, where: string, problems: string[]): void {
-  if (!isRec(raw)) {
-    problems.push(`${where}: must be a JSON object`);
-    return;
-  }
-  if (!("licence" in raw) || typeof raw.licence !== "string" || raw.licence.trim() === "") {
-    problems.push(`${where}: LICENSING GATE: 'licence' is missing or empty (docs/10: every human-control item records its licence)`);
-  }
-  if (!("date" in raw) || typeof raw.date !== "string" || raw.date.trim() === "") {
-    problems.push(`${where}: LICENSING GATE: 'date' is missing or empty (docs/10: every human-control item is dated)`);
-  } else if (!isPartialDate(raw.date)) {
-    problems.push(`${where}: 'date' must be YYYY, YYYY-MM or YYYY-MM-DD, got '${raw.date}'`);
-  }
-  // licence and date are required too, but their absence is reported above as the licensing gate.
-  checkKeys(raw, ["source"], ["licence", "date", "author", "url", "notes"], where, problems);
-  nonEmptyString(raw, "source", where, problems, true);
-  nonEmptyString(raw, "author", where, problems, false);
-  nonEmptyString(raw, "notes", where, problems, false);
-  if ("url" in raw) {
-    let ok = false;
-    if (typeof raw.url === "string") {
-      try {
-        const u = new URL(raw.url);
-        ok = u.protocol === "http:" || u.protocol === "https:";
-      } catch {
-        ok = false;
-      }
-    }
-    if (!ok) problems.push(`${where}: 'url' must be an http(s) URL when present`);
-  }
-}
+const GATE = "LICENSING GATE";
+const required = (name: string, gate = false) => ({
+  error: `${gate ? `${GATE}: ` : ""}'${name}' is missing or not a string${gate ? ` (docs/10: every human-control item records its ${name})` : ""}`,
+});
+const nonEmpty = (name: string, gate = false) =>
+  z.string(required(name, gate)).refine((s) => s.trim() !== "", `${gate ? `${GATE}: ` : ""}'${name}' is empty${gate ? ` (docs/10: every human-control item records its ${name})` : ""}`);
 
-export function validateAiMeta(raw: unknown, where: string, problems: string[]): void {
-  if (!isRec(raw)) {
-    problems.push(`${where}: must be a JSON object`);
-    return;
-  }
-  checkKeys(raw, ["model", "model_version", "prompt_file", "generated_at"], [], where, problems);
-  for (const k of ["model", "model_version", "prompt_file"]) nonEmptyString(raw, k, where, problems, true);
-  if ("generated_at" in raw && (typeof raw.generated_at !== "string" || !isIsoInstant(raw.generated_at))) {
-    problems.push(`${where}: 'generated_at' must be an ISO date or date-time`);
-  }
-}
+/** The human-control licence record (docs/10 "Licensing"). A missing or empty licence or date is the licensing gate. */
+const HumanMetaSchema = z.strictObject({
+  source: nonEmpty("source"),
+  licence: nonEmpty("licence", true),
+  date: z
+    .string(required("date", true))
+    .refine((s) => s.trim() !== "", `${GATE}: 'date' is empty (docs/10: every human-control item is dated)`)
+    .refine((s) => s.trim() === "" || isPartialDate(s), "'date' must be YYYY, YYYY-MM or YYYY-MM-DD (a real date)"),
+  author: nonEmpty("author").optional(),
+  url: z
+    .string()
+    .refine((s) => {
+      try {
+        const u = new URL(s);
+        return u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "'url' must be an http(s) URL when present")
+    .optional(),
+  notes: nonEmpty("notes").optional(),
+});
+
+const AiMetaSchema = z.strictObject({
+  model: nonEmpty("model"),
+  model_version: nonEmpty("model_version"),
+  prompt_file: nonEmpty("prompt_file"),
+  generated_at: z.string(required("generated_at")).refine(isIsoInstant, "'generated_at' must be an ISO date or date-time"),
+});
 
 function isSplitPair(text: string, i: number): boolean {
   if (i <= 0 || i >= text.length) return false;
@@ -142,56 +116,68 @@ function isSplitPair(text: string, i: number): boolean {
   return prev >= 0xd800 && prev <= 0xdbff && cur >= 0xdc00 && cur <= 0xdfff;
 }
 
-/** Gold spans are UTF-16 offsets into the .md file; a span must be in range, and equal its slice when it carries `text`. */
+/** Gold spans are UTF-16 offsets into the .md; the schema needs the document text to check range, surrogates and `text`. */
+function goldSchema(text: string) {
+  return z
+    .array(
+      z
+        .strictObject({
+          category: z.enum(CATEGORIES, { error: `'category' must be one of ${CATEGORIES.join(", ")}` }),
+          rule_id: z.string().regex(RULE_ID_RE, "'rule_id' must look like <pack>.<category>.<nnn>").optional(),
+          start: z.number({ error: "'start' must be an integer" }).int("'start' must be an integer"),
+          end: z.number({ error: "'end' must be an integer" }).int("'end' must be an integer"),
+          text: z.string().optional(),
+        })
+        .superRefine((g, ctx) => {
+          if (g.rule_id !== undefined && RULE_ID_RE.test(g.rule_id) && g.rule_id.split(".")[1] !== g.category) {
+            ctx.addIssue({ code: "custom", message: `rule_id '${g.rule_id}' belongs to a different category than '${g.category}'` });
+          }
+          if (g.start < 0 || g.end <= g.start || g.end > text.length) {
+            ctx.addIssue({ code: "custom", message: `span [${g.start}, ${g.end}) is out of range for a document of ${text.length} UTF-16 units` });
+          } else if (isSplitPair(text, g.start) || isSplitPair(text, g.end)) {
+            ctx.addIssue({ code: "custom", message: `span [${g.start}, ${g.end}) splits a surrogate pair (offsets are UTF-16 code units)` });
+          } else if (g.text !== undefined && g.text !== text.slice(g.start, g.end)) {
+            ctx.addIssue({ code: "custom", message: `'text' does not equal the slice [${g.start}, ${g.end}) of the document (${JSON.stringify(text.slice(g.start, g.end).slice(0, 40))})` });
+          }
+        }),
+      { error: "must be a JSON array of gold spans" },
+    );
+}
+
+function report(where: string, error: z.ZodError, problems: string[]): void {
+  for (const issue of error.issues) {
+    const path = issue.path.map((p) => (typeof p === "number" ? `[${p}]` : `.${String(p)}`)).join("");
+    if (issue.code === "unrecognized_keys") {
+      for (const k of issue.keys) problems.push(`${where}${path}: unknown field '${k}' (strict schema)`);
+    } else {
+      problems.push(`${where}${path}: ${issue.message}`);
+    }
+  }
+}
+
+export function validateHumanMeta(raw: unknown, where: string, problems: string[]): void {
+  const r = HumanMetaSchema.safeParse(raw);
+  if (!r.success) report(where, r.error, problems);
+}
+
+export function validateAiMeta(raw: unknown, where: string, problems: string[]): void {
+  const r = AiMetaSchema.safeParse(raw);
+  if (!r.success) report(where, r.error, problems);
+}
+
+/** Validates a gold file against the document text and returns the spans (empty when invalid, with `problems` filled). */
 export function validateGold(raw: unknown, text: string, where: string, problems: string[]): GoldSpan[] {
-  if (!Array.isArray(raw)) {
-    problems.push(`${where}: must be a JSON array of gold spans`);
+  const r = goldSchema(text).safeParse(raw);
+  if (!r.success) {
+    report(where, r.error, problems);
     return [];
   }
-  const out: GoldSpan[] = [];
-  raw.forEach((item, i) => {
-    const at = `${where}[${i}]`;
-    if (!isRec(item)) {
-      problems.push(`${at}: must be an object`);
-      return;
-    }
-    const before = problems.length;
-    checkKeys(item, ["category", "start", "end"], ["rule_id", "text"], at, problems);
-    const category = item.category;
-    if (typeof category !== "string" || !(CATEGORIES as readonly string[]).includes(category)) {
-      problems.push(`${at}: 'category' must be one of ${CATEGORIES.join(", ")}`);
-    }
-    if ("rule_id" in item) {
-      const rid = item.rule_id;
-      if (typeof rid !== "string" || !RULE_ID_RE.test(rid)) {
-        problems.push(`${at}: 'rule_id' must look like <pack>.<category>.<nnn>`);
-      } else if (typeof category === "string" && rid.split(".")[1] !== category) {
-        problems.push(`${at}: rule_id '${rid}' belongs to a different category than '${category}'`);
-      }
-    }
-    const { start, end } = item;
-    if (!Number.isInteger(start) || !Number.isInteger(end)) {
-      problems.push(`${at}: 'start' and 'end' must be integers`);
-    } else {
-      const s = start as number;
-      const e = end as number;
-      if (s < 0 || e <= s || e > text.length) {
-        problems.push(`${at}: span [${s}, ${e}) is out of range for a document of ${text.length} UTF-16 units`);
-      } else if (isSplitPair(text, s) || isSplitPair(text, e)) {
-        problems.push(`${at}: span [${s}, ${e}) splits a surrogate pair (offsets are UTF-16 code units)`);
-      } else if ("text" in item && item.text !== text.slice(s, e)) {
-        problems.push(`${at}: 'text' does not equal the slice [${s}, ${e}) of the document (${JSON.stringify(text.slice(s, e).slice(0, 40))})`);
-      }
-    }
-    if ("text" in item && typeof item.text !== "string") problems.push(`${at}: 'text' must be a string when present`);
-    if (problems.length === before) {
-      const span: GoldSpan = { category: category as Category, start: start as number, end: end as number };
-      if (typeof item.rule_id === "string") span.rule_id = item.rule_id;
-      if (typeof item.text === "string") span.text = item.text;
-      out.push(span);
-    }
+  return r.data.map((g) => {
+    const span: GoldSpan = { category: g.category, start: g.start, end: g.end };
+    if (g.rule_id !== undefined) span.rule_id = g.rule_id;
+    if (g.text !== undefined) span.text = g.text;
+    return span;
   });
-  return out;
 }
 
 // ---- directory walking -----------------------------------------------------------------------------
@@ -343,15 +329,6 @@ export function loadCorpora(root: string, knownProfiles: readonly string[]): Cor
   return out;
 }
 
-/**
- * Whether an example is a corpus reference. @prosegate/profiles has isCorpusRef but does not export it
- * from its index (and is out of scope here); parseRulePack has already rejected malformed references,
- * so this only has to tell a reference from a literal sentence.
- */
-export function isCorpusRef(example: string): boolean {
-  return /^<eval corpus ref: [a-z0-9-]+\/[a-z0-9-]+>$/.test(example);
-}
-
 /** Resolves `<eval corpus ref: pack/name>` against `<dir>/<pack>/<name>.md`. */
 export function readExampleRef(example: string, ruleExamplesDir: string): string {
   const m = /^<eval corpus ref: ([a-z0-9-]+)\/([a-z0-9-]+)>$/.exec(example);
@@ -362,3 +339,5 @@ export function readExampleRef(example: string, ruleExamplesDir: string): string
   if (text.trim() === "") throw new HarnessError(`corpus ref ${example} points at an empty file: ${file}`);
   return text;
 }
+
+export { isCorpusRef };

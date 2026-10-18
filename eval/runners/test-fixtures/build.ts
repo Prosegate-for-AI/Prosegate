@@ -5,6 +5,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { BUNDLED_PACK_YAML, parseRulePackYaml } from "@prosegate/profiles";
 
 /** 30 sentences, none of which trips a `core` rule (checked by the "clean fixture passes" test). */
 const POOL = [
@@ -91,9 +92,32 @@ export class FixtureCorpora {
     return this;
   }
 
-  /** `n` human-control documents under local/base; the ones whose index is in `planted` carry `plant`. */
-  humanSet(n: number, plant?: string, planted: number[] = []): this {
-    for (let i = 0; i < n; i++) this.human("base", `h${String(i).padStart(3, "0")}`, doc(i, planted.includes(i) ? plant : undefined).text);
+  /** `n` human-control documents under local/<profile>; the ones whose index is in `planted` carry `plant`. */
+  humanSet(n: number, plant?: string, planted: number[] = [], profile = "base", prefix = "h"): this {
+    for (let i = 0; i < n; i++) this.human(profile, `${prefix}${String(i).padStart(3, "0")}`, doc(i, planted.includes(i) ? plant : undefined).text);
+    return this;
+  }
+
+  /** `n` documents too short for the token floor (about 5 words), each carrying `text`. */
+  humanShort(n: number, text = "Short note about the cache."): this {
+    for (let i = 0; i < n; i++) this.human("base", `s${String(i).padStart(3, "0")}`, `${text}
+`);
+    return this;
+  }
+
+  /**
+   * `total` AI documents under local/base; the first `n` hold `sentence` (containing `phrase`). `goldFor`
+   * returns the gold spans of document i given where `phrase` sits (start, end), or of a plain document
+   * (span undefined) given its first sentence range.
+   */
+  aiPlanted(total: number, n: number, sentence: string, phrase: string, goldFor: (i: number, span: { start: number; end: number } | undefined, first: { start: number; end: number }) => unknown[]): this {
+    for (let i = 0; i < total; i++) {
+      const id = `a${String(i).padStart(3, "0")}`;
+      const d = i < n ? docWithSpan(i, sentence, phrase) : doc(i);
+      const first = { start: 0, end: d.text.indexOf(".") + 1 };
+      const span = d.spans[0];
+      this.ai("base", id, d.text, goldFor(i, span === undefined ? undefined : { start: span.start, end: span.end }, first));
+    }
     return this;
   }
 
@@ -114,4 +138,27 @@ export class FixtureCorpora {
     }
     return this;
   }
+}
+
+/** The rule ids of the bundled `core` pack. */
+export function coreRuleIds(): string[] {
+  const parsed = parseRulePackYaml(BUNDLED_PACK_YAML["core@0.1.0"] as string);
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.value.rules.map((r) => r.id);
+}
+
+/**
+ * Writes a baseline file with one entry per rule id (all null, i.e. unmeasured) and returns its path.
+ * `entries` overrides individual rules; `omit` leaves rules out; `ids` replaces the rule list (other packs).
+ */
+export function baselineFile(entries: Record<string, { precision?: number | null; fp_rate?: number | null }> = {}, opts: { omit?: string[]; ids?: string[] } = {}): string {
+  const rules: Record<string, { precision: number | null; fp_rate: number | null }> = {};
+  for (const id of opts.ids ?? coreRuleIds()) {
+    if (opts.omit?.includes(id) === true) continue;
+    rules[id] = { precision: entries[id]?.precision ?? null, fp_rate: entries[id]?.fp_rate ?? null };
+  }
+  const dir = mkdtempSync(join(tmpdir(), "prosegate-evalrules-bl-"));
+  const path = join(dir, "baseline.json");
+  writeFileSync(path, JSON.stringify({ schema: "prosegate.eval-baseline/1", rules }, null, 2));
+  return path;
 }
