@@ -7,6 +7,9 @@
 // it, whatever the severities. The output is sorted by start ascending, then end descending (the
 // container first), so it satisfies the strict ReviewResult placement rule.
 //
+// Document-scope findings (ADR-24, from document_metric rules) are exempt: they are never dropped, never
+// drop another finding, and are merged into the sorted output.
+//
 // Choices 03 leaves open:
 //  - The order is applied as a ranking. Findings are visited best first and kept unless they
 //    conflict with a finding already kept, so a finding that was itself dropped suppresses nobody.
@@ -23,6 +26,8 @@ export interface Resolvable {
   category: Category;
   rule_id: string | null;
   span: { start: number; end: number };
+  /** 'document' findings (ADR-24) take no part in overlap resolution: they pass through and may intersect anything. */
+  scope?: "span" | "document" | undefined;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { block: 0, warn: 1, info: 2 };
@@ -97,7 +102,11 @@ class Disjoint<T extends Resolvable> {
  * non-empty. O(n log n) apart from the cost of long runs of intersecting findings of the other source.
  */
 export function resolveOverlaps<T extends Resolvable>(findings: readonly T[]): T[] {
-  const order = findings.map((f, i) => ({ f, i })).sort((a, b) => compareRank(a.f, b.f) || a.i - b.i);
+  const documentScope = findings.filter((f) => f.scope === "document");
+  const order = findings
+    .filter((f) => f.scope !== "document")
+    .map((f, i) => ({ f, i }))
+    .sort((a, b) => compareRank(a.f, b.f) || a.i - b.i);
   // Within one source the kept findings never intersect; across sources only a nesting may.
   const rules = new Disjoint<T>();
   const reviewers = new Disjoint<T>();
@@ -125,5 +134,5 @@ export function resolveOverlaps<T extends Resolvable>(findings: readonly T[]): T
     for (const g of supersede) other.remove(g);
     own.insert(f);
   }
-  return [...rules.items, ...reviewers.items].sort(compareOutput);
+  return [...rules.items, ...reviewers.items, ...documentScope].sort(compareOutput);
 }

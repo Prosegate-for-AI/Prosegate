@@ -140,6 +140,13 @@ export class FixtureCorpora {
   }
 }
 
+/** Hit plus miss examples across the bundled `core` pack (read from the pack, not hard-coded). */
+export function coreExampleCount(): number {
+  const parsed = parseRulePackYaml(BUNDLED_PACK_YAML["core@0.1.0"] as string);
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  return parsed.value.rules.reduce((n, r) => n + r.examples.hit.length + r.examples.miss.length, 0);
+}
+
 /** The rule ids of the bundled `core` pack. */
 export function coreRuleIds(): string[] {
   const parsed = parseRulePackYaml(BUNDLED_PACK_YAML["core@0.1.0"] as string);

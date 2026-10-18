@@ -1,11 +1,15 @@
-import type { Unit } from "@prosegate/segmenter";
+import type { Paragraph, Unit } from "@prosegate/segmenter";
 import type { DocumentMetricMatch, SentenceMetricMatch } from "./compile.js";
 import type { DocContext, Sentence } from "./context.js";
-import type { Candidate } from "./search.js";
+import { overBudget, type Candidate, type RunEnv } from "./search.js";
 import { cosine, finishBag, type Bag } from "./text.js";
 
 /** ADR-15: `similarity_to_prior` is skipped above this many prose words (S4: it is O(n^2) in the worst case). */
 export const SIMILARITY_MAX_WORDS = 6000;
+/** ADR-24: a sentence is compared with at most this many earlier candidates (the most recent ones sharing a rare token). */
+export const MAX_SIMILARITY_CANDIDATES = 200;
+/** ADR-24: closing_similarity is undefined below this many non-heading blocks. */
+export const MIN_CLOSING_BLOCKS = 3;
 
 function fires(value: number, above: number | null, below: number | null): boolean {
   if (above !== null) return value > above;
@@ -21,7 +25,7 @@ function sentenceCandidate(doc: DocContext, s: Sentence): Candidate {
 
 // ---- sentence metrics ------------------------------------------------------------------------------
 
-export function runSentenceMetric(m: SentenceMetricMatch, doc: DocContext): Candidate[] {
+export function runSentenceMetric(m: SentenceMetricMatch, doc: DocContext, env: RunEnv): Candidate[] {
   switch (m.metric) {
     case "word_count":
       return doc.sentences.filter((s) => fires(s.words, m.above, m.below)).map((s) => sentenceCandidate(doc, s));
@@ -39,7 +43,7 @@ export function runSentenceMetric(m: SentenceMetricMatch, doc: DocContext): Cand
         .map((s) => sentenceCandidate(doc, s));
     }
     case "similarity_to_prior":
-      return similarityToPrior(m, doc);
+      return similarityToPrior(m, doc, env);
   }
 }
 
@@ -68,7 +72,7 @@ function commaCount(doc: DocContext, s: Sentence): number {
  * sentence's squared norm is not used to find candidates: by Cauchy-Schwarz a sentence that shares
  * only those tokens cannot exceed cosine t. So the index is probed only through rarer tokens.
  */
-function similarityToPrior(m: SentenceMetricMatch, doc: DocContext): Candidate[] {
+function similarityToPrior(m: SentenceMetricMatch, doc: DocContext, env: RunEnv): Candidate[] {
   if (doc.proseWords > SIMILARITY_MAX_WORDS) return [];
   const n = doc.sentences.length;
   const out: Candidate[] = [];
@@ -76,6 +80,7 @@ function similarityToPrior(m: SentenceMetricMatch, doc: DocContext): Candidate[]
   const bags: Bag[] = [];
   for (let i = 0; i < n; i++) bags.push(doc.sentenceBag(i));
   for (let i = 0; i < n; i++) {
+    if ((i & 31) === 0 && overBudget(env)) break;
     const s = doc.sentences[i] as Sentence;
     const bag = bags[i] as Bag;
     if (i > 0 && s.words >= m.minWords && bag.norm > 0) {
@@ -106,11 +111,14 @@ function anyAbove(bag: Bag, bags: readonly Bag[], postings: ReadonlyMap<string, 
     first++;
   }
   const seen = new Set<number>();
-  for (let k = first; k < tokens.length; k++) {
+  // rarest tokens first, most recent sentences first, and at most MAX_SIMILARITY_CANDIDATES comparisons (ADR-24)
+  for (let k = tokens.length - 1; k >= first; k--) {
     const list = postings.get((tokens[k] as { t: string }).t);
     if (list === undefined) continue;
-    for (const j of list) {
+    for (let x = list.length - 1; x >= 0; x--) {
+      const j = list[x] as number;
       if (seen.has(j)) continue;
+      if (seen.size >= MAX_SIMILARITY_CANDIDATES) return false;
       seen.add(j);
       if (cosine(bag, bags[j] as Bag) > threshold) return true;
     }
@@ -121,9 +129,12 @@ function anyAbove(bag: Bag, bags: readonly Bag[], postings: ReadonlyMap<string, 
 function bestBelow(bag: Bag, bags: readonly Bag[], postings: ReadonlyMap<string, number[]>, threshold: number): boolean {
   let best = 0;
   const seen = new Set<number>();
-  for (const token of bag.tf.keys()) {
-    for (const j of postings.get(token) ?? []) {
+  outer: for (const token of bag.tf.keys()) {
+    const list = postings.get(token) ?? [];
+    for (let x = list.length - 1; x >= 0; x--) {
+      const j = list[x] as number;
       if (seen.has(j)) continue;
+      if (seen.size >= MAX_SIMILARITY_CANDIDATES) break outer;
       seen.add(j);
       best = Math.max(best, cosine(bag, bags[j] as Bag));
     }
@@ -134,15 +145,63 @@ function bestBelow(bag: Bag, bags: readonly Bag[], postings: ReadonlyMap<string,
 // ---- document metrics -----------------------------------------------------------------------------
 
 /**
- * The finding for a document metric: the first sentence of the document (04), or none when the
- * document has fewer than `min_sentences` sentences or the metric is undefined for it.
+ * The finding for a document metric, or none when the document has fewer than `min_sentences`
+ * sentences or the metric is undefined for it. It has document scope (ADR-24) and is anchored on the
+ * text its instruction names (see documentAnchor); it takes no part in overlap resolution.
  */
 export function runDocumentMetric(m: DocumentMetricMatch, doc: DocContext): Candidate[] {
   const n = doc.sentences.length;
   if (n === 0 || n < m.minSentences) return [];
   const value = documentMetricValue(m, doc);
   if (value === null || !fires(value, m.above, m.below)) return [];
-  return [sentenceCandidate(doc, doc.sentences[0] as Sentence)];
+  return [{ ...documentAnchor(m, doc), scope: "document" }];
+}
+
+/**
+ * Where a document finding sits (ADR-24): headers_per_100_words on the first heading; bullet_ratio on
+ * the first qualifying list item; sentence_length_cv on the first sentence; closing_similarity on the
+ * first sentence of the closing block; bold_per_100_words on the first bold span. When the named
+ * thing does not exist (a `below` rule on a document without headings) the first sentence.
+ */
+function documentAnchor(m: DocumentMetricMatch, doc: DocContext): Candidate {
+  const firstSentence = (): Candidate => sentenceCandidate(doc, doc.sentences[0] as Sentence);
+  const ofUnit = (ui: number): Candidate => {
+    const u = doc.units[ui] as Unit;
+    return { start: u.start, end: u.end, unit: ui };
+  };
+  switch (m.metric) {
+    case "headers_per_100_words": {
+      const ui = doc.units.findIndex((u) => u.kind === "heading" && !u.continuation);
+      return ui < 0 ? firstSentence() : ofUnit(ui);
+    }
+    case "bullet_ratio": {
+      const s = doc.sentences.find((x) => x.kind === "list_item" && x.words >= m.minItemWords);
+      return s === undefined ? firstSentence() : sentenceCandidate(doc, s);
+    }
+    case "sentence_length_cv":
+      return firstSentence();
+    case "closing_similarity": {
+      const ui = closingBlock(doc)?.[0]?.unit_indexes[0];
+      return ui === undefined ? firstSentence() : ofUnit(ui);
+    }
+    case "bold_per_100_words": {
+      const b = doc.analysis.bold[0];
+      if (b === undefined) return firstSentence();
+      const seg = doc.segmentAt(b.start);
+      let ui = doc.unitAt(b.start);
+      if (ui < 0) ui = doc.unitAt(b.end - 1);
+      if (seg === null || ui < 0) return firstSentence();
+      return { start: b.start, end: Math.min(b.end, seg.end), unit: ui, segment: seg.id };
+    }
+  }
+}
+
+/** The paragraphs of the last non-heading block (the closing block), in order, or null. */
+function closingBlock(doc: DocContext): Paragraph[] | null {
+  const paragraphs = doc.analysis.paragraphs.filter((p) => p.kind !== "heading");
+  const last = paragraphs[paragraphs.length - 1];
+  if (last === undefined) return null;
+  return paragraphs.filter((p) => p.block_id === last.block_id);
 }
 
 /** The metric's value for this document, or null when it is undefined (no words, a single block...). */
@@ -181,6 +240,8 @@ function closingSimilarity(doc: DocContext): number | null {
   const first = paragraphs[0];
   const last = paragraphs[paragraphs.length - 1];
   if (first === undefined || last === undefined || first.block_id === last.block_id) return null;
+  // "The closing restates the opening" presupposes a middle: fewer than three blocks is not a closing (ADR-24).
+  if (new Set(paragraphs.map((p) => p.block_id)).size < MIN_CLOSING_BLOCKS) return null;
   const bagOf = (ps: typeof paragraphs): Bag => {
     const tf = new Map<string, number>();
     for (const p of ps) for (const ui of p.unit_indexes) doc.addUnitWords(ui, tf);

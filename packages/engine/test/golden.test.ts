@@ -53,11 +53,16 @@ describe("09 mock transcript 1", () => {
   });
 
   it("feedback_text is the canonical rendering, in document order", () => {
-    const lines = result.feedback_text.split("\n");
-    expect(lines[0]).toBe('[Prosegate] 3 findings against profile "local/pr-description" (pass 1 of 2). Revise your last response.');
-    expect(lines[1]).toContain('1. vocab (core.vocab.003) — "robust"');
-    expect(lines[2]).toContain('2. hedge (core.hedge.001) — "It\'s worth noting that"');
-    expect(lines[3]).toContain('3. triad (core.triad.001) — "fast, simple, and reliable"');
+    expect(result.feedback_text).toBe(
+      [
+        '[Prosegate] 3 findings against profile "local/pr-description" (pass 1 of 2). Revise your last response.',
+        '1. vocab (core.vocab.003) — "robust" → Replace with the property that makes it so, or remove.',
+        '2. hedge (core.hedge.001) — "It\'s worth noting that" → Remove the preamble; keep the clause after it.',
+        '3. triad (core.triad.001) — "fast, simple, and reliable" → Keep the one that matters, or give evidence for each.',
+        "Reply with the revised response only. Do not run prosegate commands.",
+        "To pause these revisions for this session, the user can run: prosegate advisory",
+      ].join("\n"),
+    );
   });
 
   it("wrapped lines (as the mock shows them) give the same findings", () => {

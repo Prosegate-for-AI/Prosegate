@@ -45,7 +45,7 @@ export function makeRawResult(opts: FixtureOptions): ReviewResult {
     if (start === -1) throw new Error(`fixture span not in text: ${f.span}`);
     const isRule = f.ruleId !== null;
     return {
-      id: findingId(f.category, f.ruleId, f.span, 's1'),
+      id: findingId(f.category, f.ruleId, f.span),
       span: { segment_id: 's1', start, end: start + f.span.length, text: f.span },
       category: f.category,
       source: isRule ? 'rule' : 'reviewer',
