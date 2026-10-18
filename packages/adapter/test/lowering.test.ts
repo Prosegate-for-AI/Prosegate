@@ -95,6 +95,22 @@ describe("every path that lowers enforcement shows the user a line and reports o
     expect(end(ctx).notice).toContain("2 rules switched off");
     expect(lastEnforcement(ctx)["override_used"]).toBe(true);
   });
+
+  it("a lowering made mid-session shows on the allow that ends the turn, not on a continuation the shim never shows", () => {
+    const { home, ctx } = started();
+    put(home, "profiles/base.yaml", overlay("overrides:\n  rules:\n    core.hedge.001: { enabled: false }\n"));
+    const p1 = end(ctx, TIC_TEXT, { turn_id: "t1" });
+    expect(p1.decision).toBe("continue");
+    expect(p1.notice ?? "").not.toContain("lowered");
+    const p2 = end(ctx, TIC_TEXT, { turn_id: "t1", continuation: true });
+    expect(p2.decision).toBe("continue");
+    expect(p2.notice ?? "").not.toContain("lowered");
+    const cap = end(ctx, TIC_TEXT, { turn_id: "t1", continuation: true });
+    expect(cap.decision).toBe("allow");
+    expect(cap.notice).toContain("enforcement is lowered in this session (1 rule switched off");
+    expect(cap.notice).toContain("shipped as is");
+    expect(end(ctx, CLEAN_TEXT, { turn_id: "t2" }).notice).toBeNull();
+  });
 });
 
 describe("what is not a lowering", () => {
@@ -128,7 +144,7 @@ describe("what is not a lowering", () => {
   it("the user's own rule off is reported as the rules switched off, not as an outside file change", () => {
     const { ctx } = started();
     runCommand(["rule", "off", "core.hedge.001"], { ...ctx, env: { PROSEGATE_SESSION: SESSION } });
-    const out = end(ctx);
+    const out = end(ctx, CLEAN_TEXT);
     expect(out.notice).toContain(LOWERED("1 rule switched off"));
     expect(out.notice).not.toContain("files changed");
   });

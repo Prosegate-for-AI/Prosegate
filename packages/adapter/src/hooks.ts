@@ -455,8 +455,10 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
       spentOverlays = true;
     }
   }
-  const showLowered = !eff.headless && lowered && lowering.what !== state.lowered_shown;
-  const showDebug = !eff.headless && ctx.debug && !state.debug_notice_shown && debugDir !== null;
+  // Only an allow carries a notice to the user (a continuation carries feedback_text only; 05, ADR-33), so the
+  // lowered and debug lines are shown, and recorded as shown, on an allow.
+  const showLowered = !eff.headless && decision === "allow" && lowered && lowering.what !== state.lowered_shown;
+  const showDebug = !eff.headless && decision === "allow" && ctx.debug && !state.debug_notice_shown && debugDir !== null;
   if (showDebug && debugDir !== null) extra.push(debugNoticeLine(debugDir));
   // N9: a reply longer than the review limit was only partly read. The user is told on the allow (or the next one,
   // when this turn asks for a revision), in every mode but headless, whose report carries the same fact.

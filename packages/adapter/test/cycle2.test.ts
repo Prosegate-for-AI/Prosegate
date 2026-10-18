@@ -67,7 +67,9 @@ describe("a revision with no prose clears nothing (N7)", () => {
     expect(end(ctx, BAD).decision).toBe("continue");
     const second = end(ctx, QUOTED, { continuation: true });
     expect(second.decision).toBe("allow");
-    expect(second.notice).toBe(UNCHECKED);
+    // The local pass_cap 1 profile is a lowering; its line is shown on this allow, the first the user can see (ADR-33).
+    expect(second.notice?.split("\n").at(-1)).toBe(UNCHECKED);
+    expect(second.notice?.split("\n")[0]).toContain("enforcement is lowered in this session (local profile local/one");
     expect(second.result.cleared).toEqual([]);
   });
 
