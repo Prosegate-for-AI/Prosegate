@@ -274,3 +274,19 @@ Consequence: 05's `session-start` output gains `notice`; 09's quiet row, refusal
 - **The owner-only ACL is applied to the Prosegate home root** explicitly and idempotently, including a pre-existing one, not only to directories Prosegate created.
 
 Consequence: 05's tables and 07's data-flow table change, the W3.1 adapter follows, and 09's quiet row already reflects ADR-28.
+
+## ADR-30 · Lowered enforcement is always visible to the user; hardening the local adapter
+
+2026-10-18. From the W3.1 security verification. The agent can edit any file the user can: overlays, `state.json`, lock files. Prevention is therefore impossible locally, but **visibility is required**. Decisions:
+- **Lowered-enforcement notice.**
+  - **Trigger.** Effective enforcement is weaker than the active profile's own definition, by any path: a mode below enforce from a command, the environment or `state.json`; a local overlay that lowers mode or severity or disables rules; or local profile or pack files that changed since session start.
+  - **What the user sees.** The adapter shows the user one line, through `notice` / `systemMessage`, never the model: `Prosegate · enforcement is lowered in this session (<what>) · prosegate status`. It appears once per session and again whenever the lowering changes.
+  - **Accounting.** `override_used` is true for every lowering path, not only commands. `prosegate status` lists the lowered mode, downgraded categories and rules switched off.
+  - **Integrity record.** A content hash of local profile and pack files is taken at session start; a mid-session change shows the notice.
+- **Agent-context markers.** A present but empty marker counts as set. The adapter checks `CLAUDECODE`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_CODE_SESSION_ID` and `CLAUDE_CODE_ENTRYPOINT`, plus a TTY check. ADR-27's residual stands: a deliberate agent can still get past this, and the notice above is what catches it.
+- **Locks.** A lock whose mtime is in the future, or older than 5 s, is stale. The fail-open path emits telemetry `adapter_error` through a lock-free append fallback, so a planted lock cannot suppress telemetry.
+- **Turn binding.** A harness with a turn identifier must pass it; the Claude Code shim always passes `prompt_id`. A `turn-end` whose `turn_id` was not seen at `turn-start` starts its own count and cannot consume another turn's passes, so a spoofed `turn-end` cannot exhaust the real turn's cap.
+- **Oversize replies are reviewed, not skipped.** Past 100 KB of prose, the engine reviews the first 100 KB, aligned to units. Code does not count toward the limit. The result records `truncated` in diagnostics and telemetry uses its own error code (`turn_truncated`, added to 07's list).
+- **Debug.** `PROSEGATE_DEBUG` / `--debug` also shows a user-facing notice once per session, because hook stderr is not visible.
+
+Rejected: signing or encrypting local state (the agent holds the same key the user does). Consequence: 07 threat 6 and the error-code list are updated, 09 gains the lowered-enforcement notice, and W3.1 cycle 1 implements it.

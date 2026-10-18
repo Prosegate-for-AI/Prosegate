@@ -70,7 +70,7 @@ type Event =
 type ErrorCode =
   | 'adapter_error' | 'reviewer_timeout' | 'reviewer_http_error' | 'reviewer_schema_invalid' | 'reviewer_key_missing'
   | 'profile_resolution_failed' | 'pack_rejected' | 'signature_invalid' | 'snapshot_missing' | 'turn_budget_exceeded'
-  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped';
+  | 'keychain_unavailable' | 'keychain_timeout' | 'transcript_unreadable' | 'telemetry_dropped' | 'turn_truncated';
 ```
 
 Every stored event carries `account_id`, `device_id` and `ts` (integer epoch milliseconds). The adapter sends `ts`; the service stamps `account_id` and `device_id` from the authenticated device key, so a client cannot attribute events to another account (ADR-17). Every string field has its own format (enum, semver, model-id pattern, or the 04 id grammar), at most 64 visible ASCII characters, and is rejected if it has the shape of a key. `profile_id`, `from` and `to` carry a synced id or the literal `local`, never a local profile's own name; `rule_ids` carry only ids from `core` or synced packs. The adapter enforces both by masking against the session's synced id sets in its single send path, because the schema cannot tell a local id from a synced one. Arrays and counts are bounded. The adapter truncates `ts` to the minute and shuffles events within a batch; no event carries a session or turn id. Events from one turn can still share a minute and a batch; what they reveal together is which rule ids fired on pass 1 and which were cleared on pass 2, which is the purpose of the event and is disclosed.
