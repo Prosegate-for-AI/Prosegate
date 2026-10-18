@@ -15,7 +15,7 @@ describe("pass 2 keeps a block tic block when a revision renumbers the segments 
 
   it("pass 1 flagged the tic as a block", () => {
     expect(tic?.severity).toBe("block");
-    expect(tic?.id).toBe(findingId("hedge", "core.hedge.001", "It's worth noting that"));
+    expect(tic?.id).toBe(findingId("hedge", "core.hedge.001", "it's worth noting that"));
   });
 
   const REVISIONS: Array<[string, string]> = [

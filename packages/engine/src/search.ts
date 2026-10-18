@@ -130,6 +130,9 @@ function runPart(part: SearchPart, isVocab: boolean, env: RunEnv, out: Candidate
         const groupStart = part.spanGroup > 0 ? m.start(part.spanGroup) : -1;
         let spanFrom = groupStart >= 0 ? base + ws + groupStart : -1;
         let spanTo = groupStart >= 0 ? base + ws + m.end(part.spanGroup) : -1;
+        const keyStart = part.keyGroup > 0 ? m.start(part.keyGroup) : -1;
+        let keyFrom = keyStart >= 0 ? base + ws + keyStart : -1;
+        let keyTo = keyStart >= 0 ? base + ws + m.end(part.keyGroup) : -1;
         const resume = (at: number): void => {
           local = at - ws;
           from = at;
@@ -165,6 +168,9 @@ function runPart(part: SearchPart, isVocab: boolean, env: RunEnv, out: Candidate
                   const gs = part.spanGroup > 0 ? sm.start(part.spanGroup) : -1;
                   spanFrom = gs >= 0 ? s0 + gs : -1;
                   spanTo = gs >= 0 ? s0 + sm.end(part.spanGroup) : -1;
+                  const ks = part.keyGroup > 0 ? sm.start(part.keyGroup) : -1;
+                  keyFrom = ks >= 0 ? s0 + ks : -1;
+                  keyTo = ks >= 0 ? s0 + sm.end(part.keyGroup) : -1;
                   fixed = true;
                 }
               }
@@ -197,7 +203,7 @@ function runPart(part: SearchPart, isVocab: boolean, env: RunEnv, out: Candidate
           resume(ms + 1);
           continue;
         }
-        if (isVocab && env.allowTerms.length > 0 && spanAllowed(text.slice(spanStart, spanEnd), env.allowTerms)) {
+        if (isVocab && env.allowTerms.length > 0 && spanAllowed(text.slice(spanStart, spanEnd), keyFrom >= 0 ? text.slice(keyFrom, keyTo) : null, env.allowTerms)) {
           resume(ms + 1);
           continue;
         }

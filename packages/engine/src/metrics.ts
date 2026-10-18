@@ -185,7 +185,7 @@ function documentAnchor(m: DocumentMetricMatch, doc: DocContext): Candidate {
       return ui === undefined ? firstSentence() : ofUnit(ui);
     }
     case "bold_per_100_words": {
-      const b = doc.analysis.bold[0];
+      const b = doc.emphasisBold[0];
       if (b === undefined) return firstSentence();
       const seg = doc.segmentAt(b.start);
       let ui = doc.unitAt(b.start);
@@ -212,7 +212,7 @@ export function documentMetricValue(m: DocumentMetricMatch, doc: DocContext): nu
     case "headers_per_100_words":
       return words === 0 ? null : (doc.headingCount / words) * 100;
     case "bold_per_100_words":
-      return words === 0 ? null : (doc.analysis.bold.length / words) * 100;
+      return words === 0 ? null : (doc.emphasisBold.length / words) * 100;
     case "bullet_ratio": {
       const items = sentences.filter((s) => s.kind === "list_item" && s.words >= m.minItemWords).length;
       return items / sentences.length;

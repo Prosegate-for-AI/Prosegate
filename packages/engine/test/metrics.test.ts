@@ -183,7 +183,7 @@ describe("document metrics (values)", () => {
   });
 
   it("bold_per_100_words counts bold spans over prose words", () => {
-    expect(docValue(`**one** and **two** ${words(97)}.`, "bold_per_100_words")).toBeCloseTo(2.0, 10);
+    expect(docValue(`Some **one** and **two** ${words(96)}.`, "bold_per_100_words")).toBeCloseTo(2.0, 10);
   });
 
   it("closing_similarity: first non-heading paragraph vs last non-heading block, headings skipped", () => {

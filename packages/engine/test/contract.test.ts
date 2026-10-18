@@ -100,11 +100,21 @@ describe("recall variants of ADR-24", () => {
 
 describe("allow_terms inside a span (conformance #3)", () => {
   const allow = (...terms: string[]) => profile("local/base", (r) => ({ ...r, allow_terms: terms }));
-  it("a term that equals a word-bounded token or phrase inside the span exempts it", () => {
-    expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("landscape") })).toEqual([]);
-    expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("current landscape") })).toEqual([]);
+  it("a term that equals the whole span (less a leading determiner) or the rule's key word exempts it (ADR-26)", () => {
+    expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("landscape") })).toEqual([]); // the key word
+    expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("current landscape") })).toEqual([]); // whole span, determiner ignored
     expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("the current landscape") })).toEqual([]);
-    expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("current") })).toEqual([]);
+    expect(only("A wide range of options.", "core.vocab.005", { profile: allow("wide range of") })).toEqual([]);
+    expect(only("This is a paradigm shift.", "core.vocab.002", { profile: allow("paradigm shift") })).toEqual([]);
+  });
+
+  it("a word inside the span is not enough: security does not exempt the evolving security landscape, a does not exempt a number of", () => {
+    expect(only("The evolving security landscape of tools.", "core.vocab.002", { profile: allow("security") })).toHaveLength(1);
+    expect(only("The evolving security landscape of tools.", "core.vocab.002", { profile: allow("evolving") })).toHaveLength(1);
+    expect(only("The evolving security landscape of tools.", "core.vocab.002", { profile: allow("landscape") })).toEqual([]);
+    expect(only("There are a number of options.", "core.vocab.005", { profile: allow("a") })).toHaveLength(1);
+    expect(only("There are a number of options.", "core.vocab.005", { profile: allow("number") })).toHaveLength(1);
+    expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("current") })).toHaveLength(1);
   });
 
   it("a partial word, a different word or another order does not", () => {
@@ -112,7 +122,8 @@ describe("allow_terms inside a span (conformance #3)", () => {
     expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("landscaping") })).toHaveLength(1);
     expect(only("The current landscape of tools.", "core.vocab.002", { profile: allow("landscape current") })).toHaveLength(1);
     expect(only("A robustness test.", "core.vocab.003", { profile: allow("robust") })).toEqual([]); // not matched at all
-    expect(only("A cutting-edge test.", "core.vocab.003", { profile: allow("cutting") })).toHaveLength(1); // a hyphenated word is one token
+    expect(only("A cutting-edge test.", "core.vocab.003", { profile: allow("cutting") })).toHaveLength(1);
+    expect(only("A cutting-edge test.", "core.vocab.003", { profile: allow("cutting-edge") })).toEqual([]);
   });
 
   it("only vocab rules are exempted", () => {
@@ -387,12 +398,12 @@ describe("the stop list is pinned (witness X02)", () => {
 });
 
 describe("ids and the engine agree with the schema (ADR-23)", () => {
-  it("a finding's id is findingId(category, rule_id, span.text), and '' for document scope", () => {
+  it("a finding's id is findingId(category, rule_id, normalised span key), and '' for document scope", () => {
     const r = run("It's worth noting that the plan works.\n\n- a\n- b\n- c\n- d\n\nok", {
       packs: [CORE_COMPILED, packOf(ruleYaml("core.structure.003", "{ kind: document_metric, metric: sentence_length_cv, below: 9, min_sentences: 1 }"))],
     });
     for (const f of r.diagnostics.all_findings) {
-      expect(f.id).toBe(findingId(f.category, f.rule_id, f.scope === "document" ? "" : f.span.text));
+      expect(f.id).toBe(findingId(f.category, f.rule_id, f.scope === "document" ? "" : f.span.text.toLowerCase().replace(/\s+/g, " ").trim()));
     }
     expect(r.diagnostics.all_findings.some((f) => f.scope === "document")).toBe(true);
   });

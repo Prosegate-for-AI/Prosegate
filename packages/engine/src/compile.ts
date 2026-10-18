@@ -41,6 +41,8 @@ export interface SearchPart {
   readonly re: RE2JS;
   /** Index of the `span` group in `re`, or 0 for the whole match. */
   readonly spanGroup: number;
+  /** Index of the `key` group (the rule's key word for allow_terms, ADR-26), or 0 for none. */
+  readonly keyGroup: number;
   /** Check a word boundary in JS before the match's first / after its last character. */
   readonly checkLead: boolean;
   readonly checkTrail: boolean;
@@ -128,10 +130,24 @@ export function whitespaceRuns(pattern: string): string {
   let inClass = false;
   for (let i = 0; i < pattern.length; i++) {
     const c = pattern[i] as string;
-    if (c === "\\") {
+    if (c === "\\" && pattern[i + 1] === "Q") {
+      // a \Q...\E span is literal text: copied as it is
+      const end = pattern.indexOf("\\E", i + 2);
+      const stop = end === -1 ? pattern.length : end + 2;
+      out += pattern.slice(i, stop);
+      i = stop - 1;
+    } else if (c === "\\") {
       out += c + (pattern[i + 1] ?? "");
       i++;
     } else if (inClass) {
+      if (c === "[" && pattern[i + 1] === ":") {
+        // a POSIX class such as [:alpha:] inside a bracket expression
+        const end = pattern.indexOf(":]", i + 2);
+        const stop = end === -1 ? pattern.length : end + 2;
+        out += pattern.slice(i, stop);
+        i = stop - 1;
+        continue;
+      }
       if (c === "]") inClass = false;
       out += c;
     } else if (c === "[") {
@@ -256,7 +272,7 @@ function compilePart(part: PartInput, ruleId: string, packId: string): SearchPar
       return r;
     };
     const word = part.boundary === "word";
-    return { kind: "search", source: "phrase", re, spanGroup: 0, checkLead: word, checkTrail: word, phrases: list, sticky, strict: () => null, filters };
+    return { kind: "search", source: "phrase", re, spanGroup: 0, keyGroup: 0, checkLead: word, checkTrail: word, phrases: list, sticky, strict: () => null, filters };
   }
   const { source, lead, trail } = stripOuterBoundaries(whitespaceRuns(part.pattern));
   const re = compileRe2(source, ruleId, "pattern", packId);
@@ -267,6 +283,7 @@ function compilePart(part: PartInput, ruleId: string, packId: string): SearchPar
     source: "regex",
     re,
     spanGroup: group ?? 0,
+    keyGroup: re.namedGroups()["key"] ?? 0,
     checkLead: lead,
     checkTrail: trail,
     phrases: null,

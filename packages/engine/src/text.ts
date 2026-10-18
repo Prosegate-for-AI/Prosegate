@@ -228,27 +228,19 @@ export function makeAllowTerm(normalised: string): AllowTerm {
   return { text, tokens: wordTokens(text) };
 }
 
+/** A leading determiner that does not count when an allowed term is compared with a span. */
+const LEADING_DETERMINER = /^(?:the|this|a|an|today's) /;
+
 /**
- * True when an allowed term equals the whole span, or equals a run of whole word tokens inside it
- * (so "landscape" exempts "the current landscape", and "robust" does not exempt "robustness").
+ * True when an allowed term equals the whole span (ignoring a leading the / this / a / an / today's) or the
+ * rule's key word: the named `key` group when the pattern has one, else the matched phrase itself, which
+ * for a rule with a `span` group is that group (ADR-26). So "landscape" exempts "the current landscape"
+ * (its key word), "security" does not exempt "the evolving security landscape", and "a" does not exempt
+ * "a number of".
  */
-export function spanAllowed(span: string, terms: readonly AllowTerm[]): boolean {
+export function spanAllowed(span: string, key: string | null, terms: readonly AllowTerm[]): boolean {
   const whole = squashSpace(span.toLowerCase());
-  if (terms.some((t) => t.text === whole)) return true;
-  const tokens = wordTokens(span);
-  for (const t of terms) {
-    const n = t.tokens.length;
-    if (n === 0 || n > tokens.length) continue;
-    for (let i = 0; i + n <= tokens.length; i++) {
-      let same = true;
-      for (let k = 0; k < n; k++) {
-        if (tokens[i + k] !== t.tokens[k]) {
-          same = false;
-          break;
-        }
-      }
-      if (same) return true;
-    }
-  }
-  return false;
+  const candidates = [whole, whole.replace(LEADING_DETERMINER, "")];
+  if (key !== null) candidates.push(squashSpace(key.toLowerCase()));
+  return terms.some((t) => t.text.length > 0 && candidates.includes(t.text));
 }
