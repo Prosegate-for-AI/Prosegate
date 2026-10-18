@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -189,6 +189,19 @@ describe("fail open (05)", () => {
     expect(logText()).toContain("shim_timeout Stop over 7.5 s");
   }, 20_000);
 
+  it("the 7.5 s counts from the process start, not from when the launcher began to run (L7): a slow Node start does not push the answer past 8.5 s", () => {
+    const slow = join(tmpDir("pg-slow-"), "slow-start.cjs");
+    // Runs before any user code: a 1.2 s busy wait, as a slow disk or a virus scanner makes of a cold Node start.
+    writeFileSync(slow, "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1200);\n");
+    const { cc } = stubbed({}, { STUB_MODE: "hang", NODE_OPTIONS: `--require "${slow.replace(/\\/g, "/")}"` });
+    const t0 = performance.now();
+    const r = cc.stop("x");
+    const took = performance.now() - t0;
+    expect(r).toMatchObject({ code: 0, json: line(cc, "it took too long") });
+    expect(took).toBeGreaterThanOrEqual(7000);
+    expect(took).toBeLessThanOrEqual(8500);
+  }, 20_000);
+
   it("a stdin that never closes does not hold the hook: the watchdog is live while the input is read, same window", async () => {
     const { cc } = stubbed({});
     const t0 = performance.now();
@@ -242,11 +255,17 @@ describe("the launcher and a missing version (ADR-33)", () => {
   });
 
   it("--use rejects '.', '..' and anything with a separator (L5): the same line, and nothing is read outside app/", () => {
-    const { cc } = stubbed({});
+    const { cc } = stubbed({}, { STUB_MODE: "home" });
+    // Decoys: a complete version laid out where "." (the app directory) and ".." (the Prosegate home) would point, so a
+    // launcher that accepted those names would run it instead of reporting the version missing.
+    for (const dir of [join(cc.home, "app"), cc.home]) {
+      cpSync(join(cc.home, "app", "1.0.0", "dist"), join(dir, "dist"), { recursive: true });
+      cpSync(join(cc.home, "app", "1.0.0", "shims"), join(dir, "shims"), { recursive: true });
+    }
     for (const bad of ["..", ".", "a/b", "a\\b", "../app", ".hidden"]) {
       expect(cc.sessionStart("startup", [`--use=${bad}`]).json, bad).toEqual(line(cc, MISSING, SESSION_WHAT));
     }
-    expect(cc.sessionStart("startup", ["--use=1.0.0"]).json).toBeNull();
+    expect(cc.sessionStart("startup", ["--use=1.0.0"]).json).toEqual({ home: cc.home });
   });
 
   it("an upgrade swaps the version the launcher runs without the registration changing", () => {
