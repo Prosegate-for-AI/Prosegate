@@ -6,6 +6,16 @@ Twenty-three deterministic rules across six categories, each with a hit and a mi
 
 Conventions (ADR-15): all matching is case-insensitive on the normalised text (curly quotes and NBSP-class spaces folded); phrase matches are word-bounded at word-character edges only; regexes are RE2, written lowercase, and the span is the named group `(?P<span>…)` if present, else the whole match. Rules that list both phrases and a regex use match kind `any`. `allow_terms` in the profile exempt any `vocab` match. Instruction text is what the model sees verbatim.
 
+**Additions after the realistic false-positive and recall reviews** (ADR-24, ADR-26). These are in the shipped `core.yaml`, which is normative for phrase lists; ids, severities and instruction texts below are unchanged.
+- filler.001 (sentence-initial): that's a great question, good question, excellent question, really good question, good catch, you're absolutely right, of course!, sure!, happy to help, certainly., absolutely.
+- filler.002 (closing): let me know if you have any other questions, let me know if you'd like, hope that helps, i hope that helps, hopefully this helps, feel free to ask.
+- filler.003: "in this response" and "the following is" match at sentence start only.
+- filler.004 (sentence-initial, short documents): in short, to sum up, in a nutshell, simply put, the bottom line is.
+- hedge.001: it's also worth noting; please note that, keep in mind that and it's important to remember (sentence-initial).
+- hedge.003: notably, and interestingly, (sentence-initial). hedge.004: can potentially.
+- vocab.001: we'll/you'll/they'll/then before "leverage"; empowers. vocab.002: up to two words between the determiner and "landscape"; silver bullet. vocab.003: blazing-fast. vocab.005: a wide array of, numerous.
+- triad.001: words may be hyphenated. triad.002: "; " and an em dash as separators; "not only … but also" without a comma.
+
 ### filler
 
 | ID | Match | Hit | Miss | Severity | Instruction |

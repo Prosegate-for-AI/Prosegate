@@ -46,7 +46,7 @@ Match kinds, all deterministic and bounded in time:
 | Kind | Fields | Span it produces |
 | --- | --- | --- |
 | `phrase` | `phrases[]`, `boundary: word \| none` (checked only at word-character edges), `case_insensitive` (must be `true` in v0), `position: any \| sentence_start \| closing` (closing = last two sentences), `max_doc_words` (rule inactive above it), `sentence_max_words`, `sentence_exclude` (RE2 pattern; a sentence containing a match is skipped) | The matched phrase |
-| `regex` | `pattern` (RE2 syntax, lowercase: no backreferences, no lookaround), plus the same `position`, `max_doc_words`, `sentence_max_words`, `sentence_exclude` | The named group `(?P<span>…)` if present, else the whole match |
+| `regex` | `pattern` (RE2 syntax, lowercase: no backreferences, no lookaround), plus the same `position`, `max_doc_words`, `sentence_max_words`, `sentence_exclude` | The named group `(?P<span>…)` if present, else the whole match; an optional `(?P<key>…)` group names the word that `allow_terms` compares against (ADR-26) |
 | `any` | `parts[]`: phrase or regex matches (no nesting), each with its own filters | Whichever part matched (ADR-15) |
 | `sentence_metric` | `metric`, `above` or `below`, optional `pattern` | The whole sentence |
 | `document_metric` | `metric`, `above` or `below`, `min_sentences` | The first sentence of the document |
