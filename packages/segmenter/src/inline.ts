@@ -194,7 +194,7 @@ function classifyPiece(text: string, ts: number, te: number, out: Mask[]): void 
 
 /**
  * Masks inside [s, e), sorted by start and non-overlapping: inline code, HTML comments (an unclosed
- * comment runs to the end of the element), URLs, emails and paths. Whichever of code and comment
+ * "<!--" is literal text; a comment that spans a blank line is a code segment, see blocks.ts), URLs, emails and paths. Whichever of code and comment
  * starts first wins; the other is swallowed if it starts inside.
  */
 export function findMasks(text: string, s: number, e: number): Mask[] {
@@ -219,13 +219,19 @@ export function findMasks(text: string, s: number, e: number): Mask[] {
   let pos = s;
   let ci = 0;
   let cm = nextComment(s);
+  const lastClose = seg.lastIndexOf("-->");
   for (;;) {
     const c = code[ci];
     if (cm >= 0 && cm < pos) cm = nextComment(pos);
     if (cm >= 0 && (c === undefined || cm < c.start)) {
+      // An unclosed "<!--" is literal text: it masks nothing.
+      const close = lastClose >= cm + 4 - s ? seg.indexOf("-->", cm + 4 - s) : -1;
+      if (close < 0) {
+        cm = nextComment(cm + 4);
+        continue;
+      }
       tokens(pos, cm);
-      const close = seg.indexOf("-->", cm + 4 - s);
-      const end = close < 0 ? e : s + close + 3;
+      const end = s + close + 3;
       out.push({ start: cm, end, kind: "html_comment" });
       pos = end;
       while (ci < code.length && (code[ci] as Span).start < pos) ci++;
@@ -300,13 +306,25 @@ const SEP = "[\\s,:;\\u2014\\u2013-]";
 /** Up to `n` filler words between the cue and the quote, then the quote's opening mark. */
 const filler = (n: number): string => `(?:${SEP}+\\p{L}[\\p{L}\\p{N}'\\u2019]*){0,${n}}${SEP}*$`;
 
-/** Cues that attribute words to the user (or to a label standing for the user's message). */
+/**
+ * Cues that attribute words to the user (or to a label standing for the user's message). "you want(ed)"
+ * is not here: it is a cue only when the quote follows it directly (CUE_WANT).
+ */
 const USER_CUES =
-  String.raw`(?:you(?:['’]ve| have)? (?:said|wrote|asked(?: for| me to)?|mentioned|requested|put it|noted|want(?:ed)?|told me)` +
-  String.raw`|when you say|the user (?:said|wrote|asked)|your (?:message|request|ticket|note) (?:says|said|reads)` +
-  String.raw`|in your words|your (?:request|words)|quoting you)`;
+  String.raw`(?:you(?:['’]ve| have)? (?:said|wrote|asked(?: for| me to)?|mentioned|requested|put it|noted|told me|used the (?:word|term|phrase)|called (?:it|this|that)|described (?:it|this|that) as)` +
+  String.raw`|you(?:['’]re| are) asking for|when you say|the user (?:said|wrote|asked|wants?|wanted)` +
+  String.raw`|your (?:message|request|ticket|note|(?:original )?(?:prompt|message|request)) (?:says|said|reads|asked for)` +
+  String.raw`|in your words|your (?:request|words|phrase|wording|original (?:message|prompt|request))|quoting (?:you|your (?:message|request|prompt))|from your (?:original )?(?:message|request|prompt))`;
 const CUE_USER_3 = new RegExp(`\\b${USER_CUES}\\b${filler(3)}`, "iu");
 const CUE_USER_6 = new RegExp(`\\b${USER_CUES}\\b${filler(6)}`, "iu");
+/** "you want" / "you wanted" attributes only when the quote comes right after it. */
+const CUE_WANT = new RegExp(`\\byou(?:['\\u2019]ve| have)? want(?:ed)?${SEP}*$`, "iu");
+/** Phrases offering a draft or an example: what follows is the model's own wording, whoever the cue names. */
+const DRAFT_RE =
+  /\b(?:you (?:could|might|can|may) (?:write|say|reply|respond|try|put)|something like|for (?:example|instance)|e\.g\.|here is|here's|here are|draft:|suggested (?:reply|response|wording|text))/i;
+const CUE_BY_MEAN_BEFORE = /\bby\s*$/i;
+const CUE_BY_MEAN_AFTER = /^\s*,?\s*you mean\b/i;
+
 const CUE_ACCORDING = new RegExp(
   `\\b[Aa]ccording to\\s+(?:${NAME_TOKEN}|[Tt]he (?:docs|documentation|spec|RFC|README|error(?: message)?)\\b)` +
     `(?:[\\s,]+(?:${NAME_TOKEN}|and|of|the|de|van|von|et\\s+al\\.?))*${SEP}*$`,
@@ -317,7 +335,7 @@ const CUE_PUTS_IT = new RegExp(`\\bas\\s+(?:${PUT_TOKEN}\\s+){1,4}?puts?\\s+it\\
 const CUE_VERB = new RegExp(`\\b(says?|said|states?|writes?|wrote|notes?|reads?)\\b${filler(3)}`, "giu");
 /** Non-third-person verb forms only attribute with a docs-like subject ("the docs say"). */
 const PLURAL_VERBS = new Set(["say", "state", "write", "note", "read"]);
-const SUBJECT_DOCS = /\bthe\s+(?:docs|documentation|spec|specification|RFC|README|error(?:\s+message)?)\s+$/i;
+const SUBJECT_DOCS = /\bthe\s+(?:docs|documentation|spec|specification|RFC|README|error(?:\s+message)?|issue|ticket)\s+$/i;
 const SUBJECT_POSSESSIVE_DOCS = new RegExp("\\p{Lu}[\\p{L}\\p{N}]*['\\u2019]s\\s+(?:docs|documentation|README|guide|spec)\\s+$", "u");
 const SUBJECT_NAME = new RegExp(`((?:${NAME_TOKEN}\\s+){0,3}${NAME_TOKEN})\\s+$`, "u");
 const AFTER_DASH = new RegExp(
@@ -354,6 +372,10 @@ function namedSubject(pre: string): boolean {
  */
 function cueBefore(before: string, quoteWords: number): boolean {
   const b = before.replace(/[*_([]+$/, ""); // an opener right after ** * _ or ( still follows the cue
+  // An offered draft ("you could write", "here is", "for example"...) in the same sentence cancels the cue.
+  const sentence = b.split(/[.!?]\s+/).pop() as string;
+  if (DRAFT_RE.test(sentence)) return false;
+  if (CUE_WANT.test(b)) return true;
   if (quoteWords < 3) return CUE_USER_3.test(b);
   if (CUE_USER_6.test(b) || CUE_ACCORDING.test(b) || CUE_PUTS_IT.test(b)) return true;
   CUE_VERB.lastIndex = 0;
@@ -372,12 +394,20 @@ function cueBefore(before: string, quoteWords: number): boolean {
 
 /** Does the element [s, e) end with a cue and a colon ("You asked:", "The docs say:")? */
 export function endsWithCueLine(text: string, s: number, e: number): boolean {
-  if (e <= s || text.charCodeAt(e - 1) !== 58) return false;
-  return cueBefore(text.slice(Math.max(s, e - 160), e), 3);
+  let end = e;
+  while (end > s && (text.charCodeAt(end - 1) === 42 || text.charCodeAt(end - 1) === 95)) end--; // **You asked:**
+  if (end <= s || text.charCodeAt(end - 1) !== 58) return false;
+  return cueBefore(text.slice(Math.max(s, end - 160), end), 3);
 }
 
 /** Is everything after `from` up to `e` closing punctuation or whitespace? */
 export function onlyTrailingPunctuation(text: string, from: number, e: number): boolean {
+  // optional parenthetical commentary after the quote: "fix it" (from your first message)
+  const paren = text.indexOf("(", from);
+  if (paren >= from && paren < e) {
+    const close = text.lastIndexOf(")", e - 1);
+    if (close > paren && onlyTrailingPunctuation(text, from, paren) && !text.slice(paren + 1, close).includes("\n\n") && onlyTrailingPunctuation(text, close + 1, e)) return true;
+  }
   for (let k = from; k < e; k++) {
     const c = text.charCodeAt(k);
     if (!(isWs(c) || c === 46 || c === 44 || c === 59 || c === 58 || c === 33 || c === 63 || c === 41 || c === 93 || c === 42 || c === 95)) {
@@ -521,10 +551,15 @@ export function findQuotes(text: string, s: number, e: number, masks: Mask[], cu
     }
     const words = countWords(text.slice(i + 1, close));
     if (words >= 1) {
-      let accept = cueLine && i === s && onlyTrailingPunctuation(text, close + 1, e);
+      let lead = s;
+      while (lead < i && (text.charCodeAt(lead) === 42 || text.charCodeAt(lead) === 95)) lead++; // **"quoted"**
+      let accept = cueLine && lead === i && onlyTrailingPunctuation(text, close + 1, e);
       if (!accept) {
         const before = text.slice(Math.max(s, i - 160), i);
-        accept = cueBefore(before, words) || (words >= 3 && cueAfter(text, close + 1, e));
+        accept =
+          cueBefore(before, words) ||
+          (words >= 3 && cueAfter(text, close + 1, e)) ||
+          (CUE_BY_MEAN_BEFORE.test(before) && CUE_BY_MEAN_AFTER.test(text.slice(close + 1, Math.min(e, close + 40))));
       }
       if (accept) out.push({ start: i, end: close + 1 });
     }

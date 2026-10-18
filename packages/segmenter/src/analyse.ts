@@ -6,7 +6,7 @@
 
 import type { Segment, SegmentKind } from "@prosegate/schema";
 import { type ProseBlock, type ProseLine, scanBlocks } from "./blocks.js";
-import { endsWithCueLine, findBold, findMasks, findQuotes, onlyTrailingPunctuation } from "./inline.js";
+import { endsWithCueLine, findBold, findMasks, findQuotes } from "./inline.js";
 import { LANGUAGE_MIN_WORDS, decideLanguage, languageStats } from "./language.js";
 import { isBlankRange, skipWs, splitLines, trimEnd } from "./lines.js";
 import { splitSentences } from "./sentences.js";
@@ -91,7 +91,7 @@ function outermost(spans: Span[]): Span[] {
   const out: Span[] = [];
   let lastEnd = -1;
   for (const sp of spans) {
-    if (sp.end <= lastEnd) continue;
+    if (sp.start < lastEnd) continue; // nested or crossing: only the first opened span counts
     out.push(sp);
     lastEnd = sp.end;
   }
@@ -100,11 +100,46 @@ function outermost(spans: Span[]): Span[] {
 
 const WORD_CHAR_RE = /^[\p{L}\p{N}]$/u;
 
-/** Offset of the first word character in [from, to): skips markers, quotes, brackets, emoji and symbols. */
-function firstWordChar(text: string, from: number, to: number): number {
+/**
+ * Offset of the first word character in [from, to): skips markers, quotes, brackets, emoji and symbols,
+ * and anything that is not prose text: masks (inline code, URLs, comments, ...), Markdown images
+ * ![alt](src) and keycap emoji (1\uFE0F\u20E3). `mp` is a forward-only index into the sorted `masks`.
+ * If the unit has no word character outside those, the first word character anywhere is returned.
+ */
+function firstWordChar(text: string, from: number, to: number, masks: Mask[], mp: { i: number }): number {
+  while (mp.i < masks.length && (masks[mp.i] as Mask).end <= from) mp.i++;
+  let m = mp.i;
   let i = from;
   while (i < to) {
+    while (m < masks.length && (masks[m] as Mask).end <= i) m++;
+    const mk = masks[m];
+    if (mk !== undefined && mk.start <= i) {
+      i = mk.end;
+      continue;
+    }
     const c = text.charCodeAt(i);
+    if (c === 33 && text.charCodeAt(i + 1) === 91) {
+      // ![alt](src)
+      let j = i + 2;
+      while (j + 1 < to && !(text.charCodeAt(j) === 93 && text.charCodeAt(j + 1) === 40)) j++;
+      let k = j + 2;
+      while (j + 1 < to && k < to && text.charCodeAt(k) !== 41) k++;
+      if (j + 1 < to && k < to) {
+        i = k + 1;
+        continue;
+      }
+    }
+    if ((c >= 48 && c <= 57) || c === 35 || c === 42) {
+      const n1 = text.charCodeAt(i + 1);
+      if (n1 === 0x20e3) {
+        i += 2;
+        continue;
+      }
+      if (n1 === 0xfe0f && text.charCodeAt(i + 2) === 0x20e3) {
+        i += 3;
+        continue;
+      }
+    }
     if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) return i;
     if (c >= 128) {
       const cp = text.codePointAt(i) as number;
@@ -113,6 +148,14 @@ function firstWordChar(text: string, from: number, to: number): number {
     } else {
       i++;
     }
+  }
+  // Nothing outside masks: fall back to the first word character anywhere in the unit.
+  for (let p = from; p < to; ) {
+    const c = text.charCodeAt(p);
+    if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) return p;
+    const cp = text.codePointAt(p) as number;
+    if (c >= 128 && WORD_CHAR_RE.test(String.fromCodePoint(cp))) return p;
+    p += cp > 0xffff ? 2 : 1;
   }
   return from;
 }
@@ -140,28 +183,31 @@ export function analyse(text: string): Analysis {
   let idCounter = 0;
   const nextId = (): number => ++idCounter;
   /** The previous element ended in an attribution cue and a colon: a following whole-element quote is attributed. */
-  let cueCarry = false;
+  let cueCarry: { key: string | null } | null = null;
 
   const processProse = (b: ProseBlock): void => {
     const firstDraft = drafts.length;
     const quotesAll: Span[] = [];
     for (const el of buildElements(b.lines, nextId)) {
       const elMasks = findMasks(text, el.s, el.e);
-      const cueLine = cueCarry && el.kind !== "heading";
+      // The carry covers the first list or paragraph after the cue line, and nothing after that.
+      if (cueCarry !== null && cueCarry.key === null) cueCarry.key = el.key;
+      if (cueCarry !== null && (cueCarry.key !== el.key || el.kind === "heading")) cueCarry = null;
+      const cueLine = cueCarry !== null;
       const quotes = el.kind === "heading" ? [] : findQuotes(text, el.s, el.e, elMasks, cueLine);
       const keptMasks = outside(elMasks, quotes);
       for (const m of keptMasks) masks.push(m);
       const spans = findBold(text, el.s, el.e, elMasks).sort((x, y) => x.start - y.start || y.end - x.end);
       for (const bs of outermost(outside(spans, quotes))) bold.push(bs);
       for (const q of quotes) quotesAll.push(q);
-      const whole =
-        cueLine && quotes.length > 0 && (quotes[0] as Span).start === el.s && onlyTrailingPunctuation(text, (quotes[0] as Span).end, el.e);
-      cueCarry = whole && el.kind === "list_item" ? true : el.kind !== "heading" && endsWithCueLine(text, el.s, el.e);
+      if (!cueLine) cueCarry = el.kind !== "heading" && endsWithCueLine(text, el.s, el.e) ? { key: null } : null;
+      else if (el.kind !== "list_item") cueCarry = null; // a paragraph uses up the carry; list items keep it for the rest of the list
 
       const ranges: Array<[number, number]> =
         el.kind === "paragraph" ? splitSentences(text, el.s, el.e, keptMasks, quotes) : [[el.s, el.e]];
       const kind: Unit["kind"] = el.kind === "paragraph" ? "sentence" : el.kind;
       let qi = 0;
+      const maskPtr = { i: 0 };
       for (const [a, c] of ranges) {
         let ps = a;
         let idx = 0;
@@ -174,7 +220,7 @@ export function analyse(text: string): Analysis {
               drafts.push({
                 start: ts,
                 end: te,
-                textStart: firstWordChar(text, ts, te),
+                textStart: firstWordChar(text, ts, te, keptMasks, maskPtr),
                 kind,
                 words,
                 continuation: idx > 0,
@@ -226,7 +272,7 @@ export function analyse(text: string): Analysis {
     if (b.kind === "prose") {
       processProse(b);
     } else {
-      cueCarry = false;
+      cueCarry = null;
       raw.push({ kind: b.kind, s: b.s, e: b.e });
     }
   }

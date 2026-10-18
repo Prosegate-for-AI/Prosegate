@@ -167,8 +167,10 @@ describe("HTML comments are masks", () => {
     expect(masks("Line one <!-- a\nb --> line two.")).toEqual(["html_comment:<!-- a\nb -->"]);
     expect(masks("a <!-- one --> b <!-- two --> c")).toEqual(["html_comment:<!-- one -->", "html_comment:<!-- two -->"]);
   });
-  it("an unclosed comment runs to the end of its paragraph", () => {
-    expect(masks("Text <!-- unclosed comment here.\n\nNext paragraph.")).toEqual(["html_comment:<!-- unclosed comment here."]);
+  it("an unclosed <!-- masks nothing: it is literal text", () => {
+    expect(masks("Text <!-- unclosed comment here.\n\nNext paragraph.")).toEqual([]);
+    expect(masks("a <!-- one --> b <!-- unclosed c")).toEqual(["html_comment:<!-- one -->"]);
+    expect(masks("a <!-- x `code` y")).toEqual(["inline_code:`code`"]);
   });
   it("a comment swallows inline code inside it; code containing <!-- is code", () => {
     expect(masks("a <!-- see `x` here --> b")).toEqual(["html_comment:<!-- see `x` here -->"]);

@@ -1,0 +1,76 @@
+{
+  "text_length": 47,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 9,
+      "head": "1. Run:\n\n"
+    },
+    {
+      "id": "s2",
+      "kind": "code",
+      "start": 9,
+      "end": 33,
+      "head": "        npm i leakword\n\n"
+    },
+    {
+      "id": "s3",
+      "kind": "prose",
+      "start": 33,
+      "end": 47,
+      "head": "2. Next step.\n"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "list_item",
+      "start": 3,
+      "end": 7,
+      "words": 1,
+      "text_start": 3,
+      "continuation": false,
+      "continued": false,
+      "head": "Run:"
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list_item",
+      "start": 36,
+      "end": 46,
+      "words": 2,
+      "text_start": 36,
+      "continuation": false,
+      "continued": false,
+      "head": "Next step."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "list",
+      "block_id": "b1",
+      "start": 3,
+      "end": 7,
+      "unit_indexes": [
+        0
+      ]
+    },
+    {
+      "segment_id": "s3",
+      "kind": "list",
+      "block_id": "b1",
+      "start": 36,
+      "end": 46,
+      "unit_indexes": [
+        1
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 3,
+  "language": "unknown"
+}

@@ -81,7 +81,11 @@ export function checkInvariants(text: string, label = "input"): Analysis {
     if (u.kind === "heading") expect(u.continuation || u.continued).toBe(false);
     expect(u.text_start >= u.start && u.text_start < u.end, `${ctx}: unit ${k} text_start range`).toBe(true);
     expect(/^[\p{L}\p{N}]/u.test(text.slice(u.text_start, u.text_start + 2)), `${ctx}: unit ${k} text_start is a word character`).toBe(true);
-    expect(/[\p{L}\p{N}]/u.test(text.slice(u.start, u.text_start)), `${ctx}: unit ${k} text_start is the first word character`).toBe(false);
+    // Word characters before text_start can only be markup the unit skips (masks, images, keycaps), never plain prose.
+    if (/[\p{L}\p{N}]/u.test(text.slice(u.start, u.text_start))) {
+      const skipped = a.masks.some((m) => m.start >= u.start && m.end <= u.text_start) || /!\[|\u20e3/.test(text.slice(u.start, u.text_start));
+      expect(skipped, `${ctx}: unit ${k} text_start skips real words`).toBe(true);
+    }
     words += u.words;
   });
   expect(a.prose_words, `${ctx}: prose_words`).toBe(words);
@@ -137,6 +141,9 @@ export function checkInvariants(text: string, label = "input"): Analysis {
     const seg = a.segments.find((s) => s.start <= m.start && m.start < s.end);
     expect(seg?.kind, `${ctx}: mask in prose`).toBe("prose");
     expect(m.end <= (seg?.end ?? -1), `${ctx}: mask crosses segment`).toBe(true);
+  }
+  for (let k = 1; k < a.bold.length; k++) {
+    expect((a.bold[k] as { start: number }).start, `${ctx}: bold spans overlap`).toBeGreaterThanOrEqual((a.bold[k - 1] as { end: number }).end);
   }
   for (const b of a.bold) {
     expect(0 <= b.start && b.start < b.end && b.end <= text.length, `${ctx}: bold range`).toBe(true);

@@ -127,6 +127,24 @@ describe("performance", () => {
     expect(ok).toBe(true);
   });
 
+  const foreign: Array<[string, string]> = [
+    ["Cyrillic", "Рабочий сервер упал вчера вечером из-за плохо подготовленной миграции. Мы восстановили базу данных из резервной копии полуночи, а затем по одной повторно выполнили недостающие транзакции. Данные клиентов не были потеряны, но несколько заказов задержались на несколько часов.\n\n- Добавлена повторная попытка с экспоненциальной задержкой\n- Исправлен нестабильный тест\n\n"],
+    ["Greek", "Ο διακομιστής παραγωγής σταμάτησε χθες το βράδυ εξαιτίας μιας κακώς προετοιμασμένης μετάβασης. Επαναφέραμε τη βάση δεδομένων από το αντίγραφο ασφαλείας του μεσονυκτίου και στη συνέχεια εκτελέσαμε ξανά τις συναλλαγές που έλειπαν μία προς μία.\n\n- Προστέθηκε επανάληψη με εκθετική καθυστέρηση\n- Διορθώθηκε ασταθές τεστ\n\n"],
+    ["Polish", "Serwer produkcyjny przestał działać wczoraj wieczorem z powodu źle przygotowanej migracji. Przywróciliśmy bazę danych z kopii zapasowej z północy, a następnie ponownie wykonaliśmy brakujące transakcje jedna po drugiej.\n\n- Dodano ponawianie z wykładniczym opóźnieniem\n- Naprawiono niestabilny test\n\n"],
+  ];
+  for (const [name, unit] of foreign) {
+    it(`${name} text of 2,000 words: p95 <= 5 ms (per-token script counts are not a cost)`, () => {
+      let doc = "";
+      while (analyse(doc).prose_words < 2000) doc += unit;
+      const a = analyse(doc);
+      expect(a.language).toBe("non_en");
+      let r = benchMedianTrial(() => analyse(doc));
+      for (let attempt = 1; attempt < 3 && r.p95 > REALISTIC_P95_BUDGET_MS; attempt++) r = benchMedianTrial(() => analyse(doc));
+      console.log(`PERF ${name} ${doc.length} chars, ${a.prose_words} words: median-trial p50 ${r.p50.toFixed(3)} ms, p95 ${r.p95.toFixed(3)} ms`);
+      expect(r.p95).toBeLessThanOrEqual(REALISTIC_P95_BUDGET_MS);
+    });
+  }
+
   it("normalizeForMatching on the same doc is far below the budget", () => {
     const doc = realisticDoc();
     const r = bench(() => normalizeForMatching(doc), 30, 100);

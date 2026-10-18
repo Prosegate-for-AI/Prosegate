@@ -1,0 +1,105 @@
+{
+  "text_length": 105,
+  "segments": [
+    {
+      "id": "s1",
+      "kind": "prose",
+      "start": 0,
+      "end": 72,
+      "head": "We hired J.P. Morgan and J.K. "
+    },
+    {
+      "id": "s2",
+      "kind": "prose",
+      "start": 72,
+      "end": 105,
+      "head": "Steps: 1. Install it. 2. Run i"
+    }
+  ],
+  "units": [
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 0,
+      "end": 38,
+      "words": 9,
+      "text_start": 0,
+      "continuation": false,
+      "continued": false,
+      "head": "We hired J.P. Morgan and J.K. "
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 39,
+      "end": 52,
+      "words": 3,
+      "text_start": 39,
+      "continuation": false,
+      "continued": false,
+      "head": "Exit code: 1."
+    },
+    {
+      "segment_id": "s1",
+      "kind": "sentence",
+      "start": 53,
+      "end": 70,
+      "words": 3,
+      "text_start": 53,
+      "continuation": false,
+      "continued": false,
+      "head": "The build failed."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 72,
+      "end": 93,
+      "words": 4,
+      "text_start": 72,
+      "continuation": false,
+      "continued": false,
+      "head": "Steps: 1. Install it."
+    },
+    {
+      "segment_id": "s2",
+      "kind": "sentence",
+      "start": 94,
+      "end": 104,
+      "words": 3,
+      "text_start": 94,
+      "continuation": false,
+      "continued": false,
+      "head": "2. Run it."
+    }
+  ],
+  "paragraphs": [
+    {
+      "segment_id": "s1",
+      "kind": "text",
+      "block_id": "b1",
+      "start": 0,
+      "end": 70,
+      "unit_indexes": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "segment_id": "s2",
+      "kind": "text",
+      "block_id": "b2",
+      "start": 72,
+      "end": 104,
+      "unit_indexes": [
+        3,
+        4
+      ]
+    }
+  ],
+  "masks": [],
+  "bold": [],
+  "prose_words": 22,
+  "language": "unknown"
+}

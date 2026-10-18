@@ -131,9 +131,23 @@ describe("Unit.text_start", () => {
     expect(a.units[2]?.text_start).toBe(a.units[2]?.start);
   });
 
-  it("inline code at the start: the first word character may be inside the span", () => {
-    const t = "`npm` is required here.";
-    expect(analyse(t).units[0]?.text_start).toBe(1);
+  it("skips masks: inline code, URLs, HTML comments, images and keycap emoji do not hold the first word", () => {
+    const at = (t: string): string => t.slice(analyse(t).units[0]?.text_start);
+    expect(at("`npm` is required here.")).toBe("is required here.");
+    expect(at("https://example.com/a is the docs page.")).toBe("is the docs page.");
+    expect(at("<!-- note --> Then the plan changed.")).toBe("Then the plan changed.");
+    expect(at("![diagram of the flow](flow.png) shows the flow.")).toBe("shows the flow.");
+    expect(at("1\uFE0F\u20E3 First, install it.")).toBe("First, install it.");
+    expect(at("2\u20E3 Then run it.")).toBe("Then run it.");
+    expect(at("**`a`** b")).toBe("b");
+    expect(at("`a` `b` c d")).toBe("c d");
+  });
+  it("a unit that is only masks falls back to the first word character inside them", () => {
+    expect(analyse("`npm`").units[0]?.text_start).toBe(1);
+    expect(analyse("![alt text](a.png)").units[0]?.text_start).toBe(2);
+  });
+  it("a digit that is not a keycap still counts", () => {
+    expect(analyse("1 apple is here.").units[0]?.text_start).toBe(0);
   });
 
   it("digits count as word characters", () => {

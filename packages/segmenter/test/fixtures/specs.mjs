@@ -1237,4 +1237,54 @@ export const specs = {
     masks: [],
     bold: [],
   },
+
+  // ---- review cycle 2 ----
+
+  "list-indented-code": {
+    segments: [
+      ["prose", "1. Run:"],
+      ["code", "        npm i leakword"],
+      ["prose", "2. Next step."],
+    ],
+    units: [
+      ["list_item", "Run:"],
+      ["list_item", "Next step."],
+    ],
+    paragraphs: [[0], [1]],
+    pblocks: [1, 1],
+    masks: [],
+    bold: [],
+  },
+
+  "comment-block": {
+    segments: [
+      ["prose", "Before."],
+      ["code", "<!-- TODO", "Really. -->"],
+      ["prose", "After."],
+    ],
+    units: [
+      ["sentence", "Before."],
+      ["sentence", "After."],
+    ],
+    paragraphs: [[0], [1]],
+    masks: [],
+    bold: [],
+  },
+
+  "dotted-initials": {
+    segments: [
+      ["prose", "We hired", "build failed."],
+      ["prose", "Steps: 1.", "Run it."],
+    ],
+    units: [
+      ["sentence", "We hired J.P. Morgan and J.K. Rowling."],
+      ["sentence", "Exit code: 1."],
+      ["sentence", "The build failed."],
+      ["sentence", "Steps: 1. Install it."],
+      ["sentence", "2. Run it."],
+    ],
+    paragraphs: [[0, 1, 2], [3, 4]],
+    masks: [],
+    bold: [],
+  },
 };

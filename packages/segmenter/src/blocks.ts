@@ -229,6 +229,18 @@ function quoteHasContent(text: string, pos: number, ce: number): boolean {
   return false;
 }
 
+/** Display column of text[pos], counting from the line start s (tab stops of 4, NBSP as one column, BOM as zero). */
+function columnOf(text: string, s: number, pos: number): number {
+  let col = 0;
+  for (let i = s; i < pos; i++) {
+    const c = text.charCodeAt(i);
+    if (c === TAB) col += 4 - (col % 4);
+    else if (c === 0xfeff && i === 0) continue;
+    else col++;
+  }
+  return col;
+}
+
 function isFrontMatterOpener(text: string, line: Line): boolean {
   return text.slice(line.s, line.ce).replace(/^\uFEFF/, "").trimEnd() === "---";
 }
@@ -240,6 +252,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
   const st: { prose: ProseBlock | null; paraStart: number } = { prose: null, paraStart: -1 };
   let listActive = false;
   let runId = 0;
+  let itemCol = 0; // content column of the latest list item: indented code inside a list sits 4 beyond it
   let prevBlank = true;
 
   const closeProse = (): void => {
@@ -260,21 +273,42 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
 
   let i = 0;
 
-  // YAML front matter: "---" on the first line, a key or comment on the next, closed by "---" or "...".
+  // For block-level HTML comments that span a blank line: blank-line prefix counts, the cached first "-->",
+  // and a line lookup by offset (all O(1) or O(log n) per probe, so a pile of "<!--" lines stays linear).
+  const blankPrefix = new Int32Array(n + 1);
+  for (let k = 0; k < n; k++) {
+    const Lk = lines[k] as Line;
+    blankPrefix[k + 1] = (blankPrefix[k] as number) + (isBlankRange(text, Lk.s, Lk.ce) ? 1 : 0);
+  }
+  let closeAt = -2;
+  const lineOf = (pos: number): number => {
+    let lo = 0;
+    let hi = n - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if ((lines[mid] as Line).s <= pos) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  };
+
+  // YAML front matter: "---" on the first line, then only YAML-looking lines (a "key:" line, a "- item", an
+  // indented continuation or a comment) with no blank line, closed by "---" or "...". Anything else is a rule.
   const first = lines[0];
   if (first !== undefined && isFrontMatterOpener(text, first)) {
-    const second = lines[1];
-    if (second !== undefined && /^(?:#|[A-Za-z_][\w.-]*[ \t]*:)/.test(text.slice(skipWs(text, second.s, second.ce), second.ce))) {
-      for (let j = 1; j < n; j++) {
-        const M = lines[j] as Line;
-        const body = text.slice(M.s, M.ce).trimEnd();
-        if (body === "---" || body === "...") {
+    for (let j = 1; j < n; j++) {
+      const M = lines[j] as Line;
+      const body = text.slice(M.s, M.ce).trimEnd();
+      if (body === "---" || body === "...") {
+        if (j > 1) {
           blocks.push({ kind: "code", s: first.s, e: M.ce });
           prevBlank = false;
           i = j + 1;
-          break;
         }
+        break;
       }
+      if (j === 1 && !/^(?:#|[A-Za-z0-9_-]+:(?:[ \t]|$))/.test(body)) break;
+      if (!/^(?:#|[A-Za-z0-9_-]+:(?:[ \t]|$)|[ \t]+\S|-[ \t])/.test(body)) break; // blank lines and prose fail here
     }
   }
 
@@ -299,10 +333,28 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
 
     const inLikeTop = indent < 4 || listActive;
 
+    // 0a. an HTML comment that starts a line and spans a blank line: one non-prose block, closing line included.
+    //     (A comment inside one paragraph is a mask instead; an unclosed "<!--" is just text.)
+    if (inLikeTop && text.startsWith("<!--", pos)) {
+      const from = pos + 4;
+      if (closeAt === -2 || (closeAt >= 0 && closeAt < from)) closeAt = text.indexOf("-->", from);
+      if (closeAt >= from) {
+        const endLine = lineOf(closeAt);
+        if ((blankPrefix[endLine + 1] as number) - (blankPrefix[i] as number) > 0) {
+          closeProse();
+          blocks.push({ kind: "code", s: L.s, e: (lines[endLine] as Line).ce });
+          prevBlank = false;
+          i = endLine + 1;
+          continue;
+        }
+      }
+    }
+
     // 0. a fence opener as the first content of a list item: the marker stays prose, the code starts at the fence
     const markerFence = lm !== null && lm.cs < L.ce ? fenceOpen(text, lm.cs, L.ce) : null;
     if (lm !== null && markerFence !== null) {
       if (!listActive) runId++;
+      itemCol = columnOf(text, L.s, lm.cs);
       pushLine({ s: L.s, ce: lm.cs, kind: "li", cs: lm.cs, cend: lm.cs, run: runId });
       closeProse();
       listActive = true;
@@ -338,8 +390,12 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
       continue;
     }
 
-    // 2. indented code
-    if (indent >= 4 && !listActive && (prevBlank || st.prose === null || lk === "h" || lk === "hr" || lk === "su")) {
+    // 2. indented code (inside a list: 4+ columns beyond the item's content column, after a blank line)
+    const codeIndent = listActive ? itemCol + 4 : 4;
+    if (
+      indent >= codeIndent &&
+      (listActive ? prevBlank : prevBlank || st.prose === null || lk === "h" || lk === "hr" || lk === "su")
+    ) {
       closeProse();
       let j = i + 1;
       let lastNonBlank = i;
@@ -349,7 +405,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
           j++;
           continue;
         }
-        if (indentOf(text, M.s, M.ce).indent < 4) break;
+        if (indentOf(text, M.s, M.ce).indent < codeIndent) break;
         lastNonBlank = j;
         j++;
       }
@@ -443,6 +499,7 @@ export function scanBlocks(text: string, lines: Line[]): Block[] {
     // 8. list item
     if (lm !== null) {
       if (!listActive) runId++;
+      itemCol = columnOf(text, L.s, lm.cs);
       pushLine({ s: L.s, ce: L.ce, kind: "li", cs: lm.cs, cend: trimEnd(text, lm.cs, L.ce), run: runId });
       st.paraStart = -1;
       listActive = true;
