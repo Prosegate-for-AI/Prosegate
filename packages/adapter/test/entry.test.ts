@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { CLEAN_TEXT, SESSION, TIC_TEXT, WARN_TEXT, buildBundle, json, pg, sessionStartInput, testHooks, tmpDir, turnEndInput } from "./helpers.js";
+import { CLEAN_TEXT, SESSION, TIC_TEXT, WARN_TEXT, buildBundle, cleanEnv, json, pg, sessionStartInput, testHooks, tmpDir, turnEndInput } from "./helpers.js";
 
 // Subprocess tests over the built bundle: every exit-code path, with fresh processes (05). The release
 // bundle is used unless a test needs fault injection, which only a test build has (ADR-29).
@@ -263,7 +263,7 @@ describe("fail open (05)", () => {
 
   it("a stdin that never closes is abandoned after the wait, exit 1", async () => {
     const home = tmpDir();
-    const child = spawn(process.execPath, [bundle, "turn-end"], { env: { ...process.env, PROSEGATE_HOME: home }, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [bundle, "turn-end"], { env: cleanEnv(home), stdio: ["pipe", "pipe", "pipe"] });
     let stderr = "";
     child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
     const code = await new Promise<number | null>((resolve) => child.on("close", resolve));
@@ -442,14 +442,14 @@ describe("--debug (07, ADR-30)", () => {
 });
 
 describe("the CLI surface", () => {
-  it("prints the version and the help (80 columns, no init) without touching the store", () => {
+  it("prints the version and the help (80 columns) without touching the store", () => {
     const home = tmpDir();
     expect(pg(bundle, ["--version"], { home }).stdout).toMatch(/^\S+\n$/);
     const help = pg(bundle, ["--help"], { home });
     expect(help.code).toBe(0);
     expect(help.stdout).toContain("rule off <id>    switch one rule off in every session");
     expect(help.stdout).toContain("a command typed after ! counts as the agent");
-    expect(help.stdout).not.toMatch(/\binit\b/);
+    expect(help.stdout).toContain("init --harness claude-code");
     for (const line of help.stdout.split("\n")) expect(line.length, line).toBeLessThanOrEqual(80);
     expect(existsSync(join(home, "sessions"))).toBe(false);
   });
@@ -474,8 +474,8 @@ describe("the CLI surface", () => {
     for (const name of ["toString", "__proto__", "hasOwnProperty"]) expect(pg(bundle, [name], { home }).stderr).toContain("unknown command");
   });
 
-  it("init says it is not available yet and exits 1", () => {
-    const r = pg(bundle, ["init"], { home: tmpDir() });
-    expect(r).toMatchObject({ code: 1, stdout: "", stderr: "prosegate init is not available in this build yet.\n" });
+  it("init without --harness prints the usage and exits 1, and installs nothing", () => {
+    const r = pg(bundle, ["init"], { home: tmpDir(), env: { PROSEGATE_CLAUDE_HOME: tmpDir() } });
+    expect(r).toMatchObject({ code: 1, stdout: "", stderr: "Prosegate: say which tool to set up, for example: prosegate init --harness claude-code\n" });
   });
 });

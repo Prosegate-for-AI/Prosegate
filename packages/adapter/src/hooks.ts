@@ -28,7 +28,7 @@ import {
   profileUpdate,
   resolveAndLoad,
 } from "./profiles.js";
-import { buildTurnReport } from "./report.js";
+import { buildTurnReport, summaryLine } from "./report.js";
 import type { LastTurn, SessionStartInput, SessionState, TurnEndInput, TurnRecord, TurnStartInput } from "./schemas.js";
 import {
   SessionStore,
@@ -42,6 +42,8 @@ import {
   sweepSessions,
   turnKey,
 } from "./store.js";
+import { INIT_CHECK_SESSION } from "./init-check.js";
+import { withFakeReviewer } from "./test-seam.js";
 import { timed, timingsLine } from "./timing.js";
 import {
   enforcementEvent,
@@ -187,7 +189,7 @@ export function sessionStart(input: SessionStartInput, ctx: Ctx): HandlerOutcome
   sweepLeftovers(ctx);
 
   const events: TelemetryDraft[] = [];
-  if (isKnownHarness(input.harness)) {
+  if (isKnownHarness(input.harness) && input.session_id !== INIT_CHECK_SESSION) {
     const profileCount = new Set([...Object.keys(loaded.local.profiles), ...Object.keys(BUNDLED_PROFILE_YAML)]).size;
     events.push(sessionStartEvent({ harness: input.harness, profileCount, offline: true }));
   }
@@ -388,6 +390,7 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
           result = trip("turn_budget_exceeded", "the review finished after the 6 s cap");
         } else {
           result = detailed.result;
+          result = withFakeReviewer(result, ctx, { text: input.assistant_text, pass, capCheck, enforce, priorIds: request.prior_findings, profileId: resolved.id });
           reviewed = true;
           truncated = detailed.diagnostics.truncated;
           if (truncated) {
@@ -433,7 +436,7 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
     if (reviewNotice !== null) reviewNotice = withCap(reviewNotice, cap);
   }
   const firstNoticeSpent = reviewNotice !== null && !recheckFailed && phase === "pass1" && eff.mode === "enforce";
-  const shippedShownNow = (capCheck || recheckFailed) && reviewNotice !== null;
+  const shippedShownNow = (capCheck || recheckFailed) && (reviewNotice !== null || (eff.headless && reviewed));
 
   // Once-per-session lines (09, ADR-18, ADR-30) wait for a turn with no review notice of its own and are
   // hidden in quiet, off and headless; the lowered-enforcement and debug lines are about the user's own
@@ -532,9 +535,10 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
   if (eff.headless && reviewed) {
     try {
       const shippedRemaining = capCheck ? result.findings.length : recheckFailed ? unrechecked : 0;
-      timed("store", () =>
-        store.upsertReport(buildTurnReport({ turn: key, ordinal: saved.turn_ordinal, result, decision, passes: capCheck ? 2 : pass, shippedRemaining, tooLong: nothingRead, ts: ctx.now() })),
-      );
+      const entry = buildTurnReport({ turn: key, ordinal: saved.turn_ordinal, result, decision, passes: capCheck ? 2 : pass, shippedRemaining, tooLong: nothingRead, ts: ctx.now() });
+      timed("store", () => store.upsertReport(entry));
+      // One line per reviewed turn, when the turn ends (09 "Headless and CI"); the shim passes adapter stderr through.
+      if (decision === "allow" && !((capCheck || recheckFailed) && rec.shipped_shown)) stderr.push(summaryLine(entry));
     } catch {
       // The decision is already persisted; a report that cannot be written must not undo it.
       log(ctx, "warn", "report_failed", "could not write report.json");

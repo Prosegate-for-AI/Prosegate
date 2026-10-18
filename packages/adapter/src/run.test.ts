@@ -13,7 +13,10 @@ function sink(): { chunks: string[]; write(c: string): void } {
 async function exec(argv: string[], stdin = ""): Promise<{ code: number; out: string; err: string }> {
   const out = sink();
   const err = sink();
-  const code = await run(argv, { stdin: () => Promise.resolve(stdin), stdout: out, stderr: err, ctx: createCtx({ env: {}, home: mkdtempSync(join(tmpdir(), "pg-run-")) }) });
+  // Every home-like variable points into one temp tree, so no command run here can reach a real ~/.claude (incident 2026-10-18).
+  const root = mkdtempSync(join(tmpdir(), "pg-run-"));
+  const env = Object.fromEntries(["HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "CLAUDE_CONFIG_DIR", "PROSEGATE_CLAUDE_HOME"].map((k) => [k, join(root, k.toLowerCase())]));
+  const code = await run(argv, { stdin: () => Promise.resolve(stdin), stdout: out, stderr: err, ctx: createCtx({ env, home: join(root, "prosegate") }) });
   return { code, out: out.chunks.join(""), err: err.chunks.join("") };
 }
 
@@ -47,10 +50,10 @@ describe("run", () => {
     expect(r.out).toBe("");
   });
 
-  it("reports init as unavailable on stderr with exit 1", async () => {
+  it("init without --harness prints the usage on stderr with exit 1 and installs nothing", async () => {
     const r = await exec(["init"]);
     expect(r.code).toBe(1);
-    expect(r.err).toBe("prosegate init is not available in this build yet.\n");
+    expect(r.err).toBe("Prosegate: say which tool to set up, for example: prosegate init --harness claude-code\n");
     expect(r.out).toBe("");
   });
 

@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { ZodType } from "zod";
 import { COMMAND_NAMES, runCommand } from "./commands.js";
 import { createCtx, type Ctx } from "./ctx.js";
+import { runInit, runUninit } from "./init.js";
 import { describeError, log } from "./log.js";
 import { sessionStart, turnEnd, turnStart, type HandlerOutcome } from "./hooks.js";
 import { SessionStartInputSchema, TurnEndInputSchema, TurnStartInputSchema } from "./schemas.js";
@@ -26,8 +27,18 @@ export class InputTooLargeError extends Error {
   override readonly name = "InputTooLargeError";
 }
 
-// At most 80 columns (UX S8). `init` is not listed until the shim ships (W3.2); running it says so.
+// At most 80 columns (UX S8).
 const USAGE = `usage: prosegate <command>
+
+Set up (once):
+  init --harness claude-code [--scope project|user] [--local]
+                   register the hooks in Claude Code
+      --scope user      all your folders (the default)
+      --scope project   this folder only, not committed
+      --local           skip sign-in (the only mode in this build)
+  uninit [--scope project|user] [--purge]
+                   remove exactly what init added
+      --purge           also delete Prosegate's program files
 
 Run these in your own terminal, in the directory your agent works in:
   status           show mode, profile and rules switched off
@@ -47,8 +58,8 @@ separate terminal for those. enforce and the rest work anywhere.
 
 Environment: PROSEGATE_MODE=advisory|off (CI), PROSEGATE_SESSION=<id>
 Hooks, called by the harness shim: session-start | turn-start | turn-end
-Debug: add --debug to a hook to write that turn's text to the session
-debug directory.  Also: --version, --help
+Debug: start your agent with PROSEGATE_DEBUG=1 to write each turn's text
+to the session debug directory.  Also: --version, --help
 `;
 
 /** Time a hook waits for its stdin before failing open. */
@@ -148,13 +159,23 @@ export async function run(argv: readonly string[], io: RunIO): Promise<number> {
     case "-v":
       io.stdout.write(`${VERSION}\n`);
       return 0;
-    case "init":
-      io.stderr.write("prosegate init is not available in this build yet.\n");
-      return 1;
   }
   const base = io.ctx ?? createCtx();
   let ctx: Ctx = debugFlag ? { ...base, debug: true } : base;
   if (session !== null) ctx = { ...ctx, env: { ...ctx.env, PROSEGATE_SESSION: session } };
+  if (first === "init" || first === "uninit") {
+    try {
+      const r = (first === "init" ? runInit : runUninit)(args.slice(1), ctx);
+      if (r.out !== "") io.stdout.write(r.out);
+      if (r.err !== "") io.stderr.write(r.err);
+      return r.code;
+    } catch (error) {
+      log(ctx, "error", "adapter_error", `${first} failed: ${describeError(error)}`);
+      const saved = join(ctx.home, "backups");
+      io.stderr.write(`Prosegate: ${first} did not finish (${plainFailure(error)}). A backup of any settings file it was changing is in ${saved}. Details: ${logPathFor(ctx)}\n`);
+      return 1;
+    }
+  }
   if (isHook(first)) return runHook(first, io, ctx);
   if ((COMMAND_NAMES as readonly string[]).includes(first)) {
     try {

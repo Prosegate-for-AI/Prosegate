@@ -273,15 +273,17 @@ describe("adapter bundle (built with the real tsup config)", () => {
 
     const lonely = tmp("pg-lonely-");
     copyFileSync(join(out, "prosegate.mjs"), join(lonely, "prosegate.mjs"));
+    // Every home-like variable points at the empty directory: nothing here may reach a real ~/.claude or ~/.prosegate (incident 2026-10-18).
+    const homes = Object.fromEntries(["HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "CLAUDE_CONFIG_DIR", "PROSEGATE_CLAUDE_HOME", "PROSEGATE_HOME"].map((k) => [k, lonely]));
     const run = (...args) => {
-      const r = spawnSync(process.execPath, [join(lonely, "prosegate.mjs"), ...args], { cwd: lonely, encoding: "utf8" });
+      const r = spawnSync(process.execPath, [join(lonely, "prosegate.mjs"), ...args], { cwd: lonely, encoding: "utf8", env: { ...process.env, ...homes } });
       return { code: r.status, out: r.stdout, err: r.stderr };
     };
     const pkg = JSON.parse(readFileSync(join(ADAPTER, "package.json"), "utf8"));
     expect(run("--version")).toEqual({ code: 0, out: `${pkg.version}\n`, err: "" });
     expect(run("--help").code).toBe(0);
     expect(run().out).toContain("usage: prosegate");
-    expect(run("init")).toMatchObject({ code: 1, out: "", err: "prosegate init is not available in this build yet.\n" });
+    expect(run("init")).toMatchObject({ code: 1, out: "", err: "Prosegate: say which tool to set up, for example: prosegate init --harness claude-code\n" });
     expect(run("nope")).toMatchObject({ code: 1, err: 'prosegate: unknown command "nope". Run prosegate --help.\n' });
   });
 });

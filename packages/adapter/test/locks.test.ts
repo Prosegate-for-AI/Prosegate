@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { LockTimeoutError, sleepSync, withLock, writeFileAtomic } from "../src/fs-secure.js";
 import { sessionStart } from "../src/hooks.js";
 import { StateSchema } from "../src/schemas.js";
-import { ADAPTER_DIR, SESSION, TIC_TEXT, buildBundle, json, pg, pgAsync, sessionStartInput, testCtx, tmpDir, turnEndInput } from "./helpers.js";
+import { ADAPTER_DIR, SESSION, TIC_TEXT, buildBundle, cleanEnv, json, pg, pgAsync, sessionStartInput, testCtx, tmpDir, turnEndInput } from "./helpers.js";
 
 // Hooks are separate processes. These tests pin the lock rules deterministically (ADR-30, ADR-31): who may
 // break a lock, that a holder deletes only its own, that a planted lock cannot disable enforcement or
@@ -194,7 +194,7 @@ describe("planted locks in real hooks (release bundle)", () => {
     const tick = setInterval(keep, 100);
     // The original trouble: stdin arrived at 4.5 s (a slow shim), then three lock waits of 3 s each ran one after the other (13.5 s).
     const child = spawn(process.execPath, [bundle, "turn-end"], {
-      env: { ...process.env, PROSEGATE_HOME: home, PROSEGATE_MODE: "headless" },
+      env: cleanEnv(home, { PROSEGATE_MODE: "headless" }),
       stdio: ["pipe", "pipe", "pipe"],
     });
     let out = "";
