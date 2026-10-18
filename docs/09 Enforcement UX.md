@@ -107,8 +107,8 @@ Prosegate: advisory for this session. Findings will be shown, not enforced. Run 
 [model] … (response as written)
 
 Prosegate · profile chat-reply · 2 findings (filler 2) · advisory, not enforced · enforcement is lowered in this session (advisory)
-  filler   core.filler.001  "Great question!"
-  filler   core.filler.004  "In summary,"
+  filler  core.filler.001  "Great question"
+  filler  core.filler.004  "In summary"
 ```
 
 The lowered-enforcement text appears on the first advisory turn and again when the lowering changes (ADR-30, ADR-33); later advisory turns show the header without it.
