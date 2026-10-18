@@ -340,3 +340,12 @@ Consequence: 05 "Packaging" and the Claude Code mapping, and 09's notice list, c
 - **Shim robustness.** The watchdog fires at 7.5 s, inside Claude Code's 10 s budget, which starts at spawn. The final hook output is written with a direct write to fd 1 after the bundle is imported. An import-time write to fd 1 by a dependency is a documented residual. An empty `feedback_text` on `continue` is treated as fail-open.
 
 Consequence: 05's `turn-start` input, Claude Code mapping and Packaging change; 09's notice rules, fail-open line and mocks change. W3.2 cycle 1 implements this together with the test-isolation must-fixes from the 2026-10-18 settings incident.
+
+## ADR-34 · The first-notice override line; what the 09 mocks show; harness modules live in the adapter
+
+2026-10-18. From the W3.2 cycle 1 conformance review.
+- **Override line.** The first notice of a session ends with `  To pause for this session, run: prosegate advisory`, not ADR-12's `  Session override: prosegate advisory`. It addresses the user who reads it, as ADR-28 made the feedback tail do. ADR-12's five-plus-one line budget is unchanged.
+- **The 09 mocks are the adapter's notice, harness-neutral.** In Claude Code a continuing turn shows the "Stop hook feedback" block (`feedback_text`, ADR-13) instead of the notice. Only notices on turns that end without a continuation (advisory, shipped as is, lowered, fail-open) reach the Claude Code user as written, folded per ADR-33. The goldens assert the notice byte for byte for every mock, and assert the shim's output for the Claude Code paths separately.
+- **Harness-specific code that is not glue lives in the adapter bundle.** The Claude Code notice fold and the transcript tool-name reader are adapter modules that the shim imports. 05 makes the adapter own transcript parsing, and the fold is rendering. The shim keeps only the event mapping, mode detection and process handling. The 150-line limit counts honestly formatted lines, at most 100 columns.
+
+Consequence: 09's pass-1 and pass-cap mocks gain the override line and a note on what Claude Code shows. W3.2 cycle 2 reformats the shim.
