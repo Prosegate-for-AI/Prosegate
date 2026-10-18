@@ -402,6 +402,19 @@ describe("uninit", () => {
     expect(read(e.settings)).toEqual({ hooks: { Stop: [], UserPromptSubmit: [] } });
   });
 
+  it("moves its own stale entries in place (I9): the first W3.2 build's npx-cache command and an old timeout are replaced, the user's hooks keep their places", () => {
+    const e = env();
+    const stale = (event: string, timeout: number): unknown => ({ hooks: [{ type: "command", command: `node "C:/Users/x/AppData/npm-cache/_npx/ab12/node_modules/prosegate/shims/claude-code/hook.mjs" ${event}`, timeout }] });
+    const mine = { hooks: [{ type: "command", command: "echo mine" }] };
+    writeSettings(e, JSON.stringify({ hooks: { SessionStart: [stale("SessionStart", 10)], UserPromptSubmit: [stale("UserPromptSubmit", 600)], Stop: [mine, stale("Stop", 10), mine] } }, null, 2));
+    expect(init(e).code).toBe(0);
+    const hooks = read(e.settings)["hooks"] as Record<string, Array<{ hooks: Array<{ command: string; timeout: number }> }>>;
+    expect(hooks["Stop"]?.map((g) => g.hooks[0]?.command)).toEqual(["echo mine", command(e, "Stop"), "echo mine"]);
+    expect(hooks["UserPromptSubmit"]?.[0]?.hooks[0]).toEqual({ type: "command", command: command(e, "UserPromptSubmit"), timeout: 10 });
+    expect(hooks["SessionStart"]).toEqual((ours(e) as Record<string, unknown>)["SessionStart"]);
+    expect(JSON.stringify(hooks)).not.toContain("_npx");
+  });
+
   it("collapses duplicates of ours to one entry (I8)", () => {
     const e = env();
     const dupe = { type: "command", command: command(e, "Stop"), timeout: 10 };

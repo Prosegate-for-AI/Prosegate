@@ -273,6 +273,20 @@ describe("09 advisory mock (chat-reply), byte for byte", () => {
     expect(next.json).toEqual({ systemMessage: [`Prosegate ${DOT} profile chat-reply ${DOT} 2 findings (filler 2) ${DOT} advisory, not enforced`, '  filler  core.filler.001  "Great question"', '  filler  core.filler.004  "In summary"'].join("\n") });
   });
 
+  it("a lowering that starts while a revision is asked for is not spent on the continuation: the allow that follows carries it (b8d17b5)", () => {
+    const cc = new FakeClaudeCode(release);
+    cc.sessionStart();
+    expect(cc.cli(["profile", "pr-description"]).code).toBe(0);
+    expect(cc.cli(["rule", "off", "core.vocab.003"]).code).toBe(0);
+    const pass1 = cc.stop(MOCK1_TEXT);
+    expect(Object.keys(pass1.json ?? {})).toEqual(["hookSpecificOutput"]); // the notice is never displayed on a continuation
+    const allow = cc.stop(MOCK1_REVISED, { stop_hook_active: true });
+    const lines = (allow.json as { systemMessage: string }).systemMessage.split("\n");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/^Prosegate · enforcement is lowered in this session \(.+\) · prosegate status$/);
+    expect(cc.stop(MOCK1_REVISED, { prompt_id: "next-turn" })).toMatchObject({ code: 0, stdout: "" });
+  });
+
   it("an advisory turn with no findings keeps the lowered line on its own, once", () => {
     const cc = new FakeClaudeCode(release);
     cc.sessionStart();
