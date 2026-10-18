@@ -51,7 +51,7 @@ export interface Segment {
 }
 
 export interface Finding {
-  id: string;                       // first 10 hex of sha256(category|rule_id|span.text|segment.id), rule_id null → ''; stable across passes; not unique within a result (ADR-17)
+  id: string;                       // first 10 hex of sha256(category|rule_id|span_key): span_key = span.text, or '' for document-metric findings; rule_id null → ''; stable across passes and position-independent; not unique within a result (ADR-17, ADR-23)
   span: { segment_id: string; start: number; end: number; text: string };  // text must equal the slice; consumers drop mismatches
   category: Category;
   source: 'rule' | 'reviewer';
@@ -115,7 +115,7 @@ The pass cap is two. The engine guarantees pass 2 reports a strict subset of wha
 3. After pass 2, `verdict` is `pass` regardless, with `skipped_reason: 'pass_cap'` on any further call for the same `turn_id`.
 4. `cleared` lists pass-1 ids absent from pass 2. The adapter sends `cleared.length` and the categories cleared to telemetry; never the spans.
 
-Finding ids are content-derived so a span that survives revision unchanged keeps its id; a span the model reworded gets a new id and therefore counts as cleared.
+Finding ids are content-derived and position-independent, so a span that survives revision unchanged keeps its id wherever it moves; a span the model reworded gets a new id and therefore counts as cleared. A document-level finding keeps its id as long as the rule still fires (ADR-23). `info` findings are never in `findings`; they are counted in `stats.findings_by_category` only.
 
 ## Overlap resolution
 
