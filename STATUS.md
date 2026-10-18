@@ -8,27 +8,27 @@ Snapshot, rewritten at each change. Last updated 2026-10-18.
 
 | Item | Owner (agent / model) | State |
 | --- | --- | --- |
-| W3.1 adapter core | sonnet (implementer); top tier (re-verify) | cycle 1 merged provisionally (aa9c772): 3,178 tests, all gates green. Top-tier re-verify of security and cross-process behaviour running |
-| W3.2 Claude Code shim, `init`, 09 goldens, live revise | implementer / sonnet, worktree | started |
+| W3.1 adapter core | — | **Exited.** Merged a6d4491 after 3 cycles plus one orchestrator fix; all gates green (3,222 tests); debt D-30 to D-33 |
+| W3.2 Claude Code shim, `init`, 09 goldens, live revise | implementer / sonnet, branch `w32-cycle1` in a scratch worktree | Cycle 1 of 3 running: test isolation (incident), ADR-32/33 (stable launcher, `settings.local.json`, one registration, rollback), shim fail-open hardening, one notice per turn |
 
 ## Phase 3 exit needs (plan §4)
 
-- `npx prosegate init` works on the author's machine. My test is project scope in a scratch project; the user-scope install is Murray's to run.
-- A pass-1 revise seen live.
-- Override commands work.
-- A headless report is written.
-- The three 09 mock transcripts reproduce byte for byte in the fake-harness test (plan §10).
+- `npx prosegate init` works on the author's machine. The verifier said not yet; it waits on W3.2 cycle 1. My test is project scope in a scratch project; the user-scope install is Murray's to run.
+- A pass-1 revise seen live. Done by the W3.2 verifier: continue, pass 2, shipped as is, and the advisory notice were all seen in Claude Code 2.1.302.
+- Override commands work. W3.1 covers these.
+- A headless report is written. W3.1 covers this.
+- The 09 mock transcripts reproduce byte for byte. This needs a re-run after ADR-33 changed 09.
 
 ## Waiting on Murray
 
-- `pnpm test:perf` on a quiet machine: the Phase 2 caveat.
+- **Urgent:** restore `~/.claude/settings.json` from `settings.json.prosegate-backup-20261018T072200Z`. It still holds the stray hooks, and every session runs the W3.2 worktree's shim. Then, optionally, `rm -rf ~/.prosegate`, which holds 82+ stray session directories, all local.
+- `pnpm test:perf` on a quiet machine: the Phase 2 caveat (HQ-6).
 - HQ-7: corpus licensing.
-- HQ-6: private remote / CI.
 - HQ-1: vending.
 - HQ-2, HQ-3, HQ-4, HQ-8.
 
 ## Next three actions
 
-1. Act on the W3.1 re-verify (cycle 2 if needed).
-2. Review W3.2: conformance, UX, tests, and a top-tier check of the shim's fail-open and its live behaviour.
-3. Phase 3 exit, then a status message. Then brief Phase 4 (reviewer: key store per ADR-14, BYOK, prompt builder, provider clients).
+1. Review W3.2 cycle 1: conformance and a top-tier adversarial pass. Merge, run the gates, re-run the 09 goldens.
+2. Phase 3 exit, then a status message. Murray runs `npx prosegate init` (user scope) once the restore is done.
+3. Brief Phase 4, the reviewer: key store per ADR-14, BYOK, prompt builder, provider clients, D-16, D-21, D-26. Per plan §8, it is not wired into turn-end until the rules path has run a week on Murray's machine.
