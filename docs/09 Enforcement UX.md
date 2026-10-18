@@ -61,7 +61,7 @@ No notice, no colour, no interactive prompts. The model is still continued with 
 
 ## Mock transcripts
 
-Pass 1 revise, interactive, Claude Code:
+Pass 1 revise, interactive (the adapter's notice; in Claude Code the user sees the revision request as "Stop hook feedback" instead, ADR-13, ADR-34):
 
 ```text
 > write the PR description for this branch
@@ -74,6 +74,7 @@ Prosegate · profile pr-description · 3 findings (hedge 1, vocab 1, triad 1) ·
   hedge   core.hedge.001  "It's worth noting that"
   vocab   core.vocab.003  "robust"
   triad   core.triad.001  "fast, simple, and reliable"
+  To pause for this session, run: prosegate advisory
 
 [model] Add a per-tenant cache in front of the catalog reads. p95 latency on
 /catalog drops from 410 ms to 95 ms on the staging dataset. …
@@ -85,6 +86,7 @@ Pass cap reached:
 Prosegate · profile design-doc · 2 findings (unsupported claim 2) · revising, pass 1 of 2
   unsupported claim  "reduces cost by 40%"
   unsupported claim  "the industry standard approach"
+  To pause for this session, run: prosegate advisory
 
 [model] … (revised; one claim cited, one left in)
 
