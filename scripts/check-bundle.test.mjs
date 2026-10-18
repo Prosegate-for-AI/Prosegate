@@ -20,7 +20,14 @@ afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
+// Synthetic bundles in these tests are static-scan fixtures, not programs: they skip the execution step.
 function check(file, ...extra) {
+  const r = spawnSync(process.execPath, [SCRIPT, file, "--no-exec", ...extra], { encoding: "utf8" });
+  return { code: r.status, out: r.stdout, err: r.stderr };
+}
+
+// The full check, including the session-start / turn-end round trip.
+function checkExec(file, ...extra) {
   const r = spawnSync(process.execPath, [SCRIPT, file, ...extra], { encoding: "utf8" });
   return { code: r.status, out: r.stdout, err: r.stderr };
 }
@@ -54,6 +61,40 @@ describe("disallowedSpecifiers", () => {
       'const d = __require("kleur");',
     ].join("\n");
     expect(disallowedSpecifiers(text)).toEqual(["@prosegate/schema", "chalk", "kleur", "left-pad", "lodash", "side-effect"]);
+  });
+});
+
+describe("check-bundle execution step (DEBT D-17)", () => {
+  it("fails a bundle that exits 0 but prints nothing a shim can read", () => {
+    const res = checkExec(bundle('console.log("hello");\n'));
+    expect(res.code).toBe(1);
+    expect(res.err).toMatch(/execution: session-start printed something that is not JSON: hello/);
+  });
+
+  it("fails a bundle that crashes at runtime with the dynamic-require error, and shows the error", () => {
+    const res = checkExec(bundle('throw new Error("Dynamic require of \\"process\\" is not supported");\n'));
+    expect(res.code).toBe(1);
+    expect(res.err).toMatch(/execution: session-start did not run: exit 1/);
+    expect(res.err).toContain("Dynamic require");
+  });
+
+  it("fails a bundle whose turn-end does not revise a text full of tics", () => {
+    const lazy = [
+      'let input = "";',
+      'process.stdin.on("data", (d) => (input += d));',
+      'process.stdin.on("end", () => {',
+      "  const name = process.argv[2];",
+      '  if (name === "session-start") console.log(JSON.stringify({ inject: "local/base", active_profile: "local/base", offline: true }));',
+      '  else console.log(JSON.stringify({ decision: "allow", feedback_text: "", notice: null, result: { verdict: "pass" } }));',
+      "});",
+    ].join("\n");
+    const res = checkExec(bundle(lazy));
+    expect(res.code).toBe(1);
+    expect(res.err).toMatch(/execution: turn-end did not revise a text full of tics/);
+  });
+
+  it("skips the step with --no-exec", () => {
+    expect(check(bundle("console.log(1);\n")).code).toBe(0);
   });
 });
 
@@ -132,7 +173,10 @@ describe("adapter bundle (built with the real tsup config)", () => {
     const out = tmp("pg-cli-");
     build([], out);
     expect(readdirSync(out)).toEqual(["prosegate.mjs"]);
-    expect(check(join(out, "prosegate.mjs")).code).toBe(0);
+    const full = checkExec(join(out, "prosegate.mjs"));
+    expect(full.err).toBe("");
+    expect(full.code).toBe(0);
+    expect(full.out).toContain("session-start and turn-end executed");
 
     const lonely = tmp("pg-lonely-");
     copyFileSync(join(out, "prosegate.mjs"), join(lonely, "prosegate.mjs"));
@@ -147,4 +191,24 @@ describe("adapter bundle (built with the real tsup config)", () => {
     expect(run("init")).toMatchObject({ code: 1, out: "", err: "prosegate init is not available in this build yet.\n" });
     expect(run("nope")).toMatchObject({ code: 1, err: 'prosegate: unknown command "nope". Run prosegate --help.\n' });
   });
+});
+
+describe("the createRequire banner (DEBT D-17)", () => {
+  it("without it the bundle passes the specifier scan but dies at runtime, and check:bundle catches that", () => {
+    const out = tmp("pg-nobanner-");
+    // The real config with only the createRequire part of the banner taken out.
+    const variant = join(ADAPTER, "tsup.nobanner.tmp.config.ts");
+    writeFileSync(variant, 'import base from "./tsup.config.ts";\nexport default { ...base, banner: { js: "#!/usr/bin/env node" } };\n');
+    try {
+      build(["--config", "tsup.nobanner.tmp.config.ts"], out);
+    } finally {
+      rmSync(variant, { force: true });
+    }
+    const file = join(out, "prosegate.mjs");
+    expect(disallowedSpecifiers(readFileSync(file, "utf8"))).toEqual([]);
+    expect(check(file).code).toBe(0); // the static scan alone is blind to it
+    const res = checkExec(file);
+    expect(res.code).toBe(1);
+    expect(res.err).toContain("execution: session-start did not run");
+  }, 120_000);
 });

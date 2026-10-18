@@ -14,13 +14,15 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build": "tsup"
+    "build": "tsup",
+    "test": "vitest run --root ../.. packages/adapter/"
   },
   "devDependencies": {
     "@prosegate/schema": "workspace:*",
     "@prosegate/segmenter": "workspace:*",
     "@prosegate/engine": "workspace:*",
     "@prosegate/profiles": "workspace:*",
-    "@prosegate/reviewer": "workspace:*"
+    "@prosegate/reviewer": "workspace:*",
+    "zod": "4.6.7"
   }
 }
