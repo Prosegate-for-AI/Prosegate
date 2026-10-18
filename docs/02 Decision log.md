@@ -316,3 +316,13 @@ Rejected: signing or encrypting local state (the agent holds the same key the us
 - **Advisory renders its findings** (ADR-16), so 09's "summary form" for advisory means the notice line plus finding lines, never a continuation.
 
 Consequence: 03 thresholds, 05 session-start input, 07 retention and 09 override table change, and W3.1 cycle 1 implements this.
+
+## ADR-32 · `init` installs to a stable location; project scope writes `settings.local.json`; the shim runs the bundle in-process
+
+2026-10-18. From W3.2, the Claude Code shim and `init`.
+- **Stable install.** When `init` runs from a transient location (an `npx` cache), it copies the package into `~/.prosegate/app/<version>/`: the bundle, the shims, and any installed optional native dependency, which keeps the ADR-14 keyring resolvable. It registers the hooks against that copy. A later `init` of a newer version installs beside it and re-points the hooks; older copies are pruned after the new one passes the round-trip check. This avoids hooks that break when npm clears its cache, while keeping 05's `npx prosegate init`. Rejected: requiring `npm install -g` (adds a step to the "under a minute" install); registering cache paths (silent breakage weeks later).
+- **Project scope writes `.claude/settings.local.json`,** Claude Code's machine-local and normally uncommitted settings file, not `.claude/settings.json`. The hook commands hold absolute, machine-specific paths. Committed, they would break every teammate who does not have Prosegate installed at the same path.
+- **In-process shim.** The Claude Code shim imports the adapter bundle in-process rather than spawning a second Node: measured p50 339 ms against 442 ms for a clean Stop. SessionStart output uses the JSON form, so it can carry both `additionalContext` (the inject) and `systemMessage` (the notice). All three hooks are registered with a 10 s timeout.
+- **Visible fail-open.** A turn or session the adapter could not handle shows the user one line per session and reason: `Prosegate · this turn was not reviewed (<why>) · details: <log>`, or `Prosegate · this session may not be reviewed (<why>) · details: <log>` at session start.
+
+Consequence: 05 "Packaging" and the Claude Code mapping, and 09's notice list, change. The shim and `init` follow in W3.2 cycle 1.
