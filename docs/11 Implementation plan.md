@@ -97,7 +97,7 @@ Scaffold in parallel: pnpm workspace, base tsconfig, vitest, eslint, tsup config
 ### 6.1 `schema` (Phase 1)
 
 - Types from 03 verbatim; zod schemas with `.strict()`; `pnpm build:schema` emits `prosegate.review.1.json` and `prosegate.findings.1.json`.
-- `findingId(category, ruleId, spanText, segmentId)` = first 10 hex of SHA-256 over the pipe-joined fields.
+- `findingId(category, ruleId, spanKey)` = first 10 hex of SHA-256 over the pipe-joined fields; `spanKey` is the span text, or empty for document-scope findings (ADR-23).
 - `renderFeedbackText(result)` per the 03 template: `info` excluded, 80-char trim, `warn` only on pass 1, ends with the override line. Golden tests against the 09 mock transcripts.
 - `renderNotice(result, mode)` for the 09 notice line and finding lines: 60-char trim, at most six lines.
 - The versioning rule encoded as a test: adding an `Action` or a `skipped_reason` does not change the schema id; a consumer helper renders unknown actions with `instruction.text` alone.
