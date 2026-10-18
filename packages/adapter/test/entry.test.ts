@@ -424,7 +424,11 @@ describe("--debug (07, ADR-30)", () => {
     start(home);
     const out = json<TurnEndOut>(pg(bundle, ["turn-end"], { home, input: turnEndInput(TIC_TEXT), env: { PROSEGATE_DEBUG: "1" } }));
     expect(existsSync(join(home, "sessions", SESSION, "debug"))).toBe(true);
-    expect(out.notice).toContain("Prosegate · debug is on");
+    // A continuation carries no notice the user sees, so the debug line waits for the allow.
+    expect(out.decision).toBe("continue");
+    expect(out.notice ?? "").not.toContain("debug is on");
+    const clean = json<TurnEndOut>(pg(bundle, ["turn-end"], { home, input: turnEndInput(CLEAN_TEXT, { turn_id: "t-clean" }), env: { PROSEGATE_DEBUG: "1" } }));
+    expect(clean.notice).toContain("Prosegate · debug is on");
   });
 
   it("the debug files go when the turn ends with allow and debug is no longer on", () => {

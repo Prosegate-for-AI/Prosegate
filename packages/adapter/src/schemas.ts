@@ -31,6 +31,8 @@ export const TurnStartInputSchema = z.strictObject({
   session_id: SessionId,
   user_message: z.string().max(MAX_TEXT),
   tool_calls_so_far: z.array(ShortString).max(2000),
+  /** The shim's turn id (Claude Code's prompt_id), the same one turn-end carries (ADR-33). Absent means the adapter derives one. */
+  turn_id: z.string().max(300).nullish(),
 });
 export type TurnStartInput = z.infer<typeof TurnStartInputSchema>;
 
@@ -69,7 +71,7 @@ export const TurnRecordSchema = z.strictObject({
 });
 export type TurnRecord = z.infer<typeof TurnRecordSchema>;
 
-export const OUTCOMES = ["clean", "revised", "shipped", "advisory", "too_short", "no_prose", "budget", "truncated", "off"] as const;
+export const OUTCOMES = ["clean", "revised", "shipped", "advisory", "too_short", "no_prose", "budget", "truncated", "too_long", "off"] as const;
 
 /** What `prosegate status` says about the last reviewed turn. */
 export const LastTurnSchema = z.strictObject({
@@ -105,6 +107,8 @@ export const StateSchema = z.strictObject({
   /** The lowered-enforcement reason last shown to the user ('' when none); it shows again when it changes. */
   lowered_shown: z.string().max(400),
   debug_notice_shown: z.boolean(),
+  /** A reply was only partly reviewed and its turn is still revising: the user hears of it on the next allow (N9). Absent means false. */
+  truncated_pending: z.boolean().optional(),
   /** Reviewed turns so far, for the headless line's turn number. */
   turn_ordinal: z.number().int().min(0),
   last_turn: LastTurnSchema.nullable(),

@@ -2,7 +2,9 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { Ctx } from "../src/ctx.js";
 import { sessionStart, turnEnd, turnStart } from "../src/hooks.js";
+import { TurnStartInputSchema } from "../src/schemas.js";
 import { SESSION_RETENTION_MS, SessionStore, VALIDATED_KEEP, listSessions, pruneValidated, rememberCwdProfile, readCwdProfiles, sweepSessions, turnKey } from "../src/store.js";
 import { SPOOL_MAX_EVENTS, encodeBatch, readSpool, recordEvents, enforcementEvent } from "../src/telemetry.js";
 import { CLEAN_TEXT, SESSION, TIC_TEXT, buildBundle, pg, sessionStartInput, testCtx, tmpDir, turnEndInput } from "./helpers.js";
@@ -246,14 +248,88 @@ describe("the session store", () => {
     expect(state?.turns[turnKey("t0")]).toBeUndefined();
   });
 
-  it("turn-start clears every earlier pass count", () => {
-    const home = tmpDir();
-    const ctx = testCtx(home);
-    sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, ctx);
-    turnEnd({ session_id: SESSION, turn_id: "t1", assistant_text: TIC_TEXT, user_message: "", tool_calls: [], continuation: false }, ctx);
-    expect(Object.keys(new SessionStore(ctx, SESSION).readState()?.turns ?? {})).toHaveLength(1);
-    turnStart({ session_id: SESSION, user_message: "next", tool_calls_so_far: [] }, ctx);
-    expect(new SessionStore(ctx, SESSION).readState()?.turns).toEqual({});
+  describe("turn-start never resets a turn's pass count (N6)", () => {
+    const ends = (ctx: Ctx, over: Record<string, unknown> = {}) =>
+      turnEnd({ session_id: SESSION, turn_id: "p1", assistant_text: TIC_TEXT, user_message: "", tool_calls: [], continuation: false, ...over } as never, ctx).output;
+    const counts = (ctx: Ctx) => Object.values(new SessionStore(ctx, SESSION).readState()?.turns ?? {}).map((r) => r.count).sort();
+
+    it("a turn-start with the real id, a fake id or the same message in the middle of a revision leaves the count alone", () => {
+      const home = tmpDir();
+      const ctx = testCtx(home);
+      sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, ctx);
+      // With a shim id: turn-start cannot name it, so a spoof of any message is a different (empty) record.
+      expect(ends(ctx).decision).toBe("continue");
+      turnStart({ session_id: SESSION, user_message: "write the doc", tool_calls_so_far: [] }, ctx);
+      turnStart({ session_id: SESSION, user_message: "p1", tool_calls_so_far: [] }, ctx);
+      expect(counts(ctx)).toEqual([0, 0, 1]);
+      expect(ends(ctx, { continuation: true }).decision).toBe("continue"); // pass 2
+      turnStart({ session_id: SESSION, user_message: "again", tool_calls_so_far: [] }, ctx);
+      expect(ends(ctx, { continuation: true }).decision).toBe("allow"); // the cap holds
+      // Without a shim id the turn is the hash of the user message, which the agent can read: same result.
+      const other = testCtx(tmpDir());
+      sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, other);
+      const bare = (over: Record<string, unknown> = {}) => ends(other, { turn_id: undefined, user_message: "write the doc", ...over });
+      turnStart({ session_id: SESSION, user_message: "write the doc", tool_calls_so_far: [] }, other);
+      expect(bare().decision).toBe("continue");
+      turnStart({ session_id: SESSION, user_message: "write the doc", tool_calls_so_far: [] }, other);
+      expect(counts(other)).toEqual([1]);
+      expect(bare({ continuation: true }).decision).toBe("continue");
+      turnStart({ session_id: SESSION, user_message: "write the doc", tool_calls_so_far: [] }, other);
+      expect(bare({ continuation: true }).decision).toBe("allow");
+    });
+
+    it("a turn-start that carries the shim's turn_id (ADR-33) is keyed by it, and the real id cannot be reset by repeating it", () => {
+      const home = tmpDir();
+      const ctx = testCtx(home);
+      sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, ctx);
+      turnStart({ session_id: SESSION, user_message: "write the doc", tool_calls_so_far: [], turn_id: "p1" } as never, ctx);
+      expect(counts(ctx)).toEqual([0]);
+      expect(new SessionStore(ctx, SESSION).readTurn()?.turn_id).toBe("p1");
+      expect(ends(ctx).decision).toBe("continue");
+      turnStart({ session_id: SESSION, user_message: "write the doc", tool_calls_so_far: [], turn_id: "p1" } as never, ctx);
+      expect(counts(ctx)).toEqual([1]);
+      expect(ends(ctx, { continuation: true }).decision).toBe("continue");
+      turnStart({ session_id: SESSION, user_message: "x", tool_calls_so_far: [], turn_id: "p1" } as never, ctx);
+      expect(ends(ctx, { continuation: true }).decision).toBe("allow");
+      // The bundle's strict input schema accepts the field, and still rejects an unknown one.
+      expect(TurnStartInputSchema.safeParse({ session_id: SESSION, user_message: "a", tool_calls_so_far: [], turn_id: "p9" }).success).toBe(true);
+      expect(TurnStartInputSchema.safeParse({ session_id: SESSION, user_message: "a", tool_calls_so_far: [], other: 1 }).success).toBe(false);
+    });
+
+    it("creates an empty record for its own turn and forgets records an hour old", () => {
+      const home = tmpDir();
+      const ctx = testCtx(home);
+      sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, ctx);
+      ends(ctx);
+      turnStart({ session_id: SESSION, user_message: "x", tool_calls_so_far: [] }, ctx);
+      expect(counts(ctx)).toEqual([0, 1]);
+      const later = { ...ctx, now: () => ctx.now() + 61 * 60 * 1000 };
+      turnStart({ session_id: SESSION, user_message: "y", tool_calls_so_far: [] }, later);
+      expect(counts(later)).toEqual([0]);
+    });
+
+    it("a flood of turn-starts cannot push the real turn's record out of the bounded map", () => {
+      const home = tmpDir();
+      const ctx = testCtx(home);
+      sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, ctx);
+      expect(ends(ctx).decision).toBe("continue");
+      for (let i = 0; i < 40; i++) turnStart({ session_id: SESSION, user_message: `spoof ${i}`, tool_calls_so_far: [] }, { ...ctx, now: () => ctx.now() + i + 1 });
+      const turns = new SessionStore(ctx, SESSION).readState()?.turns ?? {};
+      expect(Object.keys(turns)).toHaveLength(20);
+      expect(turns[turnKey("p1")]?.count).toBe(1);
+    });
+
+    it("a repeated message is still a new turn: its Stop arrives with continuation=false and no shim id", () => {
+      const home = tmpDir();
+      const ctx = testCtx(home);
+      sessionStart({ harness: "claude-code", session_id: SESSION, cwd: "/work/project", mode: "interactive" }, ctx);
+      const bare = (over: Record<string, unknown> = {}) => ends(ctx, { turn_id: undefined, user_message: "same", ...over });
+      expect(bare().decision).toBe("continue");
+      expect(bare({ continuation: true }).decision).toBe("continue");
+      expect(bare({ continuation: true }).decision).toBe("allow");
+      turnStart({ session_id: SESSION, user_message: "same", tool_calls_so_far: [] }, ctx);
+      expect(bare().decision).toBe("continue");
+    });
   });
 
   it("keeps the newest 200 validated-content markers and drops the rest", () => {
