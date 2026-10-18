@@ -1,7 +1,7 @@
 /**
  * Language gate. English text is recognised by function-word share; a text is declared non-English
- * only when the English share is low AND a second signal agrees (another language's function words,
- * diacritics, or a non-Latin script), or the English share is almost zero. Terse English (changelog
+ * only when the English share is low AND there is positive evidence of another language (its function
+ * words, diacritics, or a non-Latin script). A low English share alone proves nothing. Terse English (changelog
  * bullets, decision records) has few function words but passes the gate. Tokens inside capitalised
  * runs (names, places, Title Case) are ignored: they say nothing about the language.
  *
@@ -260,12 +260,8 @@ export const NON_EN_STOP_WORD_SHARE = 0.15;
 export const LANGUAGE_MIN_WORDS = 40;
 /** Fewer tokens than this outside capitalised runs: not enough evidence to call a text foreign. */
 export const MIN_EVIDENCE_TOKENS = 25;
-/** An English share below this, with enough evidence, is "not English" on its own. */
-export const EN_FLOOR_SHARE = 0.06;
-/** The best other language needs at least this share and more than English to be a second signal... */
+/** The best other language needs at least this share, and more than English, to count as evidence. */
 export const OTHER_LANGUAGE_MIN_SHARE = 0.1;
-/** ...or this share when it is at least twice the English share. */
-export const OTHER_LANGUAGE_DOUBLE_MIN_SHARE = 0.06;
 /** A share of non-Latin letters above this is a second signal on its own. */
 export const NON_LATIN_LETTER_SHARE = 0.3;
 /** A share of non-ASCII Latin letters (diacritics) above this is a second signal on its own. */
@@ -279,9 +275,7 @@ export function decideLanguage(stats: LanguageStats): "en" | "non_en" {
     if (stats.nonLatinLetters / stats.letters > NON_LATIN_LETTER_SHARE) return "non_en";
     if (stats.diacritics / stats.letters > DIACRITIC_LETTER_SHARE) return "non_en";
   }
-  if (enShare < EN_FLOOR_SHARE) return "non_en";
   const bestOther = Math.max(...stats.others) / stats.tokens;
   if (bestOther > enShare && bestOther >= OTHER_LANGUAGE_MIN_SHARE) return "non_en";
-  if (bestOther >= OTHER_LANGUAGE_DOUBLE_MIN_SHARE && bestOther >= 2 * enShare) return "non_en";
   return "en";
 }

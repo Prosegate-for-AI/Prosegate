@@ -131,10 +131,10 @@
  *   words, or a capitalised word next to de/la/van/der/da/dos/del/von: names, places, Title Case) and
  *   outside masks, with at least 25 such tokens (else `en`). `en` when the English function-word
  *   share is 0.15 or more. Below that, `non_en` when any of: more than 0.3 of the letters are
- *   non-Latin; more than 0.03 of the letters are non-ASCII Latin (diacritics); the English share is
- *   under 0.06; another language's function-word share (de fr es pt it nl) beats the English share
- *   and is at least 0.10. Otherwise `en`. Below 40 words `unknown`. Telegraphic English with almost
- *   no function words (English share under 0.06) is therefore `non_en`. Prose segments are never
+ *   non-Latin; more than 0.03 of the letters are non-ASCII Latin (diacritics); another language's function-word share (de fr es pt it nl) beats the English share
+ *   and is at least 0.10 (positive evidence is required; a low English share alone is never enough).
+ *   Otherwise `en`. Below 40 words `unknown`. Telegraphic English with almost no function words stays
+ *   `en`. Prose segments are never
  *   dropped for non_en; the engine maps non_en to skipped / no_prose. Unspaced scripts (Chinese,
  *   Japanese) have few "words" by the word definition, so most such texts stay `unknown` and are
  *   caught by the word floors instead.

@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import { analyse } from "../src/index.js";
 import {
   DIACRITIC_LETTER_SHARE,
-  EN_FLOOR_SHARE,
   MIN_EVIDENCE_TOKENS,
   NON_EN_STOP_WORD_SHARE,
   NON_LATIN_LETTER_SHARE,
-  OTHER_LANGUAGE_DOUBLE_MIN_SHARE,
   OTHER_LANGUAGE_MIN_SHARE,
   decideLanguage,
   languageStats,
@@ -193,18 +191,30 @@ describe("language gate: thresholds", () => {
     expect(lang(Array<string>(40).fill("und").join(" "))).toBe("non_en");
   });
 
-  it("an English share below 0.06 is non_en on its own; at 0.06 it is not", () => {
-    expect(EN_FLOOR_SHARE).toBe(0.06);
-    const filler = "zzz";
-    const s = (en: number): string => [...Array<string>(en).fill("the"), ...Array<string>(50 - en).fill(filler)].join(" ");
-    expect(lang(s(2))).toBe("non_en"); // 2/50 = 0.04
-    expect(lang(s(3))).toBe("en"); // 3/50 = 0.06 exactly
-    expect(lang(Array<string>(40).fill("kubernetes").join(" "))).toBe("non_en"); // zero function words
+  it("a low English share alone is not evidence: telegraphic English stays en", () => {
+    const telegraphic =
+      "Refactor parser. Rename helpers. Delete dead code. Bump deps. Fix CI cache key. Update README. Add retry tests. Remove flag. Tighten types. Split module. " +
+      "Refactor loader. Rename fixtures. Delete stale mocks. Bump lockfile. Fix lint config. Update changelog. Add fence tests. Remove shim. Tighten regexes. Split reviewer.";
+    const a = analyse(telegraphic);
+    expect(a.prose_words).toBeGreaterThanOrEqual(40);
+    expect(a.language).toBe("en");
+    expect(lang(Array<string>(40).fill("kubernetes").join(" "))).toBe("en"); // zero function words, no other evidence
+    expect(lang(Array<string>(50).fill("zzz").join(" "))).toBe("en");
+  });
+
+  it("the original telegraphic decision record (English share 0.04) stays en", () => {
+    const record =
+      "Decision: adopt token bucket per tenant. Context: global limit let noisy tenants starve neighbours; three incidents last quarter. " +
+      "Options: global limit (status quo), per-tenant bucket, sliding window. Chosen: per-tenant bucket, Redis storage, refill at plan rate, " +
+      "burst double rate. Consequences: extra Redis round trip, fail open on outage, remaining-token header, new dashboards. " +
+      "Rejected: sliding window (memory cost, complexity), global limit (starvation). Owner: platform team. Review: Q3 retro. " +
+      "Follow-ups: load test, alert thresholds, runbook, customer comms, migration script, rollback plan.";
+    expect(analyse(record).prose_words).toBeGreaterThanOrEqual(75);
+    expect(analyse(record).language).toBe("en");
   });
 
   it("another language must beat English and reach 0.10", () => {
     expect(OTHER_LANGUAGE_MIN_SHARE).toBe(0.1);
-    expect(OTHER_LANGUAGE_DOUBLE_MIN_SHARE).toBe(0.06);
     const s = (en: number, de: number): string =>
       [...Array<string>(en).fill("the"), ...Array<string>(de).fill("und"), ...Array<string>(100 - en - de).fill("zzz")].join(" ");
     expect(lang(s(8, 8))).toBe("en"); // equal shares do not beat English
@@ -231,11 +241,11 @@ describe("language gate: thresholds", () => {
 
   it("fewer than the evidence floor of tokens outside capitalised runs is en", () => {
     expect(MIN_EVIDENCE_TOKENS).toBe(25);
-    const names = Array.from({ length: 24 }, (_, i) => `x${i}`).join(" ");
+    const names = Array.from({ length: 24 }, (_, i) => `é${i}`).join(" ");
     const caps = Array.from({ length: 30 }, () => "Foo Bar").join(" ");
     // 24 lowercase tokens + many capitalised runs: only 24 count
     expect(lang(`${names} ${caps}`)).toBe("en");
-    const names25 = Array.from({ length: 25 }, (_, i) => `x${i}`).join(" ");
+    const names25 = Array.from({ length: 25 }, (_, i) => `é${i}`).join(" ");
     expect(lang(`${names25} ${caps}`)).toBe("non_en");
   });
 
