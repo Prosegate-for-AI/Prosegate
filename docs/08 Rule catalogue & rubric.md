@@ -50,7 +50,7 @@ Conventions (ADR-15): all matching is case-insensitive on the normalised text (c
 | `core.structure.001` | document\_metric `headers_per_100_words` above 1.5, min 8 sentences | A 300-word reply with six headings | A 1,200-word doc with six headings | warn | restructure: "Remove headings; this is short enough to read as prose." |
 | `core.structure.002` | document\_metric `bullet_ratio` above 0.6, min 8 sentences, `min_item_words: 6` | A reply that is 80% bullets | A list of 12 config keys under one sentence | warn | restructure: "Rewrite as prose; keep a list only where the items are parallel." |
 | `core.structure.003` | document\_metric `sentence_length_cv` below 0.25, min 10 sentences | Ten sentences of 18–22 words | Ten or more sentences of 6, 24, 11, 31… words | warn | rephrase: "Vary sentence length; combine or split so the rhythm is uneven." |
-| `core.structure.004` | document\_metric `closing_similarity` above 0.6, min 6 sentences | Last paragraph restates the first | Last paragraph gives the next step | block | remove: "Remove the closing paragraph; it restates the opening." |
+| `core.structure.004` | document\_metric `closing_similarity` above 0.6, min 6 sentences, at least 3 non-heading blocks (ADR-24) | Last paragraph restates the first | Last paragraph gives the next step | block | remove: "Remove the closing paragraph; it restates the opening." |
 | `core.structure.005` | document\_metric `bold_per_100_words` above 3, min 6 sentences | Seven bolded phrases in 150 words | One bolded warning | warn | remove: "Remove bold except for the one thing a reader must not miss." |
 
 ### repetition
@@ -69,7 +69,7 @@ Starter profiles ship with the adapter. Cells show the category severity each pr
 | hedge |  |  | 003 → info (positions argued) |  |  |
 | vocab |  |  | `comprehensive` allowed |  |  |
 | triad |  |  |  |  |  |
-| structure |  | block | 001, 002 → info (headings expected) | 001 → block | 005 → block |
+| structure |  | 001, 002 → info (PR templates use headings and a change list; ADR-24) | 001, 002 → info (headings expected) | 001 → block | 005 → block |
 | repetition |  |  |  |  |  |
 | reviewer `register.max_words` | 600 | 300 | 2,500 | 200 | 250 |
 

@@ -172,3 +172,37 @@ Consequence: 07 threat 3 and 06 (policy endpoint, `PUT /rule-packs`, namespaces)
 ## ADR-23 · Finding ids drop the segment; document-level findings key on the rule
 
 2026-10-17. Supersedes the id formula in 03. The W2.2 review showed that `segment.id` in the id preimage makes ids positional: segments are numbered s1, s2… and a new one starts at every blank line. A pass-2 revision that adds or removes one paragraph above a flagged span renumbers every later segment, so every pass-1 id disappears. The finding counts as cleared, the verdict becomes `pass`, and the flagged text ships. Any model can do this by accident, or by being told to "add a short intro". New formula: `first 10 hex of sha256(category | rule_id | span_key)`, where `span_key` is the span text for phrase, regex and sentence-metric findings and the empty string for document-metric findings. A document metric describes the whole turn, and its span (the first sentence) is only an anchor; rewording that sentence must not count as clearing "the closing paragraph restates the opening". Ids stay content-derived and non-unique (ADR-17), and pass semantics stay id-set based. Rejected: keeping `segment.id` and matching findings fuzzily across passes (complex, and makes "cleared" depend on a heuristic); offsets (shift on every edit above the span). Consequence: 03's `Finding.id` comment and `findingId()` in `@prosegate/schema` change, and the engine passes the span key. This is not a schema-version bump, because the field shape is unchanged and ids are opaque to consumers (03 "Versioning").
+
+## ADR-24 · Engine and `core` corrections from the first realistic false-positive pass
+
+2026-10-17. An adversarial review of the W2.2 engine ran 108 clean, realistic agent replies under all five starter profiles, and 20 replies dense with tics. It found false positives and misses that the hit/miss examples cannot show. Corrections:
+- **`pr-description` no longer raises `structure` to block.** It sets `core.structure.001` and `core.structure.002` to `info`. Claude Code's own default PR body (`## Summary` with bullets, `## Test plan` with a checklist) was blocked on every turn, and the profile's own register format asks for "a bulleted list only for the list of changes". This reverses 08's table cell for that profile. Rejected: keeping block and relying on the eval (the first customer's most common artifact would be revised on every turn until Phase 6).
+- **Document-scope findings.** Findings from `document_metric` rules gain the optional field `scope: 'document'`. 03 allows optional fields without a version bump; the default is `'span'`. They are exempt from overlap resolution, so they never swallow a phrase finding and several can coexist. Each anchors on the text its instruction names:
+  - `headers_per_100_words`: the first heading;
+  - `bullet_ratio`: the first qualifying list item;
+  - `sentence_length_cv`: the first sentence;
+  - `closing_similarity`: the first sentence of the closing block;
+  - `bold_per_100_words`: the first bold span.
+
+  Before this, every document finding anchored on sentence 1 and won overlap ties by length. It swallowed a block tic there ("Great question!"), which then shipped on pass 2 as a new, demoted finding, and it showed "Remove the closing paragraph" beside the answer.
+- **`core.structure.004` needs at least three non-heading blocks.** "The closing restates the opening" presupposes a middle. A two-block "diagnosis, then the fix" answer, 08's own miss shape, scored 0.60–0.67 and was blocked in 3 of 5 probes. This makes the rule's definition say what it means; it does not soften its severity.
+- **Matching treats line breaks and tabs as spaces**, on a 1:1 copy of the text. Hard-wrapped commit and PR bodies missed "It's worth\nnoting" and "may or\nmay not". **A hyphen between letters is word-internal for boundary checks**, consistent with `countWords`; "well-tested, documented, and fast" no longer spans from "tested".
+- **Phrase variants added for recall** (10's recall target is ≥ 70% per category):
+  - filler.001: "that's a great question", "good question", and sentence-initial "certainly." and "absolutely.";
+  - filler.002: "let me know if you have any other questions", "let me know if you'd like";
+  - hedge.001: "it's also worth noting", and sentence-initial "please note that";
+  - vocab.001: subjects "we'll / you'll / they'll / then" before "leverage";
+  - vocab.002: up to two words between the determiner and "landscape";
+  - vocab.005: "a wide array of", "numerous";
+  - triad.002: "; " and an em dash as the contrast separator.
+
+  Each addition gets a hit and a miss example.
+- **Bounded work.**
+  - At most 50 findings per rule and 200 per turn; further matches are counted in stats only.
+  - `similarity_to_prior` compares each sentence with at most 200 prior candidates.
+  - Units longer than 1,500 characters are searched in overlapping windows.
+  - The budget guard covers the whole review, not only rule execution.
+  - The engine refuses a compiled pack whose version is not the one the resolved profile pinned.
+- **At-risk watchlist for Phase 6.** `core.structure.001`, `core.triad.001` (technical enumerations), `core.hedge.001` "note that" at block, and `core.filler.003` "in this response" / "the following is" (literal uses in API-debugging answers) are measured first when the human control set exists. Each is pulled if over budget (10).
+
+Consequence: 03 gains `Finding.scope`, and the schema validator exempts document-scope findings from the overlap invariant. 04, 08 and the bundled `pr-description` and `core` change.

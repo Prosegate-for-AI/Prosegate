@@ -61,6 +61,7 @@ export interface Finding {
   instruction: { action: Action; text: string };
   evidence: string | null;          // reviewer's one-line reason; null for rules
   profile_origin: string;           // profile id whose config enabled or set severity for this finding
+  scope?: 'span' | 'document';      // default 'span'; 'document' for document_metric findings, which are exempt from overlap resolution (ADR-24)
 }
 
 export interface ReviewStats {
@@ -119,7 +120,7 @@ Finding ids are content-derived and position-independent, so a span that survive
 
 ## Overlap resolution
 
-Two findings whose spans intersect are resolved before output, in this order: higher severity wins; `rule` beats `reviewer`; earlier `span.start` wins. The loser is dropped, not merged. A reviewer finding that fully contains a rule finding is kept only when its category differs; otherwise the rule finding wins. That containment is the only intersection a result may hold; findings are sorted by `span.start`, then by `span.end` descending. Spans are never empty. Two occurrences of the same span text in one segment share an id; pass 2 treats ids as a set, and an id counts as cleared only when no occurrence remains (ADR-17).
+Two findings whose spans intersect are resolved before output, in this order: higher severity wins; `rule` beats `reviewer`; earlier `span.start` wins. The loser is dropped, not merged. A reviewer finding that fully contains a rule finding is kept only when its category differs; otherwise the rule finding wins. Document-scope findings (ADR-24) take no part in overlap resolution and may intersect anything; apart from them, that containment is the only intersection a result may hold; findings are sorted by `span.start`, then by `span.end` descending. Spans are never empty. Two occurrences of the same span text in one segment share an id; pass 2 treats ids as a set, and an id counts as cleared only when no occurrence remains (ADR-17).
 
 ## Thresholds
 
