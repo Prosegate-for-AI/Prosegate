@@ -3,7 +3,7 @@ import { analyse } from "@prosegate/segmenter";
 import { DocContext } from "../src/context.js";
 import { documentMetricValue } from "../src/metrics.js";
 import type { DocumentMetricMatch } from "../src/compile.js";
-import { hits, profile, run } from "./helpers.js";
+import { CORE_COMPILED, hits, profile, run } from "./helpers.js";
 
 // Regression tests from the adversarial review of the first engine (ADR-24).
 
@@ -92,18 +92,31 @@ describe("core.structure.004 needs at least three non-heading blocks (adversaria
     });
   }
 
-  it("the five answers: which of them the three-block rule still blocks (measured, see the report)", () => {
-    // These answers have exactly three blocks (diagnosis, details, fix), so the three-block floor does not
-    // reach them; their closing_similarity is 0.60 to 0.67, just over the 0.6 threshold. The adversarial review
-    // expected them all to pass. Recorded here so a change of threshold or definition shows up.
-    expect(ANSWERS.map((a) => blocksOf(a).includes("core.structure.004"))).toEqual([false, true, true, false, true]);
-    expect(ANSWERS.map((a) => (closingValue(a) ?? 0) > 0.6)).toEqual([false, true, true, false, true]);
+  it("none of the five three-block answers is blocked (their closing_similarity is 0.60 to 0.67; the threshold is 0.75, ADR-25)", () => {
+    for (const a of ANSWERS) {
+      expect(blocksOf(a)).toEqual([]);
+      expect(closingValue(a) ?? 0).toBeLessThan(0.75);
+    }
+    expect(Math.max(...ANSWERS.map((a) => closingValue(a) ?? 0))).toBeGreaterThan(0.6);
   });
 
-  // The requirement as the review states it: none of the five is blocked. It does not hold with a
-  // three-block floor and the 0.6 threshold; `fails` flips to a failure the day it does.
-  it.fails("none of the five answers is blocked", () => {
-    for (const a of ANSWERS) expect(blocksOf(a)).toEqual([]);
+  it("the compiled threshold is 0.75, and the rule is still a block", () => {
+    const rule = CORE_COMPILED.rules.find((r) => r.id === "core.structure.004");
+    expect(rule?.match).toMatchObject({ kind: "document_metric", metric: "closing_similarity", above: 0.75 });
+    expect(rule?.severity).toBe("block");
+  });
+
+  it("boundary: a constructed closing at cosine 0.74 does not fire, 0.76 does (opening and closing of 50 content words, 37 / 38 shared)", () => {
+    const tok = (i: number): string => `tok${i}x`;
+    const para = (ids: number[]): string => `${ids.map(tok).join(" ")}.`;
+    const opening = Array.from({ length: 50 }, (_, i) => i);
+    const closing = (shared: number): number[] => [...Array.from({ length: shared }, (_, i) => i), ...Array.from({ length: 50 - shared }, (_, i) => 100 + i)];
+    const middle = "Bananas sail on ships. Oranges grow here. Rivers run to the sea. Mountains stand still. Clouds drift by.";
+    const doc = (shared: number): string => `${para(opening)}\n\n${middle}\n\n${para(closing(shared))}`;
+    expect(closingValue(doc(37))).toBeCloseTo(0.74, 10);
+    expect(closingValue(doc(38))).toBeCloseTo(0.76, 10);
+    expect(hits(doc(37)).filter(([id]) => id === "core.structure.004")).toEqual([]);
+    expect(hits(doc(38)).filter(([id]) => id === "core.structure.004")).toHaveLength(1);
   });
 
   it("08's hit example (three blocks, closing restates the opening) still fires", () => {

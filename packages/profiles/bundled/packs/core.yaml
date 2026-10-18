@@ -381,7 +381,7 @@ rules:
   - id: core.structure.004
     category: structure
     severity: block
-    match: { kind: document_metric, metric: closing_similarity, above: 0.6, min_sentences: 6 }
+    match: { kind: document_metric, metric: closing_similarity, above: 0.75, min_sentences: 6 }
     instruction: { action: remove, text: "Remove the closing paragraph; it restates the opening." }
     examples:
       hit: ["<eval corpus ref: core/structure-004-hit-01>"]
