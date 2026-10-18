@@ -135,7 +135,7 @@ export interface GateFailure {
   message: string;
 }
 
-export type FpSource = "candidates" | "post_overlap";
+export type FpSource = "raw_candidates" | "post_overlap";
 
 /** The engine entry point; tests inject a wrapper to simulate engine diagnostics. */
 export type ReviewFn = (input: ReviewRulesInput) => DetailedReview;
@@ -237,30 +237,38 @@ function review(env: Env, pack: LoadedPack, resolved: ResolvedProfile, text: str
 }
 
 /**
- * The rule ids with at least one raw hit in a review (docs/10: "documents with at least one hit"). The
- * engine is adding `diagnostics.candidates`, the per-rule matches before overlap resolution and before
- * caps; when it is there this reads it. Until then the post-overlap `all_findings` stand in, and the
- * report says `fp_source: post_overlap`. This is the one place that changes when the engine lands it.
- * The shape of `candidates` is not fixed yet: an array of objects with a `rule_id`, or a record keyed by
- * rule id whose value is a count or a list, are both read.
+ * One raw rule match, as the engine will emit it in `diagnostics.candidates`: before overlap resolution
+ * and before caps, at the rule's effective severity under the resolved profile, info included, sorted by
+ * start then rule_id. A local copy of the engine's `RuleCandidate` type until the engine exports it; swap
+ * this for the import then.
+ */
+export interface RuleCandidate {
+  rule_id: string;
+  category: Category;
+  severity: Severity;
+  start: number;
+  end: number;
+  scope: "span" | "document";
+}
+
+/**
+ * The rule ids with at least one raw hit in a review (docs/10: "documents with at least one hit"). When
+ * the engine supplies `diagnostics.candidates` they are read (source `raw_candidates`); until then the
+ * post-overlap `all_findings` stand in and the report says `fp_source: post_overlap`. This is the one
+ * place that changes when the engine lands it. A `candidates` value of any other shape is a harness error.
  */
 export function rawHitRules(d: DetailedReview): { rules: Set<string>; source: FpSource } {
   const candidates = (d.diagnostics as unknown as { candidates?: unknown }).candidates;
-  if (candidates === undefined || candidates === null) {
+  if (candidates === undefined) {
     return { rules: new Set(d.diagnostics.all_findings.map((f) => f.rule_id ?? "")), source: "post_overlap" };
   }
+  if (!Array.isArray(candidates)) throw new HarnessError("diagnostics.candidates must be an array of RuleCandidate");
   const rules = new Set<string>();
-  if (Array.isArray(candidates)) {
-    for (const c of candidates as unknown[]) {
-      const id = typeof c === "string" ? c : (c as { rule_id?: unknown } | null)?.rule_id;
-      if (typeof id === "string") rules.add(id);
-    }
-  } else if (typeof candidates === "object") {
-    for (const [id, v] of Object.entries(candidates as Record<string, unknown>)) {
-      if (Array.isArray(v) ? v.length > 0 : typeof v === "number" ? v > 0 : Boolean(v)) rules.add(id);
-    }
+  for (const c of candidates as Array<Partial<RuleCandidate> | null>) {
+    if (c === null || typeof c !== "object" || typeof c.rule_id !== "string") throw new HarnessError("diagnostics.candidates holds an entry without a string rule_id");
+    rules.add(c.rule_id);
   }
-  return { rules, source: "candidates" };
+  return { rules, source: "raw_candidates" };
 }
 
 // ---- loading packs -----------------------------------------------------------------------------------
@@ -593,7 +601,7 @@ export function measure(input: EvalInput): EvalMeasurements {
   const skippedAi = packs[0]?.skipped_below_floor.ai ?? 0;
   if (skippedHuman > 0) notes.push(`${skippedHuman} human-control documents were skipped by the profile's token floor or as non-prose; they are left out of every false-positive denominator`);
   if (skippedAi > 0) notes.push(`${skippedAi} AI documents were skipped by the profile's token floor or as non-prose; their gold spans count as missed`);
-  const fpSource: FpSource = postOverlap ? "post_overlap" : corpora.humanControl.length === 0 ? "post_overlap" : "candidates";
+  const fpSource: FpSource = postOverlap ? "post_overlap" : corpora.humanControl.length === 0 ? "post_overlap" : "raw_candidates";
   if (fpSource === "post_overlap") {
     notes.push("fp_source: post_overlap. False positives are counted on the engine's post-overlap findings because diagnostics.candidates is not available yet; a rule whose hit another rule outranks is not counted as a hit.");
   }

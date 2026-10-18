@@ -65,7 +65,7 @@ integer counts, so a rule exactly at its budget passes.
 - **D4 False-positive rate** = human-control documents with at least one raw hit of the rule (any severity, info
   included) / human-control documents the rule ran on. A document counts only if it reached the rule stage (not
   skipped below the floor or as non-prose) and the profile has the rule enabled. Skipped documents are counted and
-  reported, and left out of the denominator. The hit source is `diagnostics.candidates` (matches before overlap
+  reported, and left out of the denominator. The hit source is `diagnostics.candidates` (`RuleCandidate[]`: matches before overlap
   resolution and caps) when the engine offers it; until then it is the post-overlap `all_findings`, and the report says
   `fp_source: post_overlap`. The switch is one function, `rawHitRules` in `rules-eval.ts`.
 - **D8 Unfinished rules.** A document on which a rule is in `diagnostics.rules_unfinished` is counted per rule

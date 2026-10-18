@@ -570,22 +570,48 @@ describe("hidden false positives (in process)", () => {
     expect(out.report?.packs[0]?.rule_verdicts["core.vocab.005"]).toBe("FAIL");
   });
 
-  it("raw candidates, when the engine offers them, decide the false-positive hit (post_overlap is the fallback)", () => {
-    // The wrapper reports a vocab.003 candidate on one document that has no finding: 1 of 30 = 3.3% > 3%.
+  it("raw candidates count a hit that overlap resolution dropped (fp_source: raw_candidates); post_overlap is the fallback", () => {
+    // One document's hedge.001 finding is removed from all_findings (as if another rule outranked it) but
+    // stays in candidates, in the engine's RuleCandidate shape: 1 of 30 = 3.3% > 1% (block), so the rule fails.
     const withCandidates = (input: Parameters<typeof reviewRulesDetailed>[0]) => {
       const r = reviewRulesDetailed(input);
-      const d = r.diagnostics as unknown as { candidates: Array<{ rule_id: string }> };
-      d.candidates = input.request.text.includes("Ticket 1005 ") ? [{ rule_id: "core.vocab.003" }] : [];
+      const d = r.diagnostics;
+      const all = d.all_findings;
+      if (input.request.text.includes("Ticket 1004 ")) d.all_findings = all.filter((f) => f.rule_id !== "core.hedge.001");
+      (d as unknown as { candidates: unknown[] }).candidates = [...all]
+        .sort((a, b) => a.span.start - b.span.start || (a.rule_id ?? "").localeCompare(b.rule_id ?? ""))
+        .map((f) => ({ rule_id: f.rule_id, category: f.category, severity: f.severity, start: f.span.start, end: f.span.end, scope: "span" }));
       return r;
     };
-    const out = inProcess(new FixtureCorpora().humanSet(30), { review: withCandidates });
+    const out = inProcess(new FixtureCorpora().humanSet(30, HEDGE, [4]), { review: withCandidates });
     expect(out.exitCode, out.text).toBe(1);
-    expect(out.report?.fp_source).toBe("candidates");
-    expect([...new Set(out.report?.failures.map((f) => f.id))]).toEqual(["core.vocab.003"]);
-    expect(out.report?.packs[0]?.rules.find((x) => x.id === "core.vocab.003")?.false_positive).toMatchObject({ num: 1, den: 30, status: "fail" });
+    expect(out.report?.fp_source).toBe("raw_candidates");
+    expect([...new Set(out.report?.failures.map((f) => f.id))]).toEqual(["core.hedge.001"]);
+    expect(out.report?.packs[0]?.rules.find((x) => x.id === "core.hedge.001")?.false_positive).toMatchObject({ num: 1, den: 30, status: "fail" });
+    // The same corpus on post-overlap findings, with the finding dropped and no candidates, would not see the hit.
+    const blind = inProcess(new FixtureCorpora().humanSet(30, HEDGE, [4]), {
+      review: (input) => {
+        const r = reviewRulesDetailed(input);
+        if (input.request.text.includes("Ticket 1004 ")) r.diagnostics.all_findings = r.diagnostics.all_findings.filter((f) => f.rule_id !== "core.hedge.001");
+        return r;
+      },
+    });
+    expect(blind.report?.fp_source).toBe("post_overlap");
+    expect(blind.report?.packs[0]?.rules.find((x) => x.id === "core.hedge.001")?.false_positive).toMatchObject({ num: 0, status: "pass" });
     const plain = inProcess(new FixtureCorpora().humanSet(30));
     expect(plain.exitCode, plain.text).toBe(0);
     expect(plain.report?.fp_source).toBe("post_overlap");
+  });
+
+  it("a candidates value that is not an array is a harness error (exit 2)", () => {
+    const bad = (input: Parameters<typeof reviewRulesDetailed>[0]) => {
+      const r = reviewRulesDetailed(input);
+      (r.diagnostics as unknown as { candidates: unknown }).candidates = { "core.vocab.003": 1 };
+      return r;
+    };
+    const out = inProcess(new FixtureCorpora().humanSet(30), { review: bad });
+    expect(out.exitCode).toBe(2);
+    expect(out.text).toContain("diagnostics.candidates must be an array");
   });
 });
 
