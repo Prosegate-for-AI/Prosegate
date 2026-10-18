@@ -15,6 +15,7 @@ import {
   appendFileSync,
   closeSync,
   existsSync,
+  linkSync,
   mkdirSync,
   openSync,
   readFileSync,
@@ -158,7 +159,8 @@ export function sweepTempFiles(dir: string, nowMs: number, minAgeMs = 10_000): n
     return 0;
   }
   for (const name of names) {
-    if (!name.endsWith(".tmp")) continue;
+    // `.tmp`: a write killed before its rename. `.lock.stale.*`: a broken lock killed before it was deleted.
+    if (!name.endsWith(".tmp") && !name.includes(".lock.stale.")) continue;
     const path = join(dir, name);
     try {
       if (nowMs - statSync(path).mtimeMs >= minAgeMs) {
@@ -252,40 +254,81 @@ function staleReason(lockPath: string, staleMs: number): { reason: string; text:
   return null;
 }
 
+/** How long a `.brk` mutex may sit before it is treated as abandoned (a breaker killed inside its few microseconds of work). */
+const BREAKER_STALE_MS = 2000;
+
 /**
- * Removes a stale lock without two contenders both believing they removed it: the file is renamed
- * to a name only this process uses (rename is atomic, so one contender wins), then deleted. If the
- * renamed file turns out to be a different, live lock than the one judged stale, it is put back.
+ * Removes a lock that staleReason judged stale, without ever deleting a live one (N10).
+ *
+ * The danger is a contender that judged the lock stale a moment ago and then renames a FRESH lock that
+ * another contender created in between. Three steps make that rare enough to ignore in practice and
+ * leave mutual exclusion intact when it happens:
+ *
+ *   1. Breakers take a short mutex (`<lock>.brk`, created with `wx`), so only one breaks at a time.
+ *      A breaker that does not get it returns; the caller loops and judges the lock again, by which
+ *      time the winner has removed it.
+ *   2. Under the mutex the lock is judged again, so a lock that was replaced since the first look is
+ *      left alone.
+ *   3. The file is renamed to a name only this process uses, and the file actually taken is judged
+ *      stale on its own (its owner, its age). If it is not, it is a live lock we took by mistake: it
+ *      goes back with `link`, which fails if the name is already taken, and is never overwritten.
  */
-function breakLock(lockPath: string, judged: string | null): void {
-  const mine = `${lockPath}.stale.${process.pid}.${Math.random().toString(16).slice(2, 8)}`;
+function breakLock(lockPath: string, staleMs: number): boolean {
+  const breaker = `${lockPath}.brk`;
   try {
-    renameSync(lockPath, mine);
-  } catch {
-    return; // someone else broke it, or it was released
-  }
-  const taken = tryRead(mine);
-  if (judged !== null && taken !== null && taken !== judged && parseOwner(taken) !== null) {
-    // We took a fresh lock someone created after our judgement: give it back if the name is free.
+    const fd = openSync(breaker, "wx", FILE_MODE);
     try {
-      if (!existsSync(lockPath)) renameSync(mine, lockPath);
-      else unlinkSync(mine);
-    } catch {
-      // nothing more to do
+      writeSync(fd, JSON.stringify({ pid: process.pid, at: Date.now() }));
+    } finally {
+      closeSync(fd);
     }
-    return;
+  } catch {
+    // Someone else is breaking it. If that breaker was killed, its mutex is cleared once it is old.
+    // A planted mutex must not stop stale locks being broken, so one dated in the future goes too.
+    try {
+      const age = Date.now() - statSync(breaker).mtimeMs;
+      if (age > BREAKER_STALE_MS || age < -1000) unlinkSync(breaker);
+    } catch {
+      // gone already
+    }
+    return false;
   }
   try {
-    unlinkSync(mine);
-  } catch {
-    // already gone
+    if (staleReason(lockPath, staleMs) === null) return false;
+    const mine = `${lockPath}.stale.${process.pid}.${Math.random().toString(16).slice(2, 8)}`;
+    try {
+      renameSync(lockPath, mine);
+    } catch {
+      return false; // released, or broken by a process that ignores the mutex
+    }
+    if (staleReason(mine, staleMs) === null) {
+      // We took a lock that is not stale: put it back unless the name was taken meanwhile.
+      try {
+        linkSync(mine, lockPath);
+      } catch {
+        // the name is taken; the lock we hold is dropped below, and its owner will notice at release
+      }
+    }
+    try {
+      unlinkSync(mine);
+    } catch {
+      // already gone
+    }
+    return true;
+  } finally {
+    try {
+      unlinkSync(breaker);
+    } catch {
+      // already gone
+    }
   }
 }
 
 /**
  * Runs `fn` holding an exclusive lock file. The lock is created with O_EXCL and records its owner;
- * contenders retry with a short jittered sleep and break a stale lock (see staleReason). A holder
- * deletes the lock only if it still owns it.
+ * contenders retry with a short jittered sleep and break a stale lock (see staleReason, breakLock). A
+ * holder deletes the lock only if it still owns it. The deadline is checked on every pass of the loop,
+ * including after a break, so a lock that keeps going stale cannot hold a hook past its budget.
  */
 export function withLock<T>(lockPath: string, fn: () => T, opts: LockOptions = {}): T {
   const timeoutMs = opts.timeoutMs ?? 3000;
@@ -304,12 +347,11 @@ export function withLock<T>(lockPath: string, fn: () => T, opts: LockOptions = {
     } catch (error) {
       const code = errorCode(error);
       if (code !== "EEXIST" && !TRANSIENT.has(code ?? "")) throw error;
-      const stale = staleReason(lockPath, staleMs);
-      if (stale !== null) {
-        breakLock(lockPath, stale.text);
+      if (Date.now() > deadline) throw new LockTimeoutError(`lock ${lockPath} not acquired within ${timeoutMs} ms`);
+      if (staleReason(lockPath, staleMs) !== null) {
+        if (!breakLock(lockPath, staleMs)) sleepSync(2 + Math.random() * 6);
         continue;
       }
-      if (Date.now() > deadline) throw new LockTimeoutError(`lock ${lockPath} not acquired within ${timeoutMs} ms`);
       sleepSync(3 + Math.random() * 12);
     }
   }

@@ -7,9 +7,18 @@ import { BUNDLED_PROFILE_YAML, type ResolvedProfile } from "@prosegate/profiles"
 import { type Category, type ReviewRequest, type ReviewResult, renderNotice } from "@prosegate/schema";
 import { countWords } from "@prosegate/segmenter";
 import { ENGINE_BUDGET_MAX_MS, reviewCap, type Ctx } from "./ctx.js";
-import { sleepSync } from "./fs-secure.js";
-import { buildInject, debugNoticeLine, overlaysIgnoredLine, profileUpdatedLine, resolutionIssueLine } from "./inject.js";
-import { NOT_LOWERED, computeLowering, loweredNoticeLine, type Lowering } from "./lowering.js";
+import { sleepSync, sweepTempFiles } from "./fs-secure.js";
+import {
+  buildInject,
+  debugNoticeLine,
+  overlaysIgnoredLine,
+  profileUpdatedLine,
+  resolutionIssueLine,
+  tooLongLine,
+  truncatedLine,
+  uncheckedLine,
+} from "./inject.js";
+import { loweredNoticeLine, lowerFor } from "./lowering.js";
 import { log } from "./log.js";
 import { effectiveMode, renderFor, type EffectiveMode } from "./modes.js";
 import {
@@ -18,8 +27,6 @@ import {
   profileSummary,
   profileUpdate,
   resolveAndLoad,
-  resolveBaseline,
-  type LoadedSession,
 } from "./profiles.js";
 import { buildTurnReport, summaryLine } from "./report.js";
 import type { LastTurn, SessionStartInput, SessionState, TurnEndInput, TurnRecord, TurnStartInput } from "./schemas.js";
@@ -50,6 +57,8 @@ import {
 /** ADR-30: a reply is reviewed up to this much prose; the rest is not, and the user can see that (status, telemetry). */
 export const MAX_PROSE_REVIEWED = 100 * 1024;
 export const USER_MESSAGE_MAX = 2000;
+/** A turn's pass record is forgotten this long after its last update (ADR-31). */
+export const TURN_RECORD_TTL_MS = 60 * 60 * 1000;
 
 export interface SessionStartOutput {
   inject: string;
@@ -100,18 +109,9 @@ function passCapOf(resolved: ResolvedProfile): 1 | 2 {
   return resolved.enforcement.pass_cap;
 }
 
-/** The schema renderers say "of 2"; a profile with pass_cap 1 reads "of 1". */
+/** The schema renderers say "of 2" and "after 2 passes"; a profile with pass_cap 1 reads "of 1" and "after 1 pass". */
 function withCap(text: string, cap: 1 | 2): string {
-  return cap === 2 ? text : text.replace(/pass (\d) of 2/g, `pass $1 of ${cap}`);
-}
-
-/** The lowering facts for this turn (ADR-30). */
-function lowerFor(ctx: Ctx, state: SessionState, eff: EffectiveMode, loaded: LoadedSession): Lowering {
-  if (eff.required) return NOT_LOWERED;
-  const { resolved } = loaded;
-  const usesLocal = resolved.sources.some((s) => s.origin === "local") || resolved.packs.some((p) => p.origin === "local");
-  const baseline = usesLocal ? resolveBaseline(ctx, resolved.id) : resolved;
-  return computeLowering({ state, eff, resolved, baseline, packs: loaded.packs, currentHashes: loaded.local.hashes });
+  return cap === 2 ? text : text.replace(/pass (\d) of 2/g, `pass $1 of ${cap}`).replace(/after 2 passes/g, "after 1 pass");
 }
 
 function suppressesNotices(eff: EffectiveMode): boolean {
@@ -168,7 +168,9 @@ export function sessionStart(input: SessionStartInput, ctx: Ctx): HandlerOutcome
   if (showIssue && issueLine !== null) lines.push(issueLine);
   const debugDir = ctx.debug && !eff.headless && !provisional.debug_notice_shown;
   if (debugDir) lines.push(debugNoticeLine(`${store.dir}`));
-  const showLowered = !eff.headless && lowering.what !== "" && lowering.what !== provisional.lowered_shown;
+  // The "already shown" record starts over at every session start (ADR-30): a state.json edit made in one
+  // session cannot keep the line from the next. The record only suppresses repeats inside a session.
+  const showLowered = !eff.headless && lowering.what !== "";
   if (showLowered) lines.unshift(loweredNoticeLine(lowering.what));
 
   store.updateState(
@@ -178,7 +180,7 @@ export function sessionStart(input: SessionStartInput, ctx: Ctx): HandlerOutcome
       overlays_notice_shown: provisional.overlays_notice_shown || showOverlays,
       resolution_notice_shown: provisional.resolution_notice_shown || showIssue,
       debug_notice_shown: provisional.debug_notice_shown || debugDir,
-      lowered_shown: lowering.what === "" ? "" : showLowered ? lowering.what : provisional.lowered_shown,
+      lowered_shown: showLowered ? lowering.what : "",
     }),
   );
   store.writeProfileCache(resolved);
@@ -206,12 +208,27 @@ export function turnStart(input: TurnStartInput, ctx: Ctx): HandlerOutcome<TurnS
   crashIfAsked(ctx, "turn-start");
   const store = new SessionStore(ctx, input.session_id);
   const message = trimUserMessage(input.user_message);
-  store.writeTurn({ turn_id: deriveTurnId(input.session_id, input.user_message), user_message: message, ts: ctx.now() });
+  const turnId = input.turn_id !== undefined && input.turn_id !== null && input.turn_id !== "" ? input.turn_id : deriveTurnId(input.session_id, input.user_message);
+  // Replaces any earlier turn.json, a stale one included (ADR-31).
+  store.writeTurn({ turn_id: turnId, user_message: message, ts: ctx.now() });
+  try {
+    sweepTempFiles(store.dir, ctx.now());
+  } catch {
+    // a leftover temp file is swept at the next session start
+  }
+  const key = turnKey(turnId);
+  const now = ctx.now();
   store.updateState(
     () => defaultState(ctx, { session_id: input.session_id, harness: "unknown", cwd: ctx.cwd, context_mode: "interactive", active_profile: requestedProfile(ctx, ctx.cwd) }),
-    // A new user prompt starts a new turn: every earlier pass count is over. This is what lets a
-    // shim that derives turn ids from a hash of the user message repeat a message safely.
-    (s) => ({ ...s, turns: {} }),
+    // turn-start never resets a turn's pass count (ADR-31): anything that can run `prosegate turn-start`
+    // could otherwise reset the real turn in the middle of a revision. It creates an empty record for its
+    // own turn id if there is none, and forgets records an hour old. A repeated message is a new turn
+    // because its Stop arrives with continuation=false (see turnEnd).
+    (s) => {
+      const turns = Object.fromEntries(Object.entries(s.turns).filter(([, r]) => now - r.updated_at < TURN_RECORD_TTL_MS));
+      if (!Object.hasOwn(turns, key)) turns[key] = { ...EMPTY_RECORD, updated_at: now };
+      return { ...s, turns };
+    },
   );
   // Selection heuristics are Phase 5 (04 "Selection and hysteresis"): nothing to inject yet.
   return { output: { inject: null, candidate: null }, stderr: [] };
@@ -254,6 +271,20 @@ function proseWords(result: ReviewResult, text: string): number {
 const EMPTY_RECORD: TurnRecord = { count: 0, pass1: [], pass1_block_count: 0, profile_id: "", profile_version: "", shipped_shown: false, updated_at: 0 };
 
 export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutput> {
+  try {
+    return turnEndInner(input, ctx);
+  } catch (error) {
+    // The hook fails open (the reply is not held), so the turn is over: its user message must not outlive it (ADR-31).
+    try {
+      new SessionStore(ctx, input.session_id).deleteTurn();
+    } catch {
+      // swept at the next session start
+    }
+    throw error;
+  }
+}
+
+function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutput> {
   crashIfAsked(ctx, "turn-end");
   const startupMs = ctx.elapsedMs();
   const store = new SessionStore(ctx, input.session_id);
@@ -373,6 +404,13 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
     }
   }
 
+  // N7: a revision (or the cap check) with no prose units, for instance the reply moved into a blockquote or
+  // an indented block, cannot show that anything was fixed. The engine reports every earlier finding as gone;
+  // nothing is cleared, and the turn ships with those findings as the remainder.
+  const recheckFailed = reviewed && pass === 2 && rec.pass1.length > 0 && result.stats.prose_chars === 0;
+  if (recheckFailed) result = { ...result, cleared: [] };
+  const unrechecked = recheckFailed ? rec.pass1.length : 0;
+
   const continueSupported = input.continue_supported !== false;
   let wouldContinue = reviewed && !capCheck && result.verdict === "revise";
   if (wouldContinue && !continueSupported) wouldContinue = false;
@@ -383,7 +421,10 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
   const phase = capCheck ? "shipped" : pass === 2 ? "pass2" : "pass1";
   const render = reviewed ? renderFor(eff, resolved, phase) : "none";
   let reviewNotice: string | null = null;
-  if (reviewed && !eff.headless && !(capCheck && rec.shipped_shown)) {
+  if (recheckFailed) {
+    // The shipped line, worded for what happened; it shows once per turn, like the cap's own (ADR-31).
+    if (!eff.headless && eff.mode === "enforce" && !rec.shipped_shown) reviewNotice = uncheckedLine(unrechecked);
+  } else if (reviewed && !eff.headless && !(capCheck && rec.shipped_shown)) {
     reviewNotice = renderNotice(result, {
       mode: eff.mode,
       render,
@@ -393,8 +434,8 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
     });
     if (reviewNotice !== null) reviewNotice = withCap(reviewNotice, cap);
   }
-  const firstNoticeSpent = reviewNotice !== null && phase === "pass1" && eff.mode === "enforce";
-  const shippedShownNow = capCheck && (reviewNotice !== null || (eff.headless && reviewed));
+  const firstNoticeSpent = reviewNotice !== null && !recheckFailed && phase === "pass1" && eff.mode === "enforce";
+  const shippedShownNow = (capCheck || recheckFailed) && (reviewNotice !== null || (eff.headless && reviewed));
 
   // Once-per-session lines (09, ADR-18, ADR-30) wait for a turn with no review notice of its own and are
   // hidden in quiet, off and headless; the lowered-enforcement and debug lines are about the user's own
@@ -416,7 +457,18 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
   const showLowered = !eff.headless && lowered && lowering.what !== state.lowered_shown;
   const showDebug = !eff.headless && ctx.debug && !state.debug_notice_shown && debugDir !== null;
   if (showDebug && debugDir !== null) extra.push(debugNoticeLine(debugDir));
-  const noticeLines = [...(showLowered ? [loweredNoticeLine(lowering.what)] : []), ...extra, ...(reviewNotice === null ? [] : [reviewNotice])];
+  // N9: a reply longer than the review limit was only partly read. The user is told on the allow (or the next one,
+  // when this turn asks for a revision), in every mode but headless, whose report carries the same fact.
+  const truncatedHere = truncated && reviewed;
+  const nothingRead = truncatedHere && result.verdict === "skipped";
+  const showTruncated = !eff.headless && decision === "allow" && (truncatedHere || state.truncated_pending === true);
+  const truncatedNotice = showTruncated ? (nothingRead ? tooLongLine() : truncatedLine()) : null;
+  const noticeLines = [
+    ...(showLowered ? [loweredNoticeLine(lowering.what)] : []),
+    ...extra,
+    ...(reviewNotice === null ? [] : [reviewNotice]),
+    ...(truncatedNotice === null ? [] : [truncatedNotice]),
+  ];
   const notice = noticeLines.length === 0 ? null : noticeLines.join("\n");
 
   // ---- last-turn summary for `status` -----------------------------------------------------------
@@ -424,14 +476,15 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
   let outcome: LastTurn["outcome"];
   if (skippedWhy === "off") outcome = "off";
   else if (skippedWhy === "budget") outcome = "budget";
-  else if (result.verdict === "skipped") outcome = result.skipped_reason === "below_floor" ? "too_short" : "no_prose";
+  else if (recheckFailed) outcome = "shipped";
+  else if (result.verdict === "skipped") outcome = nothingRead ? "too_long" : result.skipped_reason === "below_floor" ? "too_short" : "no_prose";
   else if (truncated) outcome = "truncated";
   else if (eff.mode === "advisory") outcome = "advisory";
   else if (decision === "continue") outcome = "revised";
   else if (capCheck && count > 0) outcome = "shipped";
   else outcome = "clean";
   const newCount = decision === "continue" ? rec.count + 1 : rec.count;
-  const lastTurn: LastTurn = { outcome, findings: reviewed ? Math.max(count, rec.pass1.length) : 0, fixed: reviewed ? result.cleared.length : 0, remaining: reviewed ? count : 0, revisions: Math.min(2, newCount) };
+  const lastTurn: LastTurn = { outcome, findings: reviewed ? Math.max(count, rec.pass1.length) : 0, fixed: reviewed ? result.cleared.length : 0, remaining: reviewed ? (recheckFailed ? unrechecked : count) : 0, revisions: Math.min(2, newCount) };
 
   // ---- persist --------------------------------------------------------------------------------
   const pass1 = pass === 1 && reviewed ? result.findings.map((f) => ({ id: f.id, category: f.category })) : rec.pass1;
@@ -458,6 +511,7 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
         overlays_notice_shown: s.overlays_notice_shown || spentOverlays,
         debug_notice_shown: s.debug_notice_shown || showDebug,
         lowered_shown: lowered ? (showLowered ? lowering.what : s.lowered_shown) : "",
+        truncated_pending: decision === "allow" ? false : s.truncated_pending === true || truncatedHere,
         turn_ordinal: Math.max(s.turn_ordinal, ordinalAfter),
         last_turn: reviewed || skippedWhy !== null ? lastTurn : s.last_turn,
       }),
@@ -477,11 +531,11 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
   // ---- headless report --------------------------------------------------------------------------
   if (eff.headless && reviewed) {
     try {
-      const shippedRemaining = capCheck ? result.findings.length : 0;
-      const entry = buildTurnReport({ turn: key, ordinal: saved.turn_ordinal, result, decision, passes: capCheck ? 2 : pass, shippedRemaining, ts: ctx.now() });
+      const shippedRemaining = capCheck ? result.findings.length : recheckFailed ? unrechecked : 0;
+      const entry = buildTurnReport({ turn: key, ordinal: saved.turn_ordinal, result, decision, passes: capCheck ? 2 : pass, shippedRemaining, tooLong: nothingRead, ts: ctx.now() });
       timed("store", () => store.upsertReport(entry));
       // One line per reviewed turn, when the turn ends (09 "Headless and CI"); the shim passes adapter stderr through.
-      if (decision === "allow" && !(capCheck && rec.shipped_shown)) stderr.push(summaryLine(entry));
+      if (decision === "allow" && !((capCheck || recheckFailed) && rec.shipped_shown)) stderr.push(summaryLine(entry));
     } catch {
       // The decision is already persisted; a report that cannot be written must not undo it.
       log(ctx, "warn", "report_failed", "could not write report.json");

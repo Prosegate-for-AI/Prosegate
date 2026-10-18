@@ -26,6 +26,21 @@ export function profileUpdatedLine(profileId: string, version: string, rulesChan
   return `Prosegate · profile ${profileSlug(profileId)} updated to v${integerVersion(version)}${what}`;
 }
 
+/** N7: a revision with no prose cannot show that earlier findings were fixed, so they are reported as remaining. */
+export function uncheckedLine(n: number): string {
+  return `Prosegate · ${n === 1 ? "1 finding" : `${n} findings`} could not be re-checked (the revision has no prose) · shipped as is`;
+}
+
+/** N9: a reply longer than the review limit was only partly read; the user is told, in every mode but headless. */
+export function truncatedLine(): string {
+  return "Prosegate · only the first 100 KB of prose in this reply was reviewed";
+}
+
+/** N9: so long that none of its prose was within the part that could be read (for instance 1 MB of code first). */
+export function tooLongLine(): string {
+  return "Prosegate · this reply is too long to review; its prose was not checked";
+}
+
 /** ADR-18, ADR-28 (N8): shown once per session when `required` made the adapter ignore local files. */
 export function overlaysIgnoredLine(orgName: string): string {
   return `Prosegate · your local profiles and rule changes are not used in this session · ${orgName} requires enforcement`;

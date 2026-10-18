@@ -6,11 +6,11 @@
 // ~/.prosegate/packs. profile.json is never read for policy. A resolution error falls back to
 // local/base and produces an issue naming the file at fault.
 //
-// Validation cost (ADR-29). Every hook is a fresh process, so an in-memory cache never hits. Local
-// pack and profile files are validated once per content hash; the validated result (and "its examples
-// passed") is kept in ~/.prosegate/validated/. Bundled content is NOT cached on disk: that directory is
-// writable by the agent, and a forged "validated" core pack would lower enforcement with no local file
-// changing. Bundled packs are therefore parsed once per process.
+// Validation cost (ADR-29). Every hook is a fresh process, so an in-memory cache never hits. Every pack
+// and profile file is parsed and checked (schema, injected-text filter) in every process; a parse is
+// cheap. The one costly step is a local pack's example check, and ~/.prosegate/validated/ holds a marker
+// per content hash saying it passed. That directory is writable by the agent, so a marker is a hash and
+// nothing more: no rule, id or verdict is ever read back from disk (N3).
 
 import { createHash } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
@@ -78,93 +78,71 @@ export interface LocalLoad {
   hashes: Record<string, string>;
 }
 
-// ---- validated cache (local content only) -------------------------------------------------------------
+// ---- parse memo and the examples marker ------------------------------------------------------------------
 
 const sha = (text: string): string => createHash("sha256").update(text).digest("hex");
 
-interface ValidatedPack {
-  v: 1;
-  kind: "pack";
-  pack: RulePack;
-  examples_ok?: true;
-}
-interface ValidatedProfile {
-  v: 1;
-  kind: "profile";
-  id: string;
-}
+// Every pack and profile file is parsed in every process, so the schema checks and the injected-text
+// filter always run on the actual text. The ONLY thing kept on disk is a marker that a local pack's
+// examples passed for a content hash: those checks are the one costly step. The directory is writable
+// by the agent, so a marker holds a hash and nothing else; it carries no rule, no id and no verdict
+// the profile or the engine would read, and a forged or malformed one can at worst skip a sanity check
+// on a file that is the user's own (N3).
 
 const packMemo = new Map<string, { ok: true; value: RulePack } | { ok: false; message: string }>();
 const profileMemo = new Map<string, { ok: true; id: string } | { ok: false; message: string }>();
 const exampleMemo = new Map<string, string | null>();
-/** Counts real validations and disk hits, so tests can show that an unchanged file is validated once. */
-export const parseStats = { packParses: 0, profileParses: 0, diskHits: 0 };
+/** Counts real parses and skipped example checks, so tests can show that an unchanged pack's examples run once. */
+export const parseStats = { packParses: 0, profileParses: 0, exampleHits: 0 };
 
-function cachePath(ctx: Ctx, key: string): string {
+function markerPath(ctx: Ctx, key: string): string {
   return join(ctx.home, "validated", `${key.slice(0, 40)}.json`);
 }
 
-function readValidated<T extends ValidatedPack | ValidatedProfile>(ctx: Ctx, key: string, kind: T["kind"]): T | null {
+/** Whether a marker says this exact content's examples passed. Anything else in the file, or no file, is "no". */
+function readExamplesMarker(ctx: Ctx, key: string): boolean {
   try {
-    const text = readFileOrNull(cachePath(ctx, key));
-    if (text === null) return null;
-    const v = JSON.parse(text) as { v?: unknown; kind?: unknown };
-    return v.v === 1 && v.kind === kind ? (v as T) : null;
+    const text = readFileOrNull(markerPath(ctx, key));
+    if (text === null) return false;
+    const v: unknown = JSON.parse(text);
+    return typeof v === "object" && v !== null && (v as Record<string, unknown>)["v"] === 1 && (v as Record<string, unknown>)["kind"] === "examples" && (v as Record<string, unknown>)["pack_hash"] === key;
   } catch {
-    return null;
+    return false;
   }
 }
 
-function writeValidated(ctx: Ctx, key: string, value: ValidatedPack | ValidatedProfile): void {
+function writeExamplesMarker(ctx: Ctx, key: string): void {
   try {
     ensureDirIn(ctx.home, join(ctx.home, "validated"), ctx.platform);
-    writeFileAtomic(cachePath(ctx, key), JSON.stringify(value));
+    writeFileAtomic(markerPath(ctx, key), JSON.stringify({ v: 1, kind: "examples", pack_hash: key }));
   } catch {
-    // The cache is an optimisation; a failed write costs a re-validation next time.
+    // The marker is an optimisation; a failed write costs one more example check next time.
   }
 }
 
-function packKey(yaml: string): string {
+export function packKey(yaml: string): string {
   return sha(`${VERSION}\0pack\0${yaml}`);
 }
 
-function parsePackCached(ctx: Ctx, yaml: string, local: boolean): { ok: true; value: RulePack; fromDisk: ValidatedPack | null } | { ok: false; message: string } {
+function parsePackCached(yaml: string): { ok: true; value: RulePack } | { ok: false; message: string } {
   const key = packKey(yaml);
   const hit = packMemo.get(key);
-  if (hit !== undefined) return hit.ok ? { ...hit, fromDisk: null } : hit;
-  if (local) {
-    const disk = readValidated<ValidatedPack>(ctx, key, "pack");
-    if (disk !== null && typeof disk.pack === "object" && disk.pack !== null && Array.isArray(disk.pack.rules)) {
-      parseStats.diskHits++;
-      packMemo.set(key, { ok: true, value: disk.pack });
-      if (disk.examples_ok === true) exampleMemo.set(key, null);
-      return { ok: true, value: disk.pack, fromDisk: disk };
-    }
-  }
+  if (hit !== undefined) return hit;
   parseStats.packParses++;
   const parsed = parseRulePackYaml(yaml);
   const entry = parsed.ok ? ({ ok: true, value: parsed.value } as const) : ({ ok: false, message: parsed.error.message } as const);
   packMemo.set(key, entry);
-  if (parsed.ok && local) writeValidated(ctx, key, { v: 1, kind: "pack", pack: parsed.value });
-  return entry.ok ? { ...entry, fromDisk: null } : entry;
+  return entry;
 }
 
-function parseProfileCached(ctx: Ctx, yaml: string): { ok: true; id: string } | { ok: false; message: string } {
+function parseProfileCached(yaml: string): { ok: true; id: string } | { ok: false; message: string } {
   const key = sha(`${VERSION}\0profile\0${yaml}`);
   const hit = profileMemo.get(key);
   if (hit !== undefined) return hit;
-  const disk = readValidated<ValidatedProfile>(ctx, key, "profile");
-  if (disk !== null && typeof disk.id === "string") {
-    parseStats.diskHits++;
-    const entry = { ok: true, id: disk.id } as const;
-    profileMemo.set(key, entry);
-    return entry;
-  }
   parseStats.profileParses++;
   const parsed = parseProfileYaml(yaml);
   const entry = parsed.ok ? ({ ok: true, id: parsed.value.id } as const) : ({ ok: false, message: parsed.error.message } as const);
   profileMemo.set(key, entry);
-  if (parsed.ok) writeValidated(ctx, key, { v: 1, kind: "profile", id: parsed.value.id });
   return entry;
 }
 
@@ -174,7 +152,7 @@ export function clearParseCaches(): void {
   exampleMemo.clear();
   parseStats.packParses = 0;
   parseStats.profileParses = 0;
-  parseStats.diskHits = 0;
+  parseStats.exampleHits = 0;
 }
 
 // ---- issues in plain words -----------------------------------------------------------------------------
@@ -240,7 +218,7 @@ export function loadLocal(ctx: Ctx, exclude: ReadonlySet<string> = new Set()): L
   const packs: Record<string, LocalPackFile[]> = {};
   for (const f of readYamlDir(ctx, join(ctx.home, "profiles"), "profiles", issues, hashes)) {
     if (exclude.has(f.file)) continue;
-    const parsed = parseProfileCached(ctx, f.yaml);
+    const parsed = parseProfileCached(f.yaml);
     if (!parsed.ok) {
       issues.push({ path: f.path, reason: plainReason(parsed.message, "profile"), fellBack: false, ignored: true });
       continue;
@@ -253,7 +231,7 @@ export function loadLocal(ctx: Ctx, exclude: ReadonlySet<string> = new Set()): L
   }
   for (const f of readYamlDir(ctx, join(ctx.home, "packs"), "packs", issues, hashes)) {
     if (exclude.has(f.file)) continue;
-    const parsed = parsePackCached(ctx, f.yaml, true);
+    const parsed = parsePackCached(f.yaml);
     if (!parsed.ok) {
       issues.push({ path: f.path, reason: plainReason(parsed.message, "pack"), fellBack: false, ignored: true });
       continue;
@@ -460,7 +438,7 @@ export function loadPacks(ctx: Ctx, resolved: ResolvedProfile, local: LocalLoad)
       throw new PackLoadError(`pack ${pin.id} ${pin.version} is synced content, which this build cannot load`, null);
     }
     if (yaml === undefined) throw new PackLoadError(`pack ${pin.id} ${pin.version} (${pin.origin}) has no body on this machine`, file, path);
-    const parsed = parsePackCached(ctx, yaml, pin.origin === "local");
+    const parsed = parsePackCached(yaml);
     if (!parsed.ok) throw new PackLoadError(`pack ${pin.id} ${pin.version} is invalid: ${parsed.message}`, file, path, plainReason(parsed.message, "pack"));
     if (parsed.value.id !== pin.id || parsed.value.version !== pin.version) {
       throw new PackLoadError(`pack body says ${parsed.value.id} ${parsed.value.version}, but the profile pinned ${pin.id} ${pin.version}`, file, path, "the file changed while it was being read");
@@ -475,11 +453,17 @@ export function loadPacks(ctx: Ctx, resolved: ResolvedProfile, local: LocalLoad)
     if (pin.origin === "local") {
       const key = packKey(yaml);
       let problem = exampleMemo.get(key);
+      if (problem === undefined && readExamplesMarker(ctx, key)) {
+        // The examples passed for exactly this text in an earlier process. Only the example checks are skipped:
+        // the file was parsed and compiled above.
+        parseStats.exampleHits++;
+        problem = null;
+        exampleMemo.set(key, null);
+      }
       if (problem === undefined) {
         problem = verifyExamples(parsed.value, pack, resolved, { elapsedMs: ctx.elapsedMs, atMs: LOAD_DEADLINE_MS });
-        // A pass is recorded beside the validated body, so the next process skips the work.
         if (problem === null) {
-          writeValidated(ctx, key, { v: 1, kind: "pack", pack: parsed.value, examples_ok: true });
+          writeExamplesMarker(ctx, key);
           exampleMemo.set(key, null);
         } else if (!problem.includes("in time")) {
           exampleMemo.set(key, problem);

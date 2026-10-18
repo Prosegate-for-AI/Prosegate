@@ -294,3 +294,108 @@ describe("deterministic concurrency", () => {
   });
 });
 
+
+describe("breaking a stale lock keeps mutual exclusion (N10)", () => {
+  /** Runs `workers` processes over `rounds` aged locks and returns, per round, the holders seen and any overlap. */
+  async function race(workers: number, rounds: number, ownerless: boolean): Promise<{ overlapping: number[]; failures: number; entered: number[] }> {
+    const dir = tmpDir();
+    for (let r = 0; r < rounds; r++) {
+      writeFileSync(join(dir, `l${r}.log`), "");
+      plant(join(dir, `l${r}.lock`), ownerless ? "99999" : owned(2_147_483_000), Date.now() - 10_000);
+    }
+    const worker = join(ADAPTER_DIR, "test", "lockrace-worker.ts");
+    const stepMs = 700;
+    const startAt = Date.now() + 5000 + workers * 300;
+    const runs = Array.from(
+      { length: workers },
+      () =>
+        new Promise<void>((resolve) => {
+          const c = spawn(process.execPath, ["--import", "tsx", worker, dir, String(rounds), "40", String(stepMs)], {
+            cwd: ADAPTER_DIR,
+            env: { ...process.env, START_AT: String(startAt) },
+            stdio: "ignore",
+          });
+          c.on("close", () => resolve());
+        }),
+    );
+    await Promise.all(runs);
+    const overlapping: number[] = [];
+    const entered: number[] = [];
+    let failures = 0;
+    for (let r = 0; r < rounds; r++) {
+      const events = readFileSync(join(dir, `l${r}.log`), "utf8")
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => l.split(" "));
+      failures += events.filter((e) => e[0] === "fail").length;
+      const spans = new Map<string, [number, number]>();
+      for (const [kind, pid, at] of events) {
+        if (kind === "enter") spans.set(pid as string, [Number(at), Infinity]);
+        if (kind === "exit") (spans.get(pid as string) as [number, number])[1] = Number(at);
+      }
+      const all = [...spans.values()];
+      entered.push(all.length);
+      let pairs = 0;
+      for (let i = 0; i < all.length; i++) {
+        for (let j = i + 1; j < all.length; j++) {
+          const a = all[i] as [number, number];
+          const b = all[j] as [number, number];
+          if (a[0] < b[1] && b[0] < a[1]) pairs++;
+        }
+      }
+      if (pairs > 0) overlapping.push(r);
+    }
+    return { overlapping, failures, entered };
+  }
+
+  it("eight contenders on an aged ownerless lock, 30 rounds: never two holders at once, and everyone gets a turn", async () => {
+    const out = await race(8, 30, true);
+    expect(out.overlapping).toEqual([]);
+    expect(out.failures).toBe(0);
+    expect(out.entered.every((n) => n === 8)).toBe(true);
+  }, 240_000);
+
+  it("the same on a lock whose owner is dead", async () => {
+    const out = await race(8, 20, false);
+    expect(out.overlapping).toEqual([]);
+    expect(out.failures).toBe(0);
+    expect(out.entered.every((n) => n === 8)).toBe(true);
+  }, 240_000);
+
+  it("a planted, future-dated breaker mutex cannot stop a stale lock being broken", () => {
+    const dir = tmpDir();
+    const lock = join(dir, "x.lock");
+    plant(lock, "99999", Date.now() - 10_000);
+    plant(`${lock}.brk`, "planted", Date.now() + 365 * 24 * 3600_000);
+    const t0 = performance.now();
+    expect(withLock(lock, () => "ran", { timeoutMs: 3000 })).toBe("ran");
+    expect(performance.now() - t0).toBeLessThan(1500);
+    expect(existsSync(`${lock}.brk`)).toBe(false);
+  });
+
+  it("a fresh breaker mutex held by another process is waited on, and an old one is cleared", () => {
+    const dir = tmpDir();
+    const lock = join(dir, "x.lock");
+    plant(lock, "99999", Date.now() - 10_000);
+    plant(`${lock}.brk`, "someone", Date.now());
+    expect(() => withLock(lock, () => 1, { timeoutMs: 300 })).toThrow(LockTimeoutError);
+    plant(`${lock}.brk`, "abandoned", Date.now() - 5000);
+    expect(withLock(lock, () => "ran", { timeoutMs: 3000 })).toBe("ran");
+  });
+
+  it("a fresh lock with a live owner is never taken from under it, and no breaker mutex is left behind", () => {
+    const dir = tmpDir();
+    const lock = join(dir, "x.lock");
+    const { child, pid } = sleeper();
+    try {
+      // The lock is fresh and its owner alive, so it is not stale and is never taken.
+      plant(lock, owned(pid), Date.now());
+      expect(() => withLock(lock, () => 1, { timeoutMs: 300 })).toThrow(LockTimeoutError);
+      expect(readFileSync(lock, "utf8")).toContain("planted");
+      expect(existsSync(`${lock}.brk`)).toBe(false);
+    } finally {
+      child.kill();
+    }
+  });
+});
