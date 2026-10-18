@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve, sep } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCtx } from "../../src/ctx.js";
 import { roundTripEnv, runInit, settingsTarget } from "../../src/init.js";
 import { HOME_VARS, SCRUBBED, cleanEnv, isolatedHomes, pg, tmpDir } from "../helpers.js";
@@ -111,7 +112,9 @@ describe("the vitest global setup", () => {
 });
 
 describe("the product guard (test builds and source runs only)", () => {
-  const probe = process.platform === "win32" ? "C:\\prosegate-guard-probe-home" : "/prosegate-guard-probe-home";
+  // A place that is not under the temp directory and that no real home uses; unique per run, and removed if a broken guard ever creates it.
+  const probe = `${process.platform === "win32" ? "C:\\" : "/"}prosegate-guard-probe-${randomBytes(4).toString("hex")}`;
+  afterAll(() => rmSync(probe, { recursive: true, force: true }));
 
   it("refuses a user-scope write outside the temp directory when no Claude home was given, from source", () => {
     const ctx = createCtx({ env: { HOME: probe, USERPROFILE: probe }, home: tmpDir(), cwd: tmpDir() });
