@@ -124,7 +124,7 @@ Two findings whose spans intersect are resolved before output, in this order: hi
 
 ## Thresholds
 
-- Token floor (default; a profile overrides it through overrides.thresholds, 04): prose segments totalling fewer than 60 words → `skipped`, `below_floor`. No rules, no reviewer.
+- Token floor (default; a profile overrides it through overrides.thresholds, 04): prose segments totalling fewer than 60 words → `skipped`, `below_floor`. No rules, no reviewer. Floors apply on pass 1 only; a pass-2 revision is reviewed whatever its length (ADR-31).
 - Reviewer floor (default, same override): fewer than 150 words of prose → `stages` excludes `reviewer`.
 - Segment kinds other than `prose` are never linted. A `quote` segment is text the model attributes to the user or a source; it is excluded so the linter never asks the model to rewrite someone else's words.
 

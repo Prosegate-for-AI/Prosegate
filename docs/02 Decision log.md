@@ -290,3 +290,29 @@ Consequence: 05's tables and 07's data-flow table change, the W3.1 adapter follo
 - **Debug.** `PROSEGATE_DEBUG` / `--debug` also shows a user-facing notice once per session, because hook stderr is not visible.
 
 Rejected: signing or encrypting local state (the agent holds the same key the user does). Consequence: 07 threat 6 and the error-code list are updated, 09 gains the lowered-enforcement notice, and W3.1 cycle 1 implements it.
+
+## ADR-31 · Turn and session semantics across hook processes
+
+2026-10-18. From the W3.1 cross-process verification (524 kill-fault trials, 1,260 hostile event orders).
+- **Floors apply on pass 1 only.** On pass 2 and the cap check the engine reviews the revision whatever its length. A revision that shrinks below `token_floor_words` was shipping its surviving block findings silently and counting them as cleared.
+- **The profile is fixed for the turn.** Pass 2 and the cap check use the profile pass 1 used. A `prosegate profile` or `select_profile` call between passes applies from the next turn, as 09 says.
+- **`pass_cap` from the profile is honoured** (04: 1 or 2). The notice reads "pass k of <cap>".
+- **SessionStart `source`.**
+  - Session-start input gains an optional `source: startup | resume | clear | compact | fork`.
+  - Session modes (advisory, quiet, off) reset on `startup` and `clear`, as 09's "cleared at next session start" says.
+  - They survive `resume`, `compact` and `fork`.
+  - `compact` never touches pass counts, since it fires mid-turn.
+- **Retention.**
+  - Prose-bearing session files are deleted when their turn ends (allow): `turn.json`, and `debug/` unless `--debug` is still on.
+  - `report.json` is deleted at the next session start.
+  - Session state (mode, counts, profile choice) persists for 7 days idle, so a session left open overnight keeps its mode.
+  - This supersedes ADR-29's 24 h figure and makes 07's table stricter for prose than before.
+- **Targeting commands.**
+  - A command targets the session in the current directory or its nearest ancestor that has one. If more than one live session matches, it lists them and asks for `--session <id>` (or `PROSEGATE_SESSION`) instead of guessing.
+  - Confirmations name the session they changed when more than one session exists.
+- **One deadline per hook process,** starting at process start. Every lock wait is capped at the time remaining. The hook gives its decision within 8 s, under Claude Code's 10 s Stop timeout.
+- **Locks.** A lock records its owner PID and start time. A lock whose owner is dead is broken immediately. A holder deletes only a lock it still owns. Leftover temp files are swept at session start.
+- **Repeated Stops after the cap.** These happen when other hooks continue the model. The "shipped as is" notice is shown once per turn, not on every Stop.
+- **Advisory renders its findings** (ADR-16), so 09's "summary form" for advisory means the notice line plus finding lines, never a continuation.
+
+Consequence: 03 thresholds, 05 session-start input, 07 retention and 09 override table change, and W3.1 cycle 1 implements this.
