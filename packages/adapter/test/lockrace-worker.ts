@@ -3,7 +3,7 @@
 // same instant), takes `<dir>/l<r>.lock` with the real withLock and logs `enter` and `exit` times to
 // `<dir>/l<r>.log`. Overlapping enter..exit intervals in one round mean the lock failed to be exclusive.
 
-import { appendFileSync } from "node:fs";
+import { appendFileSync, closeSync, openSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { sleepSync, withLock } from "../src/fs-secure.js";
 
@@ -25,9 +25,18 @@ for (let r = 0; r < Number(rounds); r++) {
     withLock(
       join(dir, `l${r}.lock`),
       () => {
-        appendFileSync(log, `enter ${process.pid} ${stamp()}\n`);
-        sleepSync(Number(holdMs));
-        appendFileSync(log, `exit ${process.pid} ${stamp()}\n`);
+        // An independent exclusive file detects real simultaneous access; process
+        // performance.timeOrigin values need not be aligned closely enough to
+        // compare sub-millisecond gaps across Windows processes.
+        const sentinel = join(dir, `l${r}.inside`);
+        let fd: number;
+        try { fd = openSync(sentinel, "wx"); }
+        catch { appendFileSync(log, `overlap ${process.pid} ${stamp()}\n`); throw new Error("Overlapping critical sections"); }
+        try {
+          appendFileSync(log, `enter ${process.pid} ${stamp()}\n`);
+          sleepSync(Number(holdMs));
+          appendFileSync(log, `exit ${process.pid} ${stamp()}\n`);
+        } finally { closeSync(fd); unlinkSync(sentinel); }
       },
       { timeoutMs: 8000 },
     );

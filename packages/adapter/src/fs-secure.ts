@@ -1,10 +1,10 @@
 // Owner-only files, atomic writes and a lock file for the session store (07 data flows; ADR-14 / S3).
 //
 // POSIX: directories 0700, files 0600. Windows: fs.chmod is a no-op there (S3), so the Prosegate home
-// root gets an owner-and-SYSTEM-only ACL through icacls (SID read from whoami.exe), with inheritance
+// root gets an exact owner-and-SYSTEM-only DACL (SID read from whoami.exe), with inheritance
 // flags so every file and directory created inside inherits it. The ACL is applied to the root
 // explicitly and idempotently, a pre-existing root included, and a marker file records that it
-// succeeded, so a failed icacls is retried on the next hook (ADR-29).
+// succeeded, so a failed ACL update is retried on the next hook (ADR-29).
 //
 // Hooks are separate processes: a write is "temp file, then rename", and a read-modify-write holds a
 // lock file for a few milliseconds. A lock names its owner (pid and a token); a lock whose owner is
@@ -34,7 +34,7 @@ export const DIR_MODE = 0o700;
 /** A lock file with no owner on record is stale after this long. */
 export const OWNERLESS_STALE_MS = 1000;
 /** Present in the home root once its owner-only ACL was applied successfully (Windows). */
-export const ACL_MARKER = ".owner-only-acl";
+export const ACL_MARKER = ".owner-only-acl-v2";
 
 const WINDOWS_SYSTEM_SID = "S-1-5-18";
 let cachedSid: string | undefined;
@@ -59,17 +59,33 @@ export function currentUserSid(): string {
 }
 
 /**
- * Windows: removes inherited ACEs from `path` and grants only the current user and SYSTEM full
+ * Windows: replaces the DACL on `path` with current-user and SYSTEM full
  * control, inherited by children when `path` is a directory. No-op elsewhere.
  */
 export function restrictToOwner(path: string, isDir: boolean, platform: NodeJS.Platform = process.platform): void {
   if (platform !== "win32") return;
   const sid = currentUserSid();
-  const flags = isDir ? "(OI)(CI)" : "";
+  // /inheritance:r + /grant:r leaves other explicit ACEs in place (including
+  // Administrators on hosted Windows). Construct the exact DACL in memory and
+  // apply it once, without first resetting to a potentially broader parent ACL.
+  const script = [
+    "$ErrorActionPreference = 'Stop'",
+    "$target = $env:PROSEGATE_ACL_TARGET",
+    `$acl = [System.IO.${isDir ? "Directory" : "File"}]::GetAccessControl($target)`,
+    "$acl.SetAccessRuleProtection($true, $false)",
+    "foreach ($rule in @($acl.Access)) { [void]$acl.RemoveAccessRuleSpecific($rule) }",
+    `$inheritance = [System.Security.AccessControl.InheritanceFlags]::${isDir ? "ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit" : "None"}`,
+    `foreach ($id in @('${sid}', '${WINDOWS_SYSTEM_SID}')) {`,
+    "  $identity = [System.Security.Principal.SecurityIdentifier]::new($id)",
+    "  $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($identity, 'FullControl', $inheritance, 'None', 'Allow')",
+    "  $acl.AddAccessRule($rule)",
+    "}",
+    `[System.IO.${isDir ? "Directory" : "File"}]::SetAccessControl($target, $acl)`,
+  ].join("\n");
   execFileSync(
-    systemExe("icacls.exe"),
-    [path, "/inheritance:r", "/grant:r", `*${sid}:${flags}F`, `*${WINDOWS_SYSTEM_SID}:${flags}F`],
-    { encoding: "utf8", windowsHide: true, timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] },
+    systemExe("WindowsPowerShell/v1.0/powershell.exe"),
+    ["-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")],
+    { encoding: "utf8", windowsHide: true, timeout: 10_000, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, PROSEGATE_ACL_TARGET: path } },
   );
 }
 
@@ -77,7 +93,7 @@ const restrictedThisProcess = new Set<string>();
 
 /**
  * Makes the Prosegate home root owner-only on Windows, once: creates it if needed, applies the ACL
- * (also to a root that already existed with inherited permissions), then writes the marker. If icacls
+ * (also to a root that already existed with inherited permissions), then writes the marker. If the ACL update
  * fails the marker is not written and the error propagates, so the next hook tries again. `restrict`
  * is a seam for tests. A no-op off Windows.
  */

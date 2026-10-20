@@ -336,15 +336,15 @@ describe("breaking a stale lock keeps mutual exclusion (N10)", () => {
       }
       const all = [...spans.values()];
       entered.push(all.length);
-      let pairs = 0;
-      for (let i = 0; i < all.length; i++) {
-        for (let j = i + 1; j < all.length; j++) {
-          const a = all[i] as [number, number];
-          const b = all[j] as [number, number];
-          if (a[0] < b[1] && b[0] < a[1]) pairs++;
-        }
-      }
-      if (pairs > 0) overlapping.push(r);
+      // Check serialized enter/exit events and the independent exclusive-file
+      // probe, rather than comparing clocks calibrated by different processes.
+      let active = 0;
+      const overlap = events.some(([kind]) => {
+        if (kind === "enter") active++;
+        if (kind === "exit") active--;
+        return kind === "overlap" || active > 1 || active < 0;
+      });
+      if (overlap || active !== 0) overlapping.push(r);
     }
     return { overlapping, failures, entered };
   }

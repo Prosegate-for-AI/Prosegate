@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { ACL_MARKER, ensureDirIn, ensureHomeRestricted, resetRestrictedCache } from "../src/fs-secure.js";
@@ -89,6 +89,9 @@ describe.skipIf(!IS_WIN)("Windows: a root that already existed with inherited pe
 
   it("session-start makes the pre-existing root, its subdirectories and its files owner-and-SYSTEM only", () => {
     const home = tmpDir(); // created by mkdtemp: a pre-existing root with the temp directory's inherited ACL
+    // Restriction must remove explicit grants too, not just inherited entries.
+    execFileSync(sys32("icacls.exe"), [home, "/grant", "*S-1-1-0:(OI)(CI)R"], { stdio: "ignore" });
+    writeFileSync(join(home, ".owner-only-acl"), "legacy restriction marker\n");
     expect(aceNames(home).length).toBeGreaterThan(0);
     expect(pg(bundle, ["session-start"], { home, input: sessionStartInput() }).code).toBe(0);
     expect(pg(bundle, ["turn-end"], { home, input: turnEndInput(TIC_TEXT) }).code).toBe(0);
