@@ -3,7 +3,7 @@
 // ~/.prosegate/app/hook.mjs, checks the result through the shell Claude Code uses, and only then points app/current at the new
 // version. It merges into the settings (every other key and hook stays), writes a backup under ~/.prosegate/backups first, is a
 // no-op the second time, refuses a file it cannot read, and rolls everything back if the self-check fails. Uninit removes exactly the
-// entries init added. MCP registration is Phase 5 (TODO below).
+// entries init added. MCP uses the same stable launcher, with a private registration in Claude's config.
 
 import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -319,7 +319,63 @@ function restore(path: string, old: Loaded): void {
   }
 }
 
-// TODO(Phase 5): register `prosegate mcp` as a stdio server with `claude mcp add --scope user` (S1); nothing is registered now.
+interface McpPlan {
+  path: string;
+  loaded: Loaded;
+  settings: Json;
+  changed: boolean;
+}
+
+/** Same locations as Claude's user/local MCP scopes. Project installs stay private (ADR-36). */
+export function mcpConfigPath(ctx: Ctx): string | null {
+  const home = claudeHome(ctx.env, ctx.platform);
+  if (home === null) return null;
+  return home.given ? join(home.dir, ".claude.json") : join(dirname(home.dir), ".claude.json");
+}
+
+function planMcp(ctx: Ctx, scope: "user" | "project", remove = false): McpPlan | string {
+  const path = mcpConfigPath(ctx);
+  if (path === null) return "Prosegate: cannot locate Claude's MCP configuration. Set CLAUDE_CONFIG_DIR, then run this again.";
+  const home = claudeHome(ctx.env, ctx.platform);
+  if (typeof __PROSEGATE_TEST__ !== "boolean" && home?.given !== true && !isUnder(path, tmpdir(), ctx.platform)) return testBuildRefusal(path);
+  const loaded = load(path);
+  if (typeof loaded === "string") return loaded;
+  const settings: Json = structuredClone(loaded.settings);
+  const project = resolve(ctx.cwd).replace(/\\/g, "/");
+  const projects = settings["projects"] ?? {};
+  if (!isObject(projects)) return `Prosegate: projects in ${path} must be an object; nothing was changed.`;
+  const local = projects[project] ?? {};
+  if (!isObject(local)) return `Prosegate: the project's MCP settings in ${path} must be an object; nothing was changed.`;
+  const section = scope === "user" ? settings : local;
+  const servers = section["mcpServers"] ?? {};
+  if (!isObject(servers)) return `Prosegate: mcpServers in ${path} must be an object; nothing was changed.`;
+  const ours = (entry: unknown): boolean => isObject(entry) && Array.isArray(entry["args"])
+    && entry["args"].length === 2 && entry["args"][0] === launcherPath(ctx) && entry["args"][1] === "mcp";
+  const existing = servers["prosegate"];
+  if (existing !== undefined && !ours(existing)) {
+    if (remove) return { path, loaded, settings, changed: false };
+    return `Prosegate: an unrelated MCP server already uses the name prosegate in ${path}; nothing was changed.`;
+  }
+  if (!remove) {
+    const other = (scope === "user" ? local : settings)["mcpServers"];
+    const shared = load(join(ctx.cwd, ".mcp.json"));
+    if (typeof shared === "string") return shared;
+    const sharedServers = shared.settings["mcpServers"];
+    if ((isObject(other) && other["prosegate"] !== undefined) || (isObject(sharedServers) && sharedServers["prosegate"] !== undefined)) {
+      return "Prosegate: another scope already registers an MCP server named prosegate. Remove that registration before changing scope; nothing was changed.";
+    }
+    servers["prosegate"] = { type: "stdio", command: process.execPath, args: [launcherPath(ctx), "mcp"] };
+  } else {
+    delete servers["prosegate"];
+  }
+  if (existing === undefined && remove) return { path, loaded, settings, changed: false };
+  section["mcpServers"] = servers;
+  if (scope === "project") {
+    projects[project] = section;
+    settings["projects"] = projects;
+  }
+  return { path, loaded, settings, changed: JSON.stringify(settings) !== JSON.stringify(loaded.settings) };
+}
 
 /** The adapter's environment for the self-check: the homes init was given, over whatever the process has. */
 export function roundTripEnv(ctx: Ctx, claudeDir: string | null, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
@@ -352,6 +408,26 @@ function selfCheck(ctx: Ctx, shell: HookShell, command: string, claudeDir: strin
   // The launcher's own fail-open line: "Prosegate · this session may not be reviewed (<why>) · details: <log>".
   const why = typeof out.systemMessage === "string" ? /\((.+)\) · details:/.exec(out.systemMessage)?.[1] : undefined;
   return why === undefined ? "the hook gave no answer" : `the hook could not run: ${why}`;
+}
+
+/** Exercise MCP negotiation and discovery without a model, account or network. */
+function mcpSelfCheck(ctx: Ctx, claudeDir: string | null): string | null {
+  const messages = [
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "prosegate-init-check", version: "1" } } },
+    { jsonrpc: "2.0", method: "notifications/initialized" },
+    { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+  ];
+  const r = spawnSync(process.execPath, [launcherPath(ctx), "mcp"], {
+    cwd: ctx.cwd, env: roundTripEnv(ctx, claudeDir), input: messages.map((m) => JSON.stringify(m)).join("\n") + "\n",
+    encoding: "utf8", windowsHide: true, timeout: 5000, maxBuffer: 128 * 1024,
+  });
+  if (r.status !== 0 || r.error !== undefined) return "the MCP server did not start";
+  try {
+    const replies = r.stdout.trim().split("\n").map((line) => JSON.parse(line) as { id?: number; result?: { protocolVersion?: string; tools?: Array<{ name: string }> } });
+    const names = replies.find((reply) => reply.id === 2)?.result?.tools?.map((t) => t.name).sort();
+    return replies.some((reply) => reply.id === 1 && typeof reply.result?.protocolVersion === "string")
+      && JSON.stringify(names) === JSON.stringify(["list_profiles", "review_prose", "select_profile"]) ? null : "the MCP server did not expose its three tools";
+  } catch { return "the MCP server printed an invalid reply"; }
 }
 
 const done = (out: string[]): InitResult => ({ code: 0, out: `${out.join("\n")}\n`, err: "" });
@@ -393,6 +469,7 @@ interface InitPlan {
   loaded: Loaded;
   legacy: Loaded | null;
   merged: { settings: Json; changed: boolean };
+  mcp: McpPlan;
 }
 
 /** Everything init can check without writing: the arguments, the settings files, the refusals. A string is the refusal. */
@@ -420,7 +497,9 @@ function planInit(args: readonly string[], ctx: Ctx): InitPlan | string {
   if (typeof legacy === "string") return legacy;
   const merged = merge(loaded.settings, target.path, commands, known);
   if (typeof merged === "string") return merged;
-  return { o, target, nodePath, shell, commands, known, loaded, legacy, merged };
+  const mcp = planMcp(ctx, o.scope);
+  if (typeof mcp === "string") return mcp;
+  return { o, target, nodePath, shell, commands, known, loaded, legacy, merged, mcp };
 }
 
 export function runInit(args: readonly string[], ctx: Ctx): InitResult {
@@ -439,14 +518,17 @@ export function runInit(args: readonly string[], ctx: Ctx): InitResult {
 }
 
 function applyInit(plan: InitPlan, ctx: Ctx): InitResult {
-  const { o, target, nodePath, shell, commands, known, loaded, legacy, merged } = plan;
+  const { o, target, nodePath, shell, commands, known, loaded, legacy, merged, mcp } = plan;
 
   // 1. The program files, then a check of the NEW version (the launcher can be pinned to one with --use) before anything points at it.
+  const oldLauncher = existsSync(launcherPath(ctx)) ? readFileSync(launcherPath(ctx), "utf8") : null;
   const installed = installVersion(ctx);
   if (typeof installed === "string") return refuse(installed);
   const before = { current: currentVersion(ctx), previous: previousVersion(ctx) };
   const undo = (): void => {
     restoreCurrent(ctx, before.current, before.previous);
+    if (oldLauncher === null) rmSync(launcherPath(ctx), { force: true });
+    else writeFileAtomic(launcherPath(ctx), oldLauncher);
     if (installed.created) rmSync(installed.dir, { recursive: true, force: true });
   };
   const fail = (problem: string): InitResult => {
@@ -467,10 +549,23 @@ function applyInit(plan: InitPlan, ctx: Ctx): InitResult {
     saved = r;
   }
   setCurrent(ctx, installed.version);
-  const problem = selfCheck(ctx, shell, commands.SessionStart, target.claudeDir);
+  const problem = selfCheck(ctx, shell, commands.SessionStart, target.claudeDir) ?? mcpSelfCheck(ctx, target.claudeDir);
   if (problem !== null) {
     if (merged.changed) restore(target.path, loaded);
     return fail(problem);
+  }
+  if (mcp.changed) {
+    // Refuse a concurrent Claude/config writer instead of replacing its newer settings.
+    const latest = load(mcp.path);
+    if (typeof latest === "string" || latest.text !== mcp.loaded.text) {
+      if (merged.changed) restore(target.path, loaded);
+      return fail("Claude's MCP configuration changed during installation; try again");
+    }
+    const mcpSaved = save(ctx, mcp.path, mcp.loaded, mcp.settings);
+    if (typeof mcpSaved === "string") {
+      if (merged.changed) restore(target.path, loaded);
+      return fail("the MCP registration could not be written");
+    }
   }
 
   // 3. The earlier W3.2 build wrote project entries to .claude/settings.json: take them out (project scope), and say if that failed.
@@ -495,6 +590,7 @@ function applyInit(plan: InitPlan, ctx: Ctx): InitResult {
   const remove = `To remove it, run ${uninitCommand(o.scope)}.${backupPath === null ? "" : ` Your previous settings are saved in ${backupPath}.`}`;
   const out = [
     merged.changed ? `Prosegate is installed for Claude Code: hooks added to ${where}. The self-check passed.` : `Prosegate was already installed for Claude Code in ${where}; nothing changed. The self-check passed.`,
+    `MCP tools registered in ${mcp.path}${o.scope === "project" ? " for this folder only (Claude local scope)" : " for all folders"}.`,
     o.local ? "Local mode for now: no sign-in is needed yet." : "Sign-in is not available in this build yet; installed in local mode.",
     "Start a new Claude Code session. If it asks whether to trust the folder, say yes; hooks do not run until you do.",
     // The PATH line comes before the lines that tell the user to type `prosegate`.
@@ -529,22 +625,39 @@ interface Removal {
   backups: string[];
   /** Entries of ours in the other scope, which this command did not touch. */
   other: { path: string; scope: "project" | "user" } | null;
+  mcpRemoved?: string;
 }
 
 function uninitSettings(target: Target, ctx: Ctx): Removal | string {
+  const mcp = planMcp(ctx, target.scope, true);
+  if (typeof mcp === "string") return mcp;
   // A third party's hook that merely looks like ours is never touched: ours are judged by their script path.
   const known = new Set([launcherPath(ctx).replace(/\\/g, "/")]);
   const files = [target.path, ...(target.legacy === null ? [] : [target.legacy])];
   const removal: Removal = { files, removed: [], backups: [], other: null };
+  const plans: Array<{ path: string; loaded: Loaded; settings: Json }> = [];
   for (const file of files) {
     const loaded = load(file);
     if (typeof loaded === "string") return loaded;
     const merged = merge(loaded.settings, file, null, known);
     if (typeof merged === "string") return merged;
     if (!merged.changed) continue;
-    const r = save(ctx, file, loaded, merged.settings);
-    if (typeof r === "string") return r;
-    removal.removed.push(file);
+    plans.push({ path: file, loaded, settings: merged.settings });
+  }
+  if (mcp.changed) plans.push(mcp);
+  const written: typeof plans = [];
+  const undo = (): void => { for (const plan of written.reverse()) restore(plan.path, plan.loaded); };
+  for (const plan of plans) {
+    const latest = load(plan.path);
+    if (typeof latest === "string" || latest.text !== plan.loaded.text) {
+      undo();
+      return "Prosegate: configuration changed during removal; restored the files already changed. Try again.";
+    }
+    const r = save(ctx, plan.path, plan.loaded, plan.settings);
+    if (typeof r === "string") { undo(); return r; }
+    written.push(plan);
+    if (plan.path === mcp.path) removal.mcpRemoved = plan.path;
+    else removal.removed.push(plan.path);
     if (r.backup !== null) removal.backups.push(r.backup);
   }
   removal.other = otherScopeEntry(target, known);
@@ -558,6 +671,7 @@ function finishUninit(o: Options, r: Removal, ctx: Ctx): InitResult {
     const here = `No Prosegate hooks found in ${r.files.join(" or ")}; nothing changed.`;
     out.push(r.other === null ? here : `${here} Prosegate is set up in ${r.other.path}: run ${uninitCommand(r.other.scope)}.`);
   }
+  if (r.mcpRemoved !== undefined) out.push(`Prosegate MCP registration removed from ${r.mcpRemoved}.`);
   if (r.backups.length > 0) out.push(`Your previous settings are saved in ${r.backups.join(" and ")}.`);
   if (o.purge) {
     try {

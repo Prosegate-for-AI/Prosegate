@@ -12,6 +12,7 @@
 // attribute an event to another account.
 
 import { z } from 'zod';
+import { REVIEWER_MODELS } from './reviewer-models.js';
 import { CategorySchema, PROFILE_ID_RE, PassSchema, RULE_ID_RE, SkippedReasonSchema, VerdictSchema, categoryCountsSchema } from './schemas.js';
 
 export const TELEMETRY_STRING_MAX = 64;
@@ -59,7 +60,6 @@ export const LATENCY_BUCKETS_MS = [500, 1000, 2000, 4000, 8000] as const;
 
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
-const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,63}$/;
 
 /** A synced profile id (04 grammar, namespace not 'local') or the literal 'local'; never a local profile's own name. */
 const TelemetryProfileId = Token.refine(
@@ -177,7 +177,7 @@ const reviewShape = {
   rule_ids: z.array(Token.regex(RULE_ID_RE, 'must be a rule id')).max(TELEMETRY_RULE_IDS_MAX),
   reviewer: z
     .strictObject({
-      model: Token.regex(MODEL_RE, 'must be a model id'),
+      model: Token.refine((value) => (REVIEWER_MODELS as readonly string[]).includes(value), 'must be an allowlisted reviewer model'),
       latency_bucket_ms: z.union([z.literal(500), z.literal(1000), z.literal(2000), z.literal(4000), z.literal(8000)]),
       findings: Count,
       span_misses: Count,

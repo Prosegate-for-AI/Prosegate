@@ -17,5 +17,11 @@
     "@prosegate/reviewer": "workspace:*",
     "prosegate": "workspace:*",
     "zod": "4.6.7"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prosegate-for-AI/Prosegate.git",
+    "directory": "eval"
   }
 }

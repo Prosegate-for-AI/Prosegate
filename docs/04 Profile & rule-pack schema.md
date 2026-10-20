@@ -128,6 +128,8 @@ State lives in the adapter: `active_profile`, `previous_profile`, `candidate` an
 
 Nothing is reviewed with no active profile; the fallback is always `<namespace>/base`, which ships in the adapter.
 
+Implementation details (ADR-36): phrases are literal, case-insensitive and word-bounded, scored once per distinct phrase within the retained 2,000-character prompt. An exact tool hint adds two points; a tie clears the candidate. Re-delivery of a turn-start hook does not advance the streak. Selection returns current style guidance, and the next prompt refreshes it after a manual choice or one-shot reversion. Changes during revisions apply next turn (ADR-31); one-shot reversion never overwrites such a pending choice.
+
 ## Versioning, pinning and caching
 
 - Rule packs are semver. A profile pins a range; the adapter resolves the highest cached version in range. A pack bumps its major version when it removes or renames a rule id or requires a newer findings schema.

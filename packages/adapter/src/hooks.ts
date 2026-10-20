@@ -3,8 +3,8 @@
 // prints the output and maps any exception to fail-open (exit 1).
 
 import { PackVersionError, reviewRulesDetailed } from "@prosegate/engine";
-import { BUNDLED_PROFILE_YAML, type ResolvedProfile } from "@prosegate/profiles";
-import { type Category, type ReviewRequest, type ReviewResult, renderNotice } from "@prosegate/schema";
+import { BUNDLED_PROFILE_YAML, suggestProfile, type ResolvedProfile } from "@prosegate/profiles";
+import { type Category, type ReviewRequest, type ReviewResult, renderNotice, renderFeedbackText } from "@prosegate/schema";
 import { countWords } from "@prosegate/segmenter";
 import { ENGINE_BUDGET_MAX_MS, reviewCap, type Ctx } from "./ctx.js";
 import { sleepSync, sweepTempFiles } from "./fs-secure.js";
@@ -43,6 +43,7 @@ import {
   turnKey,
 } from "./store.js";
 import { INIT_CHECK_SESSION } from "./init-check.js";
+import { selectableProfiles } from "./selection.js";
 import { withFakeReviewer } from "./test-seam.js";
 import { timed, timingsLine } from "./timing.js";
 import {
@@ -110,10 +111,6 @@ function passCapOf(resolved: ResolvedProfile): 1 | 2 {
   return resolved.enforcement.pass_cap;
 }
 
-/** The schema renderers say "of 2" and "after 2 passes"; a profile with pass_cap 1 reads "of 1" and "after 1 pass". */
-function withCap(text: string, cap: 1 | 2): string {
-  return cap === 2 ? text : text.replace(/pass (\d) of 2/g, `pass $1 of ${cap}`).replace(/after 2 passes/g, "after 1 pass");
-}
 
 function suppressesNotices(eff: EffectiveMode): boolean {
   return eff.headless || eff.mode === "quiet" || eff.mode === "off";
@@ -185,6 +182,7 @@ export function sessionStart(input: SessionStartInput, ctx: Ctx): HandlerOutcome
     }),
   );
   store.writeProfileCache(resolved);
+  if (fresh) store.deleteTurn();
   sweepSessions(ctx, input.session_id);
   sweepLeftovers(ctx);
 
@@ -210,8 +208,6 @@ export function turnStart(input: TurnStartInput, ctx: Ctx): HandlerOutcome<TurnS
   const store = new SessionStore(ctx, input.session_id);
   const message = trimUserMessage(input.user_message);
   const turnId = input.turn_id !== undefined && input.turn_id !== null && input.turn_id !== "" ? input.turn_id : deriveTurnId(input.session_id, input.user_message);
-  // Replaces any earlier turn.json, a stale one included (ADR-31).
-  store.writeTurn({ turn_id: turnId, user_message: message, ts: ctx.now() });
   try {
     sweepTempFiles(store.dir, ctx.now());
   } catch {
@@ -219,7 +215,9 @@ export function turnStart(input: TurnStartInput, ctx: Ctx): HandlerOutcome<TurnS
   }
   const key = turnKey(turnId);
   const now = ctx.now();
-  store.updateState(
+  const profiles = selectableProfiles(ctx);
+  let inject: string | null = null;
+  const selected = store.updateState(
     () => defaultState(ctx, { session_id: input.session_id, harness: "unknown", cwd: ctx.cwd, context_mode: "interactive", active_profile: requestedProfile(ctx, ctx.cwd) }),
     // turn-start never resets a turn's pass count (ADR-31): anything that can run `prosegate turn-start`
     // could otherwise reset the real turn in the middle of a revision. It creates an empty record for its
@@ -228,11 +226,20 @@ export function turnStart(input: TurnStartInput, ctx: Ctx): HandlerOutcome<TurnS
     (s) => {
       const turns = Object.fromEntries(Object.entries(s.turns).filter(([, r]) => now - r.updated_at < TURN_RECORD_TTL_MS));
       if (!Object.hasOwn(turns, key)) turns[key] = { ...EMPTY_RECORD, updated_at: now };
-      return { ...s, turns };
+      const prior = store.readTurn();
+      const duplicate = prior?.turn_id === turnId && now - prior.ts < TURN_RECORD_TTL_MS;
+      const suggestion = suggestProfile(s, profiles, message, input.tool_calls_so_far);
+      // Re-delivery of a hook cannot count as a second consecutive user turn.
+      if (duplicate) return { ...s, turns };
+      store.deleteReviewCache();
+      store.writeTurn({ turn_id: turnId, user_message: message, ts: now });
+      const active = s.profile_context_pending === true ? profiles.find((p) => p.id === s.active_profile) : undefined;
+      const lines = [active === undefined ? null : buildInject(active), suggestion.inject].filter((line): line is string => line !== null && line !== "");
+      inject = lines.length === 0 ? null : lines.join("\n");
+      return { ...s, turns, profile_context_pending: false, candidate: suggestion.candidate, candidate_streak: suggestion.candidate_streak };
     },
   );
-  // Selection heuristics are Phase 5 (04 "Selection and hysteresis"): nothing to inject yet.
-  return { output: { inject: null, candidate: null }, stderr: [] };
+  return { output: { inject, candidate: selected.candidate }, stderr: [] };
 }
 
 // ---- turn-end -------------------------------------------------------------------------------------
@@ -427,13 +434,13 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
     if (!eff.headless && eff.mode === "enforce" && !rec.shipped_shown) reviewNotice = uncheckedLine(unrechecked);
   } else if (reviewed && !eff.headless && !(capCheck && rec.shipped_shown)) {
     reviewNotice = renderNotice(result, {
+      passCap: cap,
       mode: eff.mode,
       render,
       firstNoticeOfSession: !state.first_notice_shown,
       phase,
       ...(rec.pass1_block_count > 0 ? { pass1BlockCount: rec.pass1_block_count } : {}),
     });
-    if (reviewNotice !== null) reviewNotice = withCap(reviewNotice, cap);
   }
   const firstNoticeSpent = reviewNotice !== null && !recheckFailed && phase === "pass1" && eff.mode === "enforce";
   const shippedShownNow = (capCheck || recheckFailed) && (reviewNotice !== null || (eff.headless && reviewed));
@@ -468,6 +475,7 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
   const truncatedNotice = showTruncated ? (nothingRead ? tooLongLine() : truncatedLine()) : null;
   const noticeLines = [
     ...(showLowered ? [loweredNoticeLine(lowering.what)] : []),
+    ...(!eff.headless && decision === "allow" && state.selection_notice ? [`Prosegate · profile selected: ${state.selection_notice}`] : []),
     ...extra,
     ...(reviewNotice === null ? [] : [reviewNotice]),
     ...(truncatedNotice === null ? [] : [truncatedNotice]),
@@ -508,6 +516,11 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
       () => stateForLowering,
       (s) => ({
         ...s,
+        // Revert only the profile this turn reviewed; a choice made during a revision belongs to the next turn.
+        ...(decision === "allow" && !resolved.trigger.sticky && s.active_profile === activeId && s.previous_profile !== null
+          ? { active_profile: s.previous_profile, previous_profile: null, candidate: null, candidate_streak: 0, profile_context_pending: true }
+          : {}),
+        selection_notice: decision === "allow" && s.selection_notice === state.selection_notice ? null : s.selection_notice,
         turns: reviewed || decision === "continue" ? { ...s.turns, [key]: nextRecord } : s.turns,
         first_notice_shown: s.first_notice_shown || firstNoticeSpent,
         resolution_notice_shown: s.resolution_notice_shown || spentResolution,
@@ -585,7 +598,7 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
   return {
     output: {
       decision,
-      feedback_text: decision === "continue" ? withCap(result.feedback_text, cap) : "",
+      feedback_text: decision === "continue" ? renderFeedbackText(result, { passCap: cap }) : "",
       render: shown,
       result,
       notice,

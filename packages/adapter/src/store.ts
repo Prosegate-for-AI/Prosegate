@@ -16,6 +16,7 @@ import { dirname } from "node:path";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { serializeSnapshot, type ResolvedProfile } from "@prosegate/profiles";
+import { ReviewResultSchema, type ReviewResult } from "@prosegate/schema";
 import { SESSIONS_DIR, SESSION_ID_RE, lockWaitMs, type Ctx } from "./ctx.js";
 import { ensureDirIn, readFileOrNull, removeTree, sweepTempFiles, withLock, writeFileAtomic } from "./fs-secure.js";
 import { log } from "./log.js";
@@ -171,6 +172,26 @@ export class SessionStore {
   /** The turn ended: the user message is not kept (ADR-31). */
   deleteTurn(): void {
     removeTree(this.path("turn.json"));
+    this.deleteReviewCache();
+  }
+
+  deleteReviewCache(): void {
+    removeTree(this.path("mcp-review.json"));
+  }
+
+  readReviewCache(turn: TurnFile): ReviewResult | null {
+    const text = readFileOrNull(this.path("mcp-review.json"));
+    if (text === null || text.length > 2_000_000) return null;
+    try {
+      const cached = JSON.parse(text) as { turn_id?: unknown; ts?: unknown; result?: unknown };
+      if (cached.turn_id !== turn.turn_id || cached.ts !== turn.ts) return null;
+      const parsed = ReviewResultSchema.safeParse(cached.result);
+      return parsed.success && parsed.data.pass === 1 && parsed.data.verdict !== "revise" ? parsed.data : null;
+    } catch { return null; }
+  }
+
+  writeReviewCache(turn: TurnFile, result: ReviewResult): void {
+    writeFileAtomic(this.path("mcp-review.json"), JSON.stringify({ turn_id: turn.turn_id, ts: turn.ts, result }));
   }
 
   /** A cache of the snapshot the session resolved (04). Never read back as policy (ADR-19). */
@@ -332,10 +353,11 @@ export function sweepLeftovers(ctx: Ctx): void {
       removeTree(join(s.dir, "report.json"));
       // turn.json holds the user's message: a turn that never ended cleanly (a kill, a fail-open) leaves it behind.
       try {
-        if (now - statSync(join(s.dir, "turn.json")).mtimeMs >= TURN_FILE_TTL_MS) removeTree(join(s.dir, "turn.json"));
+        if (now - statSync(join(s.dir, "turn.json")).mtimeMs >= TURN_FILE_TTL_MS) new SessionStore(ctx, s.id).deleteTurn();
       } catch {
         // none, or in use
       }
+      if (readFileOrNull(join(s.dir, "turn.json")) === null) removeTree(join(s.dir, "mcp-review.json"));
       sweepTempFiles(s.dir, now);
     }
   } catch {

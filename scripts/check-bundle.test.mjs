@@ -259,13 +259,13 @@ describe("adapter bundle (built with the real tsup config)", () => {
     expect(text).not.toMatch(/["']@prosegate\//);
     expect(disallowedSpecifiers(text)).toEqual([]);
     expect(check(file).code).toBe(0);
-    expect(readdirSync(out)).toEqual(["inline-probe.mjs"]);
+    expect(readdirSync(out).sort()).toEqual(["inline-probe.mjs", "metafile-esm.json"]);
   });
 
   it("the real CLI bundle runs alone in an empty directory (no node_modules anywhere above it)", () => {
     const out = tmp("pg-cli-");
     build([], out);
-    expect(readdirSync(out)).toEqual(["prosegate.mjs"]);
+    expect(readdirSync(out).sort()).toEqual(["metafile-esm.json", "prosegate.mjs"]);
     const full = checkExec(join(out, "prosegate.mjs"));
     expect(full.err).toBe("");
     expect(full.code).toBe(0);

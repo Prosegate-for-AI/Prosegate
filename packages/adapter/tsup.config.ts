@@ -21,6 +21,9 @@ export default defineConfig({
   bundle: true,
   splitting: false,
   sourcemap: false,
+  metafile: true,
+  // Keep the self-contained SDK + engine bundle below the 2 MiB distribution budget.
+  minify: true,
   dts: false,
   clean: true,
   noExternal: [/^(?!@napi-rs\/keyring(\/|$))/],

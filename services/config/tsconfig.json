@@ -4,6 +4,6 @@
     "src"
   ],
   "compilerOptions": {
-    "types": []
+    "types": ["@cloudflare/workers-types"]
   }
 }

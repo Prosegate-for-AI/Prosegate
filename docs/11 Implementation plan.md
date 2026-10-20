@@ -168,7 +168,7 @@ CLI `prosegate` with subcommands. Hook entry points read one JSON object on stdi
 - Signing: Ed25519 private key in a Worker secret; canonical bytes are the stored YAML; signature returned alongside.
 - Telemetry: `POST /telemetry` validates against the 07 allowlist (generated from the same zod schema the adapter uses), enqueues to a Queue; the consumer writes `telemetry_events`; a nightly cron aggregates to `telemetry_daily` and deletes raw rows after 180 days.
 - Samples: `POST /samples` gated per profile server-side, 600-char cap, 20 per device per day, 90-day deletion cron.
-- **Vending**, written against S2 results: the first paid vend creates the per-user project and service account, sets project rate limits sized to the plan (the enforceable ceiling), returns the key once, and stores only `project_id` and `key_id`. The poller runs every 15 minutes, reads `/v1/organization/costs` by `project_ids`, writes `usage_cents`, and applies 07's revoke rules (3× trailing daily average; 80% of cap before day 20) by deleting the service account, emailing the user and flagging the account; two hours without a successful poll suspends the key. Worst-case exposure per key equals the rate limit times the polling interval and is stated in the admin doc.
+- **Vending**, gated on S2 (ADR-8, ADR-38): the first paid vend creates the per-user project and service account, sets its provider-side hard spend limit plus measured rate limits, model restriction and expiry, returns the key once, and stores metadata only. The poller runs every 15 minutes and applies 07's revoke rules; two hours without a successful poll suspends adapter use. Exposure includes provider enforcement/reporting lag and must be measured and accepted in S2 before activation. Phase 7 implements the durable lifecycle and administrative service-binding contract; the live bridge and email transport await that acceptance and deployment configuration.
 - Orgs and policy: members and roles; policy merged into org profiles at resolution; `byok_required` disables vending.
 - Audit log on profile edits, key events and policy changes.
 - Tests: Miniflare or `wrangler dev` integration tests per endpoint; a build step that fails if `packages/engine` or `re2js` appears in the Worker bundle's import graph; a fuzz test that posts unknown fields to every route and expects 422.
@@ -176,6 +176,20 @@ CLI `prosegate` with subcommands. Hook entry points read one JSON object on stdi
 ### 6.8 `apps/dashboard` (Phase 8, minimal)
 
 Pages app behind the managed auth provider. Screens: device approval (enter `user_code`), profile list and YAML editor with the `/resolved` preview and validation errors, rule-pack list, reviewer keys (status and usage only), samples list with delete, usage charts from `/dashboard/usage`, org members and policy. No design-system work in v0.
+
+Implemented locally in Phase 8 (ADR-39): static TypeScript Pages app with OIDC
+Authorization Code + PKCE, all screens above, server-side previews of unsaved YAML,
+conditional edits, and real-browser/Worker integration tests. See
+`apps/dashboard/README.md`. Managed-provider choice/onboarding and deployed
+interoperability remain rollout work (D-41); no production deployment is implied.
+Phase 9's release tooling is implemented locally (ADR-40): reproducible adapter
+builds, an allowlisted licensed tarball, isolated installation checks, protected
+OIDC/provenance publishing, public privacy page and administrator guide. The
+approved licensing is Apache-2.0 locally and FSL-1.1-ALv2 for service/dashboard.
+The current preview is 0.1.0-alpha.1. Actual repository/publication setup, exact
+copyright-holder notices and RC quality/service qualification remain outstanding.
+Next is Phase 10's 30-day team trial, after the service is integrated; local alpha
+testing does not by itself satisfy that milestone.
 
 ### 6.9 `eval/` (Phase 6, parallel from week 4)
 

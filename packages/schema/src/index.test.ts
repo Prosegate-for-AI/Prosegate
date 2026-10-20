@@ -119,6 +119,8 @@ const EXPECTED_EXPORTS = [
   'ProfileIdSchema',
   'REPLY_LINE',
   'REVIEWER_CATEGORIES',
+  'REVIEWER_MODELS',
+  'REVIEWER_MODEL_BY_PROVIDER',
   'RULE_CATEGORIES',
   'RULE_ID_RE',
   'ReviewRequestSchema',

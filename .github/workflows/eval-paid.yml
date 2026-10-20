@@ -1,0 +1,78 @@
+name: paid evaluation
+
+# Automatic runs stay disabled until corpus, pricing and a spending budget are configured.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        type: choice
+        options: [reviewer, e2e, release]
+        required: true
+      model:
+        description: Exact model ID in eval/models.json, or all for mixed-model e2e
+        required: true
+        type: string
+      judge:
+        description: Judge model ID for e2e
+        type: string
+      cap_usd:
+        description: Maximum conservative reservation in USD
+        required: true
+        type: number
+  release:
+    types: [published]
+  schedule:
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paid-evaluation
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: github.event_name == 'workflow_dispatch' || vars.PROSEGATE_PAID_EVALS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: evaluation
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm eval:corpus --require-pass true
+      - run: pnpm eval:rules
+      - name: Run budgeted evaluation
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.EVAL_OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.EVAL_ANTHROPIC_API_KEY }}
+          EVAL_SUITE: ${{ inputs.suite || (github.event_name == 'release' && 'release') || 'e2e' }}
+          EVAL_MODEL: ${{ inputs.model || vars.EVAL_MODEL }}
+          EVAL_JUDGE: ${{ inputs.judge || vars.EVAL_JUDGE }}
+          EVAL_CAP: ${{ inputs.cap_usd || vars.EVAL_CAP_USD }}
+          EVAL_EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVAL_SUITE" == "reviewer" ]]; then
+            pnpm eval:reviewer --models eval/models.json --model "$EVAL_MODEL" --cap-usd "$EVAL_CAP" --require-pass true
+          elif [[ "$EVAL_SUITE" == "e2e" ]]; then
+            sample=50
+            if [[ "$EVAL_EVENT" == "release" ]]; then sample=all; fi
+            pnpm eval:e2e --models eval/models.json --model "$EVAL_MODEL" --judge "$EVAL_JUDGE" --cap-usd "$EVAL_CAP" --sample-per-profile "$sample"
+          elif [[ "$EVAL_SUITE" == "release" ]]; then
+            pnpm eval:release --models eval/models.json --model "$EVAL_MODEL" --judge "$EVAL_JUDGE" --cap-usd "$EVAL_CAP"
+          else
+            exit 2
+          fi
+      - name: Preserve evidence and spending ledger
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: paid-eval-${{ github.run_id }}
+          path: eval/reports/
+          retention-days: 14

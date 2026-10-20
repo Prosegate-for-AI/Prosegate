@@ -5,6 +5,7 @@ export const schemaPlaceholder = {
 } as const;
 
 export * from "./types.js";
+export * from "./reviewer-models.js";
 export * from "./schemas.js";
 export * from "./lenient.js";
 export * from "./finding-id.js";

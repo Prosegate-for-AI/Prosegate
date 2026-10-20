@@ -17,7 +17,7 @@ Every entry point reads one JSON object on stdin and writes one on stdout. Exit 
 
 `mode` is `interactive` or `headless`. The shim decides from what it can see (a `CI` environment variable, a non-interactive flag it was launched with, `PROSEGATE_MODE` if set) and defaults to `interactive`.
 
-`inject` is text the shim adds to the model's context if the harness allows it: at session start, the active profile's name, its register constraints and the two tool names; at turn start, the one-line selection request from 04 or nothing. A harness that cannot inject context still works; the model simply discovers the tools through MCP.
+`inject` is text the shim adds to the model's context if the harness allows it: at session start, the active profile's name, its register constraints and the three MCP tool names; at turn start, the one-line selection request from 04 or nothing, plus refreshed style guidance after a profile change (ADR-36). A harness that cannot inject context still works; the model simply discovers the tools through MCP.
 
 `turn_id` must be stable across a continuation of the same turn, because pass counting keys on it. The shim derives it from the harness's own turn identifier when one exists, else from a hash of `session_id` and the user message that started the turn.
 
@@ -47,6 +47,8 @@ output: ReviewResult   // 03; pass is always 1 and verdict never 'revise' — th
 
 `review_prose` lets a cooperative model check a draft before it ships. It consumes the reviewer budget like any review, so the adapter rate-limits it to one call per turn; a second call returns the cached result.
 
+ADR-36 implementation: `review_prose` currently runs local rules only, preserving ADR-35's paid-review rollout gate. The first advisory result is stored in `mcp-review.json` under the private session directory and expires with the turn; it does not consume enforcement passes. Tool inputs are strict and draft text is capped at 100 Ki UTF-16 code units. An explicit `--session` / `PROSEGATE_SESSION` binding takes precedence; otherwise exactly one live session must exist at the server's project root. Ambiguous roots are refused. `select_profile` adds a text content block with filtered profile guidance alongside its JSON result.
+
 ## Capability matrix
 
 | Capability | Claude Code | Cursor | Codex CLI | SDK middleware |
@@ -73,7 +75,7 @@ Hooks are registered in `.claude/settings.json` (project) or `~/.claude/settings
 
 `stop_hook_active` is `true` when the Stop hook is running because a previous Stop hook already continued the model. The shim passes it as `continuation`; the adapter uses its own per-`turn_id` pass count as the source of truth and `continuation` only as a cross-check, because the flag does not distinguish Prosegate's continuation from another hook's.
 
-The MCP server is registered in `.mcp.json` as a stdio server running `prosegate mcp`. One registration serves every project.
+The MCP server is registered at user scope in `~/.claude.json`, or under `CLAUDE_CONFIG_DIR` when set, using the installed Node executable and the stable `app/hook.mjs mcp` launcher. One user registration serves every project. Project-only installs use Claude's private local MCP scope in that config; no shared `.mcp.json` is created. Init atomically merges just this entry with a backup, preserving unrelated settings, and tests MCP initialization and discovery (ADR-36 supersedes S1's proposed CLI delegation).
 
 The transcript parser reads only the tool-use blocks since the last user message; the turn text comes from `last_assistant_message`, because the transcript may lag at Stop time (ADR-9). It never reads earlier turns and never writes to the transcript.
 

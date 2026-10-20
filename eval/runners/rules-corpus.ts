@@ -100,6 +100,7 @@ const HumanMetaSchema = z.strictObject({
     }, "'url' must be an http(s) URL when present")
     .optional(),
   notes: nonEmpty("notes").optional(),
+  redistribution: z.strictObject({ permitted: z.boolean(), evidence: nonEmpty("evidence") }).optional(),
 });
 
 const AiMetaSchema = z.strictObject({
@@ -107,6 +108,7 @@ const AiMetaSchema = z.strictObject({
   model_version: nonEmpty("model_version"),
   prompt_file: nonEmpty("prompt_file"),
   generated_at: z.string(required("generated_at")).refine(isIsoInstant, "'generated_at' must be an ISO date or date-time"),
+  generation: nonEmpty("generation").optional(),
 });
 
 function isSplitPair(text: string, i: number): boolean {

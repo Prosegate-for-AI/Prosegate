@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 # Cancel superseded runs of the same ref.
 concurrency:
@@ -42,10 +43,25 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - name: Install isolated dashboard browser
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: pnpm install:dashboard-browser --with-deps
+      - name: Exercise dashboard with real Worker and OIDC fixture
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: pnpm test:dashboard
+      - name: Keep dashboard screenshots
+        if: always() && matrix.os == 'ubuntu-latest' && matrix.node == 22
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dashboard-browser-screenshots
+          path: .scratch/dashboard/*.png
+          include-hidden-files: true
+          if-no-files-found: warn
       - run: pnpm test:perf
       - run: pnpm check:deps
       - run: pnpm check:secrets
       - run: pnpm eval:rules
+      - run: pnpm eval:corpus
       - name: Keep the eval report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -58,6 +74,10 @@ jobs:
         run: pnpm build
 
       - run: pnpm check:bundle
+
+      - name: Reproduce and smoke-test the release tarball
+        shell: bash
+        run: pnpm release:prepare "$RUNNER_TEMP/prosegate-preview"
 
       # Run the bundle from an empty directory with no node_modules anywhere above it, so an
       # un-inlined dependency cannot be satisfied by the workspace.
@@ -74,10 +94,36 @@ jobs:
         shell: bash
         run: |
           tmp="$(mktemp -d)"
-          pnpm --filter prosegate pack --pack-destination "$tmp"
           cd "$tmp"
           mkdir project
           cd project
           npm init -y
-          npm install ../prosegate-*.tgz
+          npm install "$RUNNER_TEMP/prosegate-preview/"*.tgz --ignore-scripts --no-audit --no-fund
+          node -e "require('@napi-rs/keyring'); console.log('Native keyring module loaded on', process.platform, process.arch)"
+          npx prosegate --version
+
+  package-architectures:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Complements x64 Linux/Windows and arm64 macOS in the main check job.
+        os: [ubuntu-24.04-arm, windows-11-arm, macos-15-intel]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter prosegate... --filter prosegate-monorepo
+      - name: Verify package and native module on the target architecture
+        shell: bash
+        run: |
+          pnpm release:prepare "$RUNNER_TEMP/prosegate-preview"
+          mkdir "$RUNNER_TEMP/native-install"
+          cd "$RUNNER_TEMP/native-install"
+          npm init -y
+          npm install "$RUNNER_TEMP/prosegate-preview/"*.tgz --ignore-scripts --no-audit --no-fund
+          node -e "require('@napi-rs/keyring'); console.log('Native keyring module loaded on', process.platform, process.arch)"
           npx prosegate --version

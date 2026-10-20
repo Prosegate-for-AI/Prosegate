@@ -12,6 +12,7 @@ import { BUNDLED_PROFILE_NAMES, loadPack, measure, type EvalMeasurements, type F
 import { HarnessError, loadCorpora } from "./rules-corpus.js";
 import { compareToBaseline, type Baseline, type BaselineRule } from "./rules-gates.js";
 import { formatReport } from "./rules-report.js";
+import { annotationSummary } from "../src/annotations.js";
 
 export interface RunOptions {
   repoRoot: string;
@@ -59,6 +60,7 @@ export interface Report {
   baseline: { path: string | null; status: "compared" | "none" | "updated" | "update_refused" | "missing_created"; entries: number };
   failures: GateFailure[];
   notes: string[];
+  annotations: ReturnType<typeof annotationSummary>;
 }
 
 export interface RunOutcome {
@@ -227,14 +229,27 @@ export function runEval(opts: RunOptions): RunOutcome {
     }
 
     const m = measure({ packs, corpora, ruleExamplesDir: opts.ruleExamplesDir, clock: opts.clock, review: opts.review });
-    const failures = [...m.failures];
+    const annotations = annotationSummary(opts.corporaDir, corpora.ai);
+    const ungated = new Set(annotations.paired > 0 ? Object.entries(annotations.categories).filter(([, a]) => !a.gate_eligible).map(([c]) => c) : []);
+    const failures = m.failures.filter((f) => {
+      if (f.metric !== "precision" && f.metric !== "recall") return true;
+      const category = f.scope === "category" ? f.id.split(":")[1] : m.packs.flatMap((p) => p.rules).find((r) => r.id === f.id)?.category;
+      return category === undefined || !ungated.has(category);
+    });
     const notes = [...m.notes];
+    if (annotations.adjudicated < corpora.ai.length) notes.push("Some AI gold lacks independent annotation/adjudication. Rule measurements are exploratory; eval:corpus must pass before qualification.");
+    for (const category of ungated) notes.push(`${category}: annotation agreement is undefined or below 0.6; precision/recall gates and baseline comparisons are withheld until guidelines are repaired.`);
+    for (const pack of m.packs) {
+      for (const rule of pack.rules) if (ungated.has(rule.category)) rule.precision.status = "insufficient";
+      for (const category of pack.categories) if (ungated.has(category.category)) category.recall.status = "insufficient";
+    }
 
     const newRules: string[] = [];
     if (baseline !== null) {
       const measured = (s: string): boolean => s === "pass" || s === "fail";
       for (const pack of m.packs) {
         for (const r of pack.rules) {
+          if (ungated.has(r.category)) continue;
           const entry = baseline.rules[r.id];
           const v = compareToBaseline(r.id, entry, r.precision);
           if (!v.ok) failures.push({ scope: "baseline", id: r.id, metric: "baseline", message: v.message });
@@ -266,7 +281,7 @@ export function runEval(opts: RunOptions): RunOutcome {
         const evaluated = new Set(m.packs.map((p) => p.id));
         // Entries of packs not evaluated in this run are kept as they are.
         for (const [id, v] of Object.entries(baseline?.rules ?? {})) if (!evaluated.has(id.slice(0, id.indexOf(".")))) rules[id] = v;
-        for (const p of m.packs) for (const r of p.rules) rules[r.id] = baselineEntry(r);
+        for (const p of m.packs) for (const r of p.rules) rules[r.id] = ungated.has(r.category) ? (baseline?.rules[r.id] ?? { precision: null, fp_rate: null }) : baselineEntry(r);
         const sorted = Object.fromEntries(Object.entries(rules).sort(([a], [b]) => (a < b ? -1 : 1)));
         writeJsonAtomic(opts.baselinePath, { schema: "prosegate.eval-baseline/1", rules: sorted });
         baselineEntries = Object.keys(sorted).length;
@@ -298,7 +313,7 @@ export function runEval(opts: RunOptions): RunOutcome {
       schema: "prosegate.eval-rules-report/1",
       generated_at: now.toISOString(),
       wall_ms: 0,
-      result: !passed ? "fail" : allPass ? "pass" : "partial",
+      result: !passed ? "fail" : allPass && annotations.adjudicated === corpora.ai.length ? "pass" : "partial",
       exit_code: exitCode,
       fp_source: m.fp_source,
       git,
@@ -310,6 +325,7 @@ export function runEval(opts: RunOptions): RunOutcome {
       baseline: { path: opts.baselinePath, status: baselineStatus, entries: baselineEntries },
       failures,
       notes,
+      annotations,
     };
     report.wall_ms = Math.round(performance.now() - t0);
 

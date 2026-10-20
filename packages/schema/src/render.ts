@@ -162,6 +162,8 @@ function renderedFor(pass: 1 | 2, findings: readonly RenderableFinding[]): Rende
 }
 
 export interface FeedbackTextOptions {
+  /** Display cap; the stored result keeps the default canonical rendering. */
+  passCap?: 1 | 2;
   /**
    * ADR-12 `render_channel: via_model`: the notice the model is asked to carry verbatim (one line,
    * at most 300 characters as printed). The adapter adds this at output time; the stored
@@ -176,10 +178,11 @@ export function renderFeedbackText(result: RenderableResult, opts: FeedbackTextO
   if (shown.length === 0) return '';
   const n = shown.length;
   const profile = safeInline(result.profile.id);
+  const cap = opts.passCap ?? 2;
   const head =
     result.pass === 1
-      ? `[Prosegate] ${plural(n, 'finding')} against profile "${profile}" (pass 1 of 2). Revise your last response.`
-      : `[Prosegate] ${plural(n, 'finding')} ${remain(n)} after your revision, against profile "${profile}" (pass 2 of 2). Revise your last response.`;
+      ? `[Prosegate] ${plural(n, 'finding')} against profile "${profile}" (pass 1 of ${cap}). Revise your last response.`
+      : `[Prosegate] ${plural(n, 'finding')} ${remain(n)} after your revision, against profile "${profile}" (pass 2 of ${cap}). Revise your last response.`;
   const lines: string[] = [head];
   const firstWith = new Map<string, number>();
   shown.forEach((f, i) => {
@@ -198,6 +201,7 @@ export function renderFeedbackText(result: RenderableResult, opts: FeedbackTextO
 }
 
 export interface NoticeContext {
+  passCap?: 1 | 2;
   mode: 'enforce' | 'advisory' | 'quiet' | 'off';
   render: 'diff' | 'summary' | 'none';
   /** The caller decides when a notice is the first of its session (out of scope here). */
@@ -277,6 +281,7 @@ function findingLines(all: readonly RenderableFinding[], slots: number): string[
  *  - advisory counts and lists block and warn findings.
  */
 export function renderNotice(result: RenderableResult, ctx: NoticeContext): string | null {
+  const cap = ctx.passCap ?? 2;
   if (ctx.mode === 'quiet' || ctx.mode === 'off' || ctx.render === 'none') return null;
 
   const advisory = ctx.mode === 'advisory';
@@ -301,15 +306,15 @@ export function renderNotice(result: RenderableResult, ctx: NoticeContext): stri
       throw new Error('renderNotice: pass1BlockCount must be a positive integer');
     }
     if (n === undefined || n <= k) {
-      head = `Prosegate${SEP}${plural(k, 'finding')} ${remain(k)}${SEP}revising, pass 2 of 2`;
+      head = `Prosegate${SEP}${plural(k, 'finding')} ${remain(k)}${SEP}revising, pass 2 of ${cap}`;
     } else {
-      head = `Prosegate${SEP}${k} of ${plural(n, 'finding')} ${remain(n)}${SEP}revising, pass 2 of 2`;
+      head = `Prosegate${SEP}${k} of ${plural(n, 'finding')} ${remain(n)}${SEP}revising, pass 2 of ${cap}`;
     }
   } else if (ctx.phase === 'shipped') {
-    head = `Prosegate${SEP}${plural(k, 'finding')} ${remain(k)} after 2 passes${SEP}shipped as is`;
+    head = `Prosegate${SEP}${plural(k, 'finding')} ${remain(k)} after ${cap} ${cap === 1 ? 'pass' : 'passes'}${SEP}shipped as is`;
     listed = diff;
   } else {
-    head = `Prosegate${SEP}profile ${slug}${SEP}${plural(k, 'finding')} (${countsByCategory(shown)})${SEP}revising, pass 1 of 2`;
+    head = `Prosegate${SEP}profile ${slug}${SEP}${plural(k, 'finding')} (${countsByCategory(shown)})${SEP}revising, pass 1 of ${cap}`;
     listed = diff;
     overrideLine = ctx.firstNoticeOfSession;
   }

@@ -2,6 +2,9 @@
 
 ## Why the eval carries the weight
 
+Implementation: Phase 6 tooling and metric decisions are in `eval/README.md`, `eval/GUIDELINES.md`
+and ADR-37. The tools are available; corpus collection and live qualification remain pending HQ-7/HQ-8.
+
 Telemetry is counts only (07), so it can say a rule fires often and gets cleared; it cannot say whether the rule was right. The eval corpus is the only place Prosegate can measure precision, and the false-positive budget is the only thing standing between enforcement-by-default and uninstall. Every rule, every reviewer prompt version and every supported model is gated on it.
 
 ## Corpora

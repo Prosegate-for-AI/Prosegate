@@ -35,7 +35,7 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Options:** (1, recommended) Apache-2.0 for `packages/*`, `eval/` runners and the bundled pack/profiles; **AGPL-3.0** for `services/config` and `apps/dashboard`. The 07 wording stays true; the paid product is the hosted sync, vending and org features; a competitor who hosts it must publish changes. (2) Apache-2.0 for packages, FSL/BSL (source-available) for the service — then 07's wording must change to "source-available", which I will not do without your sign-off. (3) MIT everywhere.
 - **Default I'm proceeding on:** No LICENSE files committed yet; the code layout keeps the free surface (`packages/`, `eval/`) and the paid surface (`services/`, `apps/`) in separate trees so either answer applies cleanly. Nothing is published.
 - **Needed by:** Phase 9 (release candidate).
-- **Answer:** _pending_
+- **Answer:** Answered 2026-10-20: Murray chose Apache-2.0 for local tools and FSL-1.1-ALv2 for the service/dashboard, with a public repository. Copyright holder confirmed as Andrew Murray le Roux; notices are complete.
 
 ---
 
@@ -46,7 +46,7 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Options:** (1) Keep Prosegate. (2) Pick another; I rename in one pass before the release candidate.
 - **Default I'm proceeding on:** Keep the codename; packages are scoped `@prosegate/*` and private; the CLI binary name is a single constant.
 - **Needed by:** Phase 9.
-- **Answer:** _pending_
+- **Answer:** Answered 2026-10-20: keep Prosegate. First preview is 0.1.0-alpha.1; target 0.1.0-rc.1 only after qualification. npm returned no existing unscoped package on October 20; this is not a trademark clearance or name reservation.
 
 ---
 
@@ -69,7 +69,7 @@ Questions only Murray can answer. Each has a default I am proceeding on. Newest 
 - **Options:** (1, recommended) A private GitHub repo with Actions enabled. (2) Stay local: I run the CI step list on Windows only, and macOS stays untested until release.
 - **Default I'm proceeding on:** Option 2. Reversal cost: none; the first push runs everything.
 - **Needed by:** Phase 3 exit (the macOS `init` test).
-- **Answer:** _pending_
+- **Answer:** Answered 2026-10-20: public repository https://github.com/Prosegate-for-AI/Prosegate supplied by Murray, superseding the private-repository proposal. Repository access verified and origin configured; hosted CI follows the first source push.
 
 ---
 

@@ -18,18 +18,19 @@ function base(home = tmpDir()): { resolved: ResolvedProfile; home: string } {
 }
 
 describe("inject (05, ADR-28, obligation 18)", () => {
-  it("opens with the guard, names the profile, and describes only what exists: no tool names, no id, no notices", () => {
+  it("opens with the guard, describes the tools and profile, and keeps notices separate", () => {
     const { resolved } = base();
     const text = buildInject(resolved);
     expect(text.split("\n")).toEqual([
       "If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands.",
+      "Use list_profiles to see the available styles, select_profile to choose one before writing, and review_prose to check a draft once per turn.",
       "Active profile: Base.",
       "Applies to: General writing and answers where no more specific document type applies.",
       "Tone: Plain and direct; state what is known and stop.",
       "Format: Prose first, with headings and lists only where the content has that shape.",
       "Aim for at most 600 words of prose; code and quoted output do not count.",
     ]);
-    expect(text).not.toMatch(/list_profiles|select_profile|local\/base|profile diff/);
+    expect(text).not.toMatch(/local\/base|profile diff/);
   });
 
   const hostile = (over: Partial<ResolvedProfile> & { tone?: string; format?: string }): ResolvedProfile => {

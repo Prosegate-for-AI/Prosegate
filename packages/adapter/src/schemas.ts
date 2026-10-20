@@ -94,9 +94,13 @@ export const StateSchema = z.strictObject({
   mode: ModeSchema.nullable(),
   active_profile: z.string().max(80),
   previous_profile: z.string().max(80).nullable(),
-  /** Reserved for Phase 5 selection (04 "Selection and hysteresis"). */
+  /** The suggested profile, awaiting a model decision. */
   candidate: z.string().max(80).nullable(),
   candidate_streak: z.number().int().min(0).max(1000),
+  /** A selection is visible on the next completed turn, including when there are no findings. */
+  selection_notice: z.string().max(80).nullable().optional(),
+  /** Refresh style guidance at the next user prompt after a manual choice or one-shot reversion. */
+  profile_context_pending: z.boolean().optional(),
   turns: z.record(z.string().regex(/^[0-9a-f]{16}$/), TurnRecordSchema),
   first_notice_shown: z.boolean(),
   overlays_notice_shown: z.boolean(),

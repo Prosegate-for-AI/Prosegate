@@ -1,7 +1,7 @@
 // What the adapter says to the model at session start (05 `inject`), and the user-facing lines that go
 // beside it as `notice` (ADR-28). The two are separate channels: a notice names prosegate commands and
 // spends the model's tokens, so notices are never appended to `inject`. The inject describes only what
-// exists (no tool names until the MCP server ships, Phase 5), and every profile-derived field in it
+// exists (the local MCP tools and rules checker), and every profile-derived field in it
 // passed the injected-text filter (ADR-19, ADR-20, obligation 18).
 
 import type { ResolvedProfile } from "@prosegate/profiles";
@@ -79,7 +79,11 @@ export function buildInject(resolved: ResolvedProfile): string {
   const dynamic = [resolved.name, description, register.tone, register.format].filter((x): x is string => typeof x === "string" && x !== "");
   const violation = injectedTextViolation(dynamic.join(" "), DYNAMIC_MAX);
   if (violation !== null) return GUARD_LINE;
-  const lines: string[] = [GUARD_LINE, `Active profile: ${resolved.name}.`];
+  const lines: string[] = [
+    GUARD_LINE,
+    "Use list_profiles to see the available styles, select_profile to choose one before writing, and review_prose to check a draft once per turn.",
+    `Active profile: ${resolved.name}.`,
+  ];
   if (description !== null && description !== "") lines.push(`Applies to: ${description}`);
   if (register.tone !== undefined) lines.push(`Tone: ${register.tone}`);
   if (register.format !== undefined) lines.push(`Format: ${register.format}`);

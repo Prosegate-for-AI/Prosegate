@@ -20,6 +20,7 @@ import { baseProfileId, integerVersion, listProfileIds, loadLocal, resolveAndLoa
 import type { LastTurn, Mode } from "./schemas.js";
 import { SessionStore, defaultState, findSession, readCwdProfiles, normaliseCwd, rememberCwdProfile, type SessionCandidate } from "./store.js";
 import { enforcementEvent, profileSelectEvent, recordEvents } from "./telemetry.js";
+import { selectedState } from "./selection.js";
 
 export interface CommandResult {
   code: 0 | 1;
@@ -215,9 +216,11 @@ function profileCommand(ctx: Ctx, args: string[]): CommandResult {
   }
   (store as SessionStore).updateState(
     () => state,
-    (s) => ({ ...s, previous_profile: s.active_profile, active_profile: id, candidate: null, candidate_streak: 0 }),
+    (s) => selectedState(s, resolveSession(ctx, id).resolved, resolveSession(ctx, s.active_profile).resolved.trigger.sticky, false),
   );
-  rememberCwdProfile(ctx, state.cwd, id);
+  const chosen = resolveSession(ctx, id).resolved;
+  const updated = (store as SessionStore).readState();
+  rememberCwdProfile(ctx, state.cwd, chosen.trigger.sticky ? id : (updated?.previous_profile ?? state.active_profile));
   recordEvents(ctx, [profileSelectEvent({ from: state.active_profile, to: id, by: "user" })]);
   return ok(`Prosegate: profile set to ${id}; it applies from the next turn.${t.tag}`);
 }

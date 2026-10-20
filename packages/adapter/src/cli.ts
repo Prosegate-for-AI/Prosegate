@@ -3,6 +3,8 @@ import { createCtx } from "./ctx.js";
 import { log } from "./log.js";
 import { InputTooLargeError, logPathFor, run } from "./run.js";
 import { recordErrorLockFree } from "./telemetry.js";
+import { keyWorker } from "./key-worker.js";
+import { readSecret } from "./secret-input.js";
 
 /**
  * The bundle is both the `prosegate` command and, for the Claude Code shim, a module that exports
@@ -45,11 +47,22 @@ function failOpen(kind: string): void {
   process.exit(1);
 }
 
-if (!embedded) {
+if (!embedded && process.argv[2] === "--key-store-worker") {
+  // Separate process: a synchronous native call cannot strand the parent hook/CLI.
+  try {
+    let input = "";
+    for await (const chunk of process.stdin) {
+      input += String(chunk);
+      if (input.length > 4096) throw new Error("invalid input");
+    }
+    process.stdout.write(JSON.stringify(await keyWorker(input)));
+  } catch { process.stdout.write(JSON.stringify({ ok: false, reason: "unavailable" })); }
+} else if (!embedded) {
   process.on("uncaughtException", () => failOpen("uncaught exception"));
   process.on("unhandledRejection", () => failOpen("unhandled rejection"));
 
-  const code = await run(process.argv.slice(2), { stdin: readStdin, stdout: process.stdout, stderr: process.stderr });
+  const code = await run(process.argv.slice(2), { stdin: readStdin, secret: readSecret, stdout: process.stdout, stderr: process.stderr,
+    streams: { stdin: process.stdin, stdout: process.stdout, stderr: process.stderr } });
   process.exitCode = code;
   // stdin may still be open if a hook gave up waiting for it; do not let it keep the process alive.
   process.stdin.destroy();

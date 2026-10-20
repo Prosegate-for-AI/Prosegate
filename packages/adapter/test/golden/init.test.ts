@@ -114,6 +114,7 @@ describe("init, user scope", () => {
     const [backup] = backupsOf(e);
     expect(lines).toEqual([
       `Prosegate is installed for Claude Code: hooks added to ${e.settings}. The self-check passed.`,
+      `MCP tools registered in ${join(e.claude, ".claude.json")} for all folders.`,
       "Sign-in is not available in this build yet; installed in local mode.",
       "Start a new Claude Code session. If it asks whether to trust the folder, say yes; hooks do not run until you do.",
       // The PATH line comes before the lines that tell the user to type `prosegate`.
@@ -127,8 +128,8 @@ describe("init, user scope", () => {
   it("--local says local mode in its own words, and a first install with no settings file has no backup line", () => {
     const e = env();
     const lines = init(e, ["--local"]).stdout.trimEnd().split("\n");
-    expect(lines[1]).toBe("Local mode for now: no sign-in is needed yet.");
-    expect(lines[5]).toBe('To remove it, run "prosegate uninit".');
+    expect(lines[2]).toBe("Local mode for now: no sign-in is needed yet.");
+    expect(lines[6]).toBe('To remove it, run "prosegate uninit".');
     expect(backupsOf(e)).toEqual([]);
   });
 
@@ -180,7 +181,7 @@ describe("init, user scope", () => {
     const e = env();
     writeSettings(e, EXISTING_TEXT);
     init(e);
-    expect(readdirSync(join(e.settings, ".."))).toEqual(["settings.json"]);
+    expect(readdirSync(join(e.settings, "..")).sort()).toEqual([".claude.json", "settings.json"]);
     const [name] = backupsOf(e);
     expect(name).toMatch(/^settings\.json\.\d{8}T\d{6}Z(-\d+)?$/);
     expect(readFileSync(join(e.home, "backups", name as string), "utf8")).toBe(EXISTING_TEXT);
@@ -676,11 +677,80 @@ describe("refusals change nothing", () => {
     expect(existsSync(join(e.home, "app"))).toBe(false);
   });
 
-  it("does not register an MCP server (Phase 5)", () => {
+  it("registers the MCP server alongside hooks in Claude's separate config", () => {
     const e = env();
     init(e);
     expect(JSON.stringify(read(e.settings))).not.toMatch(/mcp/i);
     expect(existsSync(join(e.claude, ".mcp.json"))).toBe(false);
+    expect(read(join(e.claude, ".claude.json"))["mcpServers"]).toEqual({
+      prosegate: { type: "stdio", command: process.execPath, args: [join(e.home, "app", "hook.mjs"), "mcp"] },
+    });
+  });
+});
+
+describe("MCP installation and removal", () => {
+  it("preserves unrelated MCP servers and account settings, backs up the config, and is idempotent", () => {
+    const e = env();
+    const file = join(e.claude, ".claude.json");
+    const original = { theme: "dark", mcpServers: { existing: { command: "other", args: ["--stdio"] } } };
+    const text = JSON.stringify(original, null, 2) + "\n";
+    writeSettings(e, text, file);
+    expect(init(e).code).toBe(0);
+    expect(read(file)).toMatchObject(original);
+    expect(backupsOf(e).some((name) => readFileSync(join(e.home, "backups", name), "utf8") === text)).toBe(true);
+    const installed = readFileSync(file, "utf8");
+    const backups = backupsOf(e);
+    expect(init(e).code).toBe(0);
+    expect(readFileSync(file, "utf8")).toBe(installed);
+    expect(backupsOf(e)).toEqual(backups);
+    expect(uninit(e).code).toBe(0);
+    expect(read(file)).toEqual(original);
+  });
+  it("registers project scope privately and uninstalls only that project's entry", () => {
+    const e = env(); const project = tmpDir();
+    const file = join(e.claude, ".claude.json");
+    const unrelated = { mcpServers: { other: { command: "other" } } };
+    writeSettings(e, JSON.stringify({ projects: { "/another/project": unrelated } }), file);
+    expect(init(e, ["--scope", "project"], { cwd: project }).code).toBe(0);
+    expect(existsSync(join(project, ".mcp.json"))).toBe(false);
+    const projects = read(file)["projects"] as Record<string, { mcpServers: Record<string, unknown> }>;
+    expect(projects[project.replace(/\\/g, "/")]?.mcpServers["prosegate"]).toBeDefined();
+    expect(uninit(e, ["--scope", "project"], { cwd: project }).code).toBe(0);
+    expect((read(file)["projects"] as Record<string, unknown>)["/another/project"]).toEqual(unrelated);
+  });
+  it.each(["malformed", "conflict", "invalid servers"])("refuses %s MCP config before changing hooks", (kind) => {
+    const e = env(); const file = join(e.claude, ".claude.json");
+    const text = kind === "malformed" ? '{"private-value":' : JSON.stringify({ mcpServers: kind === "conflict" ? { prosegate: { command: "another-program" } } : [] });
+    writeSettings(e, text, file);
+    const result = init(e);
+    expect(result.code).toBe(1);
+    expect(result.stderr).not.toContain("private-value");
+    expect(readFileSync(file, "utf8")).toBe(text);
+    expect(existsSync(e.settings)).toBe(false);
+    expect(existsSync(join(e.home, "app"))).toBe(false);
+  });
+  it("preserves a replacement MCP registration when uninit removes our hooks", () => {
+    const e = env(); expect(init(e).code).toBe(0);
+    const file = join(e.claude, ".claude.json");
+    const replacement = { mcpServers: { prosegate: { command: "another-program" } } };
+    writeSettings(e, JSON.stringify(replacement), file);
+    expect(uninit(e).code).toBe(0);
+    expect(read(file)).toEqual(replacement);
+    expect(read(e.settings)["hooks"]).toBeUndefined();
+  });
+  it("rolls hooks and version back when the MCP self-check fails", () => {
+    const e = env();
+    const bad = layoutPkg(pkg.bundle);
+    // A broken launcher that still answers hooks but cannot negotiate MCP.
+    const launcher = readFileSync(bad.launcher, "utf8").replace('if (event === "mcp") {', 'if (event === "mcp") { process.exit(1);');
+    writeFileSync(bad.launcher, launcher);
+    writeSettings(e, EXISTING_TEXT);
+    const result = init(e, ["--local"], {}, bad);
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("MCP server did not start");
+    expect(readFileSync(e.settings, "utf8")).toBe(EXISTING_TEXT);
+    expect(existsSync(join(e.claude, ".claude.json"))).toBe(false);
+    expect(existsSync(join(e.home, "app", "current"))).toBe(false);
   });
 });
 

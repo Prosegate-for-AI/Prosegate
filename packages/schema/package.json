@@ -15,5 +15,11 @@
   "dependencies": {
     "@noble/hashes": "2.4.0",
     "zod": "4.6.7"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prosegate-for-AI/Prosegate.git",
+    "directory": "packages/schema"
   }
 }

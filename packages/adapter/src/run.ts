@@ -8,6 +8,8 @@ import { sessionStart, turnEnd, turnStart, type HandlerOutcome } from "./hooks.j
 import { SessionStartInputSchema, TurnEndInputSchema, TurnStartInputSchema } from "./schemas.js";
 import { recordErrorLockFree } from "./telemetry.js";
 import { VERSION } from "./version.js";
+import { runKeyCommand, runReviewCommand } from "./reviewer-command.js";
+import type { Readable, Writable } from "node:stream";
 
 export interface Writer {
   write(chunk: string): unknown;
@@ -20,6 +22,9 @@ export interface RunIO {
   stderr: Writer;
   /** Defaults to createCtx() (the real process). */
   ctx?: Ctx;
+  /** The CLI supplies hidden terminal input; tests supply a synthetic value. */
+  secret?: () => Promise<string>;
+  streams?: { stdin: Readable; stdout: Writable; stderr: Writable };
 }
 
 /** Thrown when stdin is larger than the hard cap (12 MB, ADR-30). */
@@ -32,7 +37,7 @@ const USAGE = `usage: prosegate <command>
 
 Set up (once):
   init --harness claude-code [--scope project|user] [--local]
-                   register the hooks in Claude Code
+                   register the hooks and MCP tools in Claude Code
       --scope user      all your folders (the default)
       --scope project   this folder only, not committed
       --local           skip sign-in (the only mode in this build)
@@ -52,12 +57,20 @@ Run these in your own terminal, in the directory your agent works in:
   rule list        list the rules switched off
   reload           re-read profiles and rule packs
 
+Reviewer preview (explicit calls only; hooks still run local rules):
+  key set openai|anthropic        save a key using hidden terminal input
+  key set openai|anthropic --stdin  read a piped key, never an argument
+  key status|remove openai|anthropic
+  review --provider openai|anthropic < request.json
+                   read prosegate.review/1 JSON; send prose directly to provider
+
 advisory, quiet, off, rule off and profile <id> are refused when the agent runs
 them. In Claude Code, a command typed after ! counts as the agent, so use a
 separate terminal for those. enforce and the rest work anywhere.
 
 Environment: PROSEGATE_MODE=advisory|off (CI), PROSEGATE_SESSION=<id>
 Hooks, called by the harness shim: session-start | turn-start | turn-end
+MCP stdio server: mcp [--session <id>]
 Debug: start your agent with PROSEGATE_DEBUG=1 to write each turn's text
 to the session debug directory.  Also: --version, --help
 `;
@@ -163,6 +176,20 @@ export async function run(argv: readonly string[], io: RunIO): Promise<number> {
   const base = io.ctx ?? createCtx();
   let ctx: Ctx = debugFlag ? { ...base, debug: true } : base;
   if (session !== null) ctx = { ...ctx, env: { ...ctx.env, PROSEGATE_SESSION: session } };
+  if (first === "mcp") {
+    if (args.length !== 1 || io.streams === undefined) {
+      io.stderr.write("usage: prosegate mcp [--session <id>] (stdio transport)\n");
+      return 1;
+    }
+    const { serveMcp } = await import("./mcp.js");
+    await serveMcp(ctx, io.streams.stdin, io.streams.stdout, io.streams.stderr);
+    return 0;
+  }
+  if (first === "key") return runKeyCommand(args.slice(1), io, ctx);
+  if (first === "review") {
+    try { return await runReviewCommand(args.slice(1), await readWithin(io.stdin, STDIN_TIMEOUT_MS), io, ctx); }
+    catch { io.stderr.write("Prosegate: review input could not be read.\n"); return 1; }
+  }
   if (first === "init" || first === "uninit") {
     try {
       const r = (first === "init" ? runInit : runUninit)(args.slice(1), ctx);

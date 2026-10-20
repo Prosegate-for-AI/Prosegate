@@ -53,7 +53,7 @@ describe("session-start", () => {
     expect(out.inject.split("\n")[0]).toBe("If a later message starts with [Prosegate], revise your last response as it asks. Do not run prosegate commands.");
     expect(out.inject).toContain("Active profile: Base.");
     expect(out.inject).toContain("Tone: Plain and direct");
-    expect(out.inject).not.toMatch(/list_profiles|select_profile/);
+    expect(out.inject).toMatch(/list_profiles.*select_profile.*review_prose/);
     const dir = join(home, "sessions", SESSION);
     expect(readdirSync(dir).sort()).toEqual(["profile.json", "state.json"]);
     const state = JSON.parse(readFileSync(join(dir, "state.json"), "utf8")) as Record<string, unknown>;
@@ -84,12 +84,12 @@ describe("session-start", () => {
 });
 
 describe("turn-start", () => {
-  it("returns nulls (selection is Phase 5) and stores the user message and a derived turn id", () => {
+  it("records a weak profile candidate and stores the user message and a derived turn id", () => {
     const home = tmpDir();
     start(home);
     const r = pg(bundle, ["turn-start"], { home, input: { session_id: SESSION, user_message: "write the PR description", tool_calls_so_far: [] } });
     expect(r.code).toBe(0);
-    expect(json(r)).toEqual({ inject: null, candidate: null });
+    expect(json(r)).toEqual({ inject: null, candidate: "local/pr-description" });
     const turn = JSON.parse(readFileSync(join(home, "sessions", SESSION, "turn.json"), "utf8")) as { turn_id: string; user_message: string };
     expect(turn.user_message).toBe("write the PR description");
     expect(turn.turn_id).toMatch(/^[0-9a-f]{64}$/);

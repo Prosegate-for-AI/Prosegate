@@ -71,6 +71,7 @@ export function formatReport(report: Report, reportPath: string): string {
   const cov = report.metric_coverage;
   const describe = (name: string, b: Record<string, number>): string => `${name} ${Object.entries(b).map(([k, v]) => `${v} ${k}`).join(", ") || "none"}`;
   out.push("");
+  out.push(`annotations: ${report.annotations.paired}/${report.annotations.documents} paired, ${report.annotations.adjudicated} adjudicated; Cohen's kappa per category is in the JSON report.`);
   out.push(`coverage (rules; recall by category): ${describe("examples", cov.example)}; ${describe("FP", cov.false_positive)}; ${describe("precision", cov.precision)}; ${describe("recall", cov.recall)}`);
   const unmeasured = ["false_positive", "precision", "recall"].filter((k) => {
     const b = cov[k as "false_positive" | "precision" | "recall"];

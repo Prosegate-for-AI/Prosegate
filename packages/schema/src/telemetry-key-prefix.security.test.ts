@@ -44,8 +44,8 @@ const frag = (...parts: string[]) => parts.join('');
 
 describe('telemetry key-prefix guard', () => {
   it('a model id with an ordinary value passes (control)', () => {
-    expect(WireBatchSchema.safeParse(batchOf('gpt-5-mini')).success).toBe(true);
-    expect(() => encode(batchOf('gpt-5-mini'))).not.toThrow();
+    expect(WireBatchSchema.safeParse(batchOf('gpt-5.4-mini-2026-03-17')).success).toBe(true);
+    expect(() => encode(batchOf('gpt-5.4-mini-2026-03-17'))).not.toThrow();
   });
 
   it('the guard lists exactly the prefixes 07 names, with a 16-character minimum tail', () => {
@@ -71,9 +71,11 @@ describe('telemetry key-prefix guard', () => {
   });
 
   it('the tail threshold is exactly 16: 15 characters pass, 16 fail', () => {
-    expect(WireBatchSchema.safeParse(batchOf(frag('sk', '-', tail(15)))).success).toBe(true);
+    expect(findKeyShapedStrings(frag('sk', '-', tail(15)))).toEqual([]);
+    expect(findKeyShapedStrings(frag('sk', '-', tail(16)))).toHaveLength(1);
     expect(WireBatchSchema.safeParse(batchOf(frag('sk', '-', tail(16)))).success).toBe(false);
-    expect(WireBatchSchema.safeParse(batchOf(frag('xox', 'b-', tail(15)))).success).toBe(true);
+    expect(findKeyShapedStrings(frag('xox', 'b-', tail(15)))).toEqual([]);
+    expect(findKeyShapedStrings(frag('xox', 'b-', tail(16)))).toHaveLength(1);
     expect(WireBatchSchema.safeParse(batchOf(frag('xox', 'b-', tail(16)))).success).toBe(false);
   });
 
@@ -90,14 +92,18 @@ describe('telemetry key-prefix guard', () => {
     expect(profile(frag('sk', '-team/docs'))).toBe(true);
     expect(profile('xoxo/gossip')).toBe(true);
     expect(profile('pk-notes/ideas')).toBe(true);
-    expect(WireBatchSchema.safeParse(batchOf(frag('sk', '-model'))).success).toBe(true);
-    expect(WireBatchSchema.safeParse(batchOf('xoxo-1')).success).toBe(true);
-    expect(WireBatchSchema.safeParse(batchOf('AKIAmodel')).success).toBe(true);
+    // The generic secret guard still accepts short ordinary words; the model allowlist does not.
+    for (const word of [frag('sk', '-model'), 'xoxo-1', 'AKIAmodel']) {
+      expect(findKeyShapedStrings(word)).toEqual([]);
+      expect(WireBatchSchema.safeParse(batchOf(word)).success).toBe(false);
+    }
   });
 
   it('a 40+ character base64url or hex run is rejected, at 40 and not at 39', () => {
     const run = (n: number) => `m${'a1'.repeat(30)}`.slice(0, n);
-    expect(WireBatchSchema.safeParse(batchOf(run(39))).success).toBe(true);
+    expect(findKeyShapedStrings(run(39))).toEqual([]);
+    expect(findKeyShapedStrings(run(40))).toHaveLength(1);
+    expect(WireBatchSchema.safeParse(batchOf(run(39))).success).toBe(false); // not an allowlisted model
     expect(WireBatchSchema.safeParse(batchOf(run(40))).success).toBe(false);
     expect(WireBatchSchema.safeParse(batchOf(`gpt-${'0123456789abcdef'.repeat(3)}`)).success).toBe(false); // hex run in the middle
     expect(WireBatchSchema.safeParse(batchOf(`x-${'ab_cd-ef'.repeat(5)}`)).success).toBe(false); // base64url alphabet
@@ -158,7 +164,7 @@ describe('telemetry key-prefix guard', () => {
   });
 
   it('no outbound payload built by the encoder contains a key shape (the batch is checked after masking and parsing)', () => {
-    const wire = encode(batchOf('gpt-5-mini'));
+    const wire = encode(batchOf('gpt-5.4-mini-2026-03-17'));
     expect(findKeyShapedStrings(JSON.parse(wire))).toEqual([]);
   });
 });

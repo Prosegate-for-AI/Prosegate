@@ -8,6 +8,8 @@ Seven decisions constrain everything else. Each is a paragraph, dated, with the 
 
 ## ADR-2 · Prose never reaches Prosegate's servers
 
+Public wording superseded by ADR-40: configuration and explicitly shared excerpts can contain prose. The invariant is local checks/direct provider review with no service inference proxy.
+
 2026-10-17. Deterministic rules run in the local adapter; the reviewer is called from the local adapter directly; the config service has no text endpoint. Rejected: a hosted review API on Workers (simplest to build, but the privacy claim becomes a retention promise that cannot be verified); a hosted relay inside confidential compute (verifiable, roughly $50–150/month in infrastructure, two to four weeks of engineering for attestation and reproducible builds, and a long-running VM beside a Workers stack). Consequence: the Workers service is a config server; the adapter carries almost all the engineering; the privacy page can say "no code path" and be true.
 
 ## ADR-3 · Reviewer keys are vended or user-supplied, one code path
@@ -349,3 +351,154 @@ Consequence: 05's `turn-start` input, Claude Code mapping and Packaging change; 
 - **Harness-specific code that is not glue lives in the adapter bundle.** The Claude Code notice fold and the transcript tool-name reader are adapter modules that the shim imports. 05 makes the adapter own transcript parsing, and the fold is rendering. The shim keeps only the event mapping, mode detection and process handling. The 150-line limit counts honestly formatted lines, at most 100 columns.
 
 Consequence: 09's pass-1 and pass-cap mocks gain the override line and a note on what Claude Code shows. W3.2 cycle 2 reformats the shim.
+
+## ADR-35 · Reviewer preview, fixed provider models and isolated key storage
+
+2026-10-19. Murray requested the next implementation phase. Phase 4 delivers a reviewer library and an explicit `prosegate review --provider openai|anthropic` command reading `prosegate.review/1` on stdin. The existing Stop path remains rules-only until plan §8's one-week rules-only dogfood gate is confirmed. This does not claim a Phase 4 exit: live 30-draft model/span and latency checks are pending. Deterministic tests use synthetic provider envelopes and a 30-draft span-mapping smoke set.
+
+- Transport candidates: `gpt-5.4-mini-2026-03-17` with OpenAI Responses structured output (`store: false`, reasoning `none`), and `claude-haiku-5-5` with Anthropic Messages forced `report_findings`. They are candidates, not rubric-qualified release models. D-16 is closed by a telemetry model allowlist shared with the clients. Model changes require code and evaluation, not arbitrary profile strings. Official references checked: [OpenAI model](https://developers.openai.com/api/docs/models/gpt-5.4-mini), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [Haiku](https://platform.claude.com/docs/en/models/haiku-5-5/overview), [forced tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools).
+- The prompt artifact is bundled and versioned as `reviewer_prompt/1`; signed remote prompt distribution remains Phase 7. The four data blocks are JSON fields, with code segments omitted. No session identifiers or history leave the machine. Endpoints are fixed and redirects refused.
+- One retry total for network/schema errors, sharing the same four-second deadline with body consumption. HTTP errors, refusals and incomplete model output do not retry. Provider errors never escape as prose or log data. Responses are bounded at 64 KiB; reviewer drafts at 100 Ki UTF-16 code units. Excess output findings are filtered and capped at six. Re-finding uses the first eligible prose occurrence and excludes inline masks. A failed pass-two reviewer cannot certify clearance, so the manual command reports no cleared IDs.
+- `key set|status|remove openai|anthropic` supplies BYOK. Input is hidden in a terminal or explicitly piped with `--stdin`, never an argument. No environment API key lookup is added. Key metadata uses `key-store.json` independently of session state. Native service names include a hash of the Prosegate home to isolate relocated installations and tests. Secrets use the ADR-14 file permissions/ACL policy and verified migration. Key-store mutations/migrations use a separate exclusive lock, never stolen on elapsed time; a killed owner may require removing this lock after all key commands stop.
+- Refinement of ADR-14 for the preview: all native calls, including Windows reads, run in a guarded child (1.5 s probe, 1 s operations). This simplifies timeout and secret-isolation behavior at the cost of a process startup; the normal turn path does not invoke it. Keychain reads do not change backend; failure marks reprobe. Probe caching includes platform/architecture/native ABI/library version and seven-day expiry. Setup is explicit in key/review commands, not in existing free-tier `init`/hooks, until the rollout gate is met. File-to-keychain migration verifies every value before removing the file. Keychain-to-file requires re-entry rather than exporting inaccessible OS credentials.
+- D-26 is closed: renderers accept a display pass cap; the adapter no longer rewrites rendered strings. The canonical stored findings rendering remains cap two, preserving its schema contract.
+
+Rejected: automatically enabling remote review when a key is saved (violates the trial gate); routing prose through a Prosegate service; arbitrary endpoint/model strings; unbounded SDK retries; storing keys in profiles; claiming live-model quality from fixture tests. D-21 and D-33 remain separate evaluation/state-test debt.
+
+## ADR-36 · MCP tools, profile suggestions and private installation
+
+2026-10-20. Murray explicitly requested Phase 5. The adapter serves `list_profiles`, `select_profile` and `review_prose` through the pinned `@modelcontextprotocol/sdk` 1.32.1 stdio server. The SDK initializes only on the MCP path; the self-contained bundle is minified to stay within the existing 2 MiB budget.
+
+- Profile suggestions implement 04's confident-or-two-turn rule. Literal normalized phrase matches count once each; exact harness hints add two points. Equal top scores clear the candidate. Only the retained first 2,000 prompt characters are inspected. Duplicate turn-start delivery cannot advance a streak. Model/user choices clear candidates; selections have a user-visible completed-turn notice. Pass-two and cap checks keep the pass-one profile. One-shot chains return to their durable predecessor, without overwriting a selection queued during a revision; the next prompt refreshes style guidance.
+- Only successfully resolved, policy-permitted, injection-filtered profiles appear in tools or selection prompts. Required org policy excludes local profiles. MCP input cannot set session, context, pass, stages or enforcement. Advisory review is always pass one and never `revise`; its optional profile does not select it. Cached results cannot bypass a changed profile namespace policy.
+- The first `review_prose` result is persisted under the session lock in `mcp-review.json`, rather than inflating `state.json`. The cache contains finding excerpts, not the full draft. It is deleted with turn completion/fresh session/new turn, preserved at compact and swept with abandoned turn files after one hour. Failed engine budgets produce a cached skipped result. This remains rules-only under ADR-35; no key probe or provider call is added to hooks, init or MCP.
+- A server uses explicit `--session` / `PROSEGATE_SESSION` when supplied. Otherwise it requires exactly one live session at `CLAUDE_PROJECT_DIR` or its launch cwd and refuses ambiguity. Once bound it cannot retarget to another session. Concurrent same-folder Claude chats require distinct explicit bindings; documented Claude MCP environment offers a project root but no session ID. We do not infer identity from latest activity or from model-supplied tool arguments.
+- Init registers MCP through the stable installed launcher using Node's absolute path. It merges/backups the documented config directly, rather than shelling out to `claude mcp add` as proposed in S1: this supports preflight refusal, rollback, isolated tests and installations without a Claude CLI on PATH. Default is user scope in `~/.claude.json`; a custom Claude config directory contains `.claude.json`. Adapter `--scope project` maps MCP to Claude's private local project scope, consistent with private hook installation. Unrelated entries and server-name conflicts are preserved. Hook execution and MCP initialization/discovery must pass before installation completes. Rollback restores the old launcher and version as well as hook settings.
+
+References: [Claude MCP configuration and scopes](https://code.claude.com/docs/en/mcp), [TypeScript MCP SDK](https://ts.sdk.modelcontextprotocol.io/server). Configuration paths and Windows project-key normalization were also checked against the installed Claude CLI using a new temporary home/config/project; no real account settings or credentials were read or modified.
+
+## ADR-37 · Evaluation tooling, annotation integrity and qualification
+
+2026-10-20. Murray requested Phase 6. Implement the corpus/annotation workflow and live evaluation
+commands while retaining an explicit distinction between working tooling and empirical qualification.
+HQ-7/HQ-8 remain human inputs; generated or test prose cannot stand in for licensed human controls,
+independent gold or provider measurements.
+
+- Generate into a new staging directory; preserve system/request/style context and exact requested
+  model version, family and generation. Do not manufacture empty gold. Admission validates completed
+  annotations, provenance, public redistribution permission, duplicate content and target collisions.
+  Private corpora use the same layout in an explicitly selected private sibling directory.
+- Two independent immutable annotations plus a third identity's adjudication bind SHA-256 hashes of
+  draft, saved context, ratings and final gold. Identities are self-attested, not authenticated. Context
+  is shown during annotation; provenance and other ratings are hidden until adjudication. Human corpus
+  provenance and annotation independence remain human responsibilities.
+- Cohen's κ uses fixed non-whitespace-token binary decisions per category, including negatives.
+  All-negative κ is undefined. Below 0.6 or undefined withholds precision/recall qualification; existing
+  baselines are preserved for withheld categories. Legacy rule gold can still produce exploratory
+  regression measurements but cannot substitute for the corpus readiness gate.
+- Reviewer evaluation calls the production path and observes its first raw response separately from
+  adapter enforcement. Exact single eligible occurrence measures raw span finding. Maximum one-to-one
+  same-category matching with half the predicted span covered measures reviewer precision/recall.
+  Rule matching retains prior definitions for baseline comparability. Qualification needs 150
+  adjudicated rubric drafts including 30 handwritten, and ten 1,350–1,650-word drafts for latency.
+- E2e follows the shipped rules-only path under ADR-35, retaining original model/context, counting
+  surviving original block IDs and separately scanning newly introduced blocks before pass-two demotion.
+  Incomplete or prose-less results cannot certify clearance. LLM meaning/fabrication judgments are
+  supplemented by conservative number/citation checks and a deterministic 10% human sample of changed
+  revisions. Human disagreement overrides a positive model verdict. The sample also needs 95% meaning
+  preservation. Median cuts over 40% require an explicit human register-review acknowledgement.
+  Fabrication candidates are queued for independent rubric annotation, never auto-labelled as gold.
+- Live commands use explicit environment keys and operator-supplied prices verified within 31 days.
+  They never read installed app credentials. Fixed endpoints, bounded bodies/timeouts, no completion
+  retries; production reviewer retries each get their own reservation. A JSONL reservation is written
+  before transmission and never refunded. UTF-8 request bytes plus framing allowance and maximum output
+  tokens bound reservations at supplied prices. This is a conservative run controller, not a provider
+  billing guarantee. Unexpected usage above reservation stops the run.
+- PR CI remains unpaid. Manual live jobs require a cost cap. Weekly/release automation is opt-in through
+  repository configuration, refuses payment without corpus readiness, and preserves reports/ledgers.
+  Release runs share one budget across both reviewers and e2e. No automatic publish or supported-model
+  registry change is made by a report; human review and existing rollout gates still apply.
+
+Phase 6 tooling is implemented; the corpus/qualification milestone is not exited. No real provider keys,
+paid requests, fabricated annotations, human corpus redistribution or installed Claude changes were
+needed to implement and test it. No triad severity change is justified until control-set data exists.
+
+## ADR-38 — Phase 7 configuration service and deployment boundaries (2026-10-20)
+
+Murray requested Phase 7. Implement the Hono/D1 service and test its actual Worker
+bundle with Miniflare, preserving Phase 6's unfulfilled corpus milestone and
+ADR-35's automatic-review gate.
+
+- OIDC bearer JWTs require verified issuer/audience/signature, bounded age and MFA.
+  Provider choice remains open; operators provision verified subjects and namespaces
+  until that provider's account lifecycle is integrated. Device keys and device
+  codes are stored only as SHA-256 hashes.
+- Every mutation requires idempotency. Successful non-secret responses are cached
+  24 hours; one-time device/provider/lease secrets leave only a tombstone. Concurrent
+  read/validate/write operations use a global optimistic revision inside a D1 batch,
+  so graph checks, quotas, audit records and idempotency commit together. Conflicts
+  return 409. This intentionally prioritizes correctness over v0 write throughput.
+- Profile signatures cover the exact stored YAML. Policy signatures cover canonical
+  JSON with org identity. Org profiles cannot inherit private member profiles;
+  updates validate affected descendants across members. Deletion removes version
+  history and is refused while another profile extends the target.
+- Choose a separate CI process for pack evaluation. It claims a ten-minute lease,
+  runs the actual engine examples and 200 ms p95 gate, then submits a content-hash-
+  bound report. The API verifies counts and lease before signing. A build-time
+  graph guard forbids engine, reviewer, adapter, segmenter and RE2 code in the Worker.
+  This publication check does not replace Phase 6 corpus qualification.
+- Telemetry uses a transactional outbox and id-only Queue messages; consuming and
+  deleting an outbox item is atomic and repeat delivery cannot duplicate counts.
+  Cron recomputes recent/dirty days and applies the 180-day raw-event and 90-day
+  sample retention every 15 minutes. Samples are off per profile, org-policy gated,
+  quota limited and redacted again on the server, including finding free text.
+- Reviewer administration is an explicit service binding, with durable reservations
+  before external calls and recoverable cleanup for unknown outcomes. No secret
+  column, replay cache, audit or notification stores reviewer credentials.
+  Revocation is durable and retried; only provider acknowledgement marks it complete.
+  Stale polling suspends adapter use, not direct use of a stolen provider key.
+- ADR-8 still prohibits enabling vending before written S2 exposure acceptance.
+  The live provider bridge must enforce one account/project monthly cap across
+  devices and rotations, measured rate limits, model restriction and expiry.
+  No live provider bridge or mail transport is claimed by fake-binding tests.
+  Deployment, managed-provider onboarding and adapter remote sync remain explicit
+  integration work. Phase 8 supplies the Pages dashboard; these gates remain visible.
+
+## ADR-39 — Minimal Pages dashboard and browser authentication (2026-10-20)
+
+Murray requested Phase 8. Implement the dashboard as a small TypeScript DOM app
+bundled with esbuild, with system fonts and no design-system dependency.
+
+- Use `oidc-client-ts` Authorization Code + PKCE and an explicit nonce. A public
+  client has no browser secret. Tokens remain in memory; only the temporary PKCE
+  transaction uses session storage. The backend of the same OIDC client accepts
+  its ID token, verifies issuer/audience/signature/age and requires the MFA claim.
+  Reloads require another sign-in; local sign-out does not end provider SSO.
+- Configure exact API and issuer origins at build time. Pages ships a restrictive
+  CSP, no-store/referrer protections and SPA routes. The public shell may load
+  without authentication; all account data comes from the authenticated API.
+  Provider choice, account provisioning and live interoperability remain D-41.
+- Add authenticated unsaved-profile preview using the existing service resolver.
+  It never persists drafts, resolutions, history or idempotency responses.
+  Successful saves remain subject to descendant validation. Creation is
+  conditional on absence; profile edits/deletion and policy edits carry ETags.
+  Conflicts and expired sessions preserve unsaved text for reconciliation.
+- The dashboard does not vend or display secret reviewer keys. It shows usage,
+  status and pending revocation accurately. Sample opt-in explains retention,
+  quotas and imperfect redaction. All retrieved text is rendered as text nodes.
+- Test the actual built app with generated Pages CSP against real workerd/D1
+  and an ephemeral local OIDC issuer that enforces PKCE. This verifies browser
+  flows without real credentials, paid requests, email or production writes.
+  It does not qualify a real managed provider or paid-service exposure.
+
+## ADR-40 · Alpha distribution, mixed licensing and verified release artifacts
+
+2026-10-20. Murray chose Apache-2.0 for the local tools and FSL-1.1-ALv2 for the service/dashboard, approved a public repository, retained Prosegate and accepted the preview-version recommendation. Murray subsequently supplied https://github.com/Prosegate-for-AI/Prosegate and confirmed Andrew Murray le Roux as the copyright holder.
+
+- Version the current adapter 0.1.0-alpha.1. RC requires passing corpus/live reviewer/human e2e evidence at the release source; the current rules-only e2e runner cannot certify it (D-40). Automatic paid review and vending gates remain unchanged.
+- Build twice and compare bundle bytes. Pack only the executable, two shims, package metadata, README, Apache license and copyright NOTICE, canonical privacy text and actual bundled dependency notices. Hash both the tarball and each payload file. Development metadata stays out of the archive.
+- Exercise the installed archive in isolated home/config/cache directories, including init/MCP, revise/pass and uninstall preserving unrelated settings. Native dependencies are optional; CI separately installs and loads the native keyring.
+- Run reusable CI before preparing a release, then upload the exact artifact for protected-environment review. The publishing job uses OIDC, checks source/tag/repository and hashes, publishes to next with provenance, and does not rebuild. No token fallback, automatic latest promotion, or paid model call belongs in packaging.
+- Render the canonical PRIVACY.md as a public, script-free dashboard page. Explicitly disclose local draft caches, provider requests, user-authored configuration, opt-in excerpts, retention and deletion limitations. Local tools are open source; the FSL service is source-available.
+
+See RELEASING.md, docs/ADMIN.md and D-43. Local validation is not hosted publication or Phase 6/10 qualification.

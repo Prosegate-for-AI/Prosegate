@@ -4,6 +4,13 @@ The corpora are empty until HQ-7 (human-control sources and licences) and HQ-8 (
 annotation) are resolved. `pnpm eval:rules` handles that honestly: every metric that needs a corpus is
 reported as `n/a (0 items)`, never as a pass, and the run says so in its last lines.
 
+Phase 6 adds the collection, generation, annotation, import, reviewer and rewrite workflows described
+in [../README.md](../README.md). New AI metadata may include `generation`; generation writes exact
+prompts under `.prompts/`. Human metadata may include
+`redistribution: {permitted, evidence}`; public admission/readiness requires it. Adjacent hidden
+`.annotations/<id>/` directories contain independent context-bound ratings and adjudication receipts.
+`rubric.json` references curated AI and handwritten rubric items.
+
 ## Layout
 
 ```
@@ -38,7 +45,8 @@ corpus are reported together.
 - **Gold spans** are UTF-16 code-unit offsets into the `.md`, `end` exclusive. A span must be in range and must
   not split a surrogate pair. If it carries `text`, `text` must equal the slice. A `rule_id` must belong to the
   span's `category`.
-- An AI item must have a `.gold.json` (write `[]` for none).
+- An AI item must have a `.gold.json`. An empty array means a human completed annotation and found
+  no spans. Never add it to an unreviewed generated draft merely to make the loader accept the item.
 
 ## Metrics and the choices docs/10 leaves open
 
@@ -111,3 +119,9 @@ pnpm eval:rules --local               # write <date>-<sha>.local.json (gitignore
 Reports go to `eval/reports/<YYYY-MM-DD>-<shortsha>.json`. Exit 0: every gate that could be evaluated passed.
 Exit 1: a gate failed. Exit 2: harness error. Gate tests: `eval/runners/eval-rules.test.ts`, fixtures in
 `eval/runners/test-fixtures/` (corpora are built into a temp directory per test, never into this tree).
+
+Rule reports now include `annotations` (paired/adjudicated coverage and per-category κ). When paired
+ratings exist, undefined/below-0.6 κ withholds that category's precision/recall and baseline comparison;
+prior baseline values are retained on update. Without independent receipts, legacy gold remains usable
+for exploratory regression measurements but cannot qualify a release. Run `eval:corpus --require-pass true`
+as the corpus prerequisite. See ADR-37 for metric and rollout choices.

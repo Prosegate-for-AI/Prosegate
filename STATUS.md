@@ -1,21 +1,41 @@
 # STATUS
 
-Snapshot, rewritten at each change. Last updated 2026-10-18.
+Snapshot, rewritten at each change. Last updated 2026-10-20.
 
-**Phase:** 3 exited (f7de0a7). **Stopped after Phase 3 at Murray's request**: no Phase 4 work starts until he says so.
+**Phase:** Phase 9 release tooling is implemented locally (ADR-40): reproducible packaging, dependency notices, isolated installation verification, protected npm OIDC/provenance workflow, public privacy page and administrator guide. Murray approved Apache-2.0 local tools, FSL-1.1-ALv2 service/dashboard, a public repo and Prosegate as the name. The adapter is 0.1.0-alpha.1. The public repository is Prosegate-for-AI/Prosegate and the copyright holder is Andrew Murray le Roux. npm ownership/trusted-publisher setup and hosted CI remain pending (D-43). No source has been pushed and no package published. RC requires the outstanding Phase 6/D-40 quality evidence; hosted integration remains D-41. Phase 10 is the subsequent 30-day team trial. Automatic paid review and live vending remain gated.
 
 ## Done
 
+Phase 9: release preparation builds twice, creates a nine-file archive with bundled dependency notices, hashes the package and payload, and exercises offline installation, hooks/MCP, revise/pass and removal in isolated homes while preserving unrelated settings and an unrelated MCP server. Public privacy content is rendered without JavaScript/login and included in the tarball. The administrator guide covers installation, rollback, keys, hosted operations, retention, incident handling and rollout gates. The manual release workflow reuses CI, reviews an immutable artifact through a protected environment and uses OIDC/provenance for next-tag publication. CI packaging targets x64/arm64 Windows, Linux and macOS; hosted runs remain pending. Apache and FSL licenses and copyright notices are complete. Strict preparation blocks incomplete license notices.
+
+Phase 9 validation: final full suite passed 3,522 tests across 107 files with 2 platform skips (218.59 s). Seven browser scenarios passed, including script-disabled unauthenticated privacy access; screenshot inspected. Release/guard focused checks passed, including wrong-source/partial evidence and tamper refusal. Final tarball preparation and verification passed at .scratch/phase9-preview-final; bundle 1,208,808 bytes, reproducible SHA-256 1fc954cf10218b903089f120dce5ee812e465d460636f57480aa8bdbb002de2c. Build/typecheck/lint/dependency/secrets/workflow-YAML/whitespace checks pass. No public repository, npm publication, deployment, paid provider request or installed Claude-setting change occurred. Repository metadata and copyright notices are now complete; npm setup remains D-43; RC quality is still gated.
+
 Phases 0–3: spikes; schema, segmenter and profiles; the engine and `core` 0.1.0 (23 rules); the adapter core (W3.1) and the Claude Code shim, launcher and `init`/`uninit` (W3.2). All gates green on master with isolated homes: 3,387 tests.
+
+Phase 4 preview: OpenAI/Anthropic transports, bundled prompt, validated/re-found findings, bounded retries and timeout, BYOK key commands and isolated OS/file key storage, explicit review command, model telemetry allowlist (D-16), renderer pass cap (D-26). See `packages/reviewer/README.md`. No real keys read/set, no paid provider requests, no real Claude settings changed during this work.
+
+Phase 5: SDK stdio tools (`list_profiles`, `select_profile`, `review_prose`), filtered profile catalog, confident/two-turn selection prompts, duplicate-hook protection, visible model choices, pinned revision profiles, one-shot reversion and next-turn guidance, persisted per-turn advisory cache, private user/project MCP registration with conflict refusal/backup/rollback, and initialization/tool-discovery self-checks. See `packages/adapter/README.md`. Hooks and MCP use local rules only. Concurrent same-folder sessions require explicit MCP bindings (D-38).
+
+Phase 6: corpus readiness and public/private admission checks; cost-reserved OpenAI/Anthropic draft generation into staging; saved contexts and model provenance; independent annotation CLI and third-person adjudication with document/context hashes; per-category Cohen's κ in rule reports; real-path reviewer metrics; same-model rules-only e2e rewrites, LLM judge, fabrication candidates and offline human-sample scoring; opt-in cost-capped CI; guidelines and starter prompts. See `eval/README.md`. No corpus items or human gold were invented.
+
+Phase 7: Hono Worker and D1 migration; hashed device authorization and OIDC/MFA verification; strict bodies, atomic audit/idempotency/quota writes; signed profiles, packs, prompts and org policy; separate leased pack-validation CI job; counts-only telemetry outbox/Queue ingestion and aggregates; redacted opt-in samples and retention; org roles; gated one-time reviewer-key lifecycle, polling, revocation recovery and notification outbox. See `services/config/README.md`. The API bundle graph excludes all prose execution packages. No deployment, paid provider request or real credential change was performed.
+
+Phase 8: responsive Pages dashboard with managed OIDC/PKCE sign-in, in-memory tokens, device approval/revocation, YAML profile creation/editing/deletion and server resolution previews, published packs, reviewer-key usage/status/revocation, opt-in sample controls/deletion, aggregate usage charts and org policy/membership. Unsaved previews are never persisted; ETag conflicts preserve drafts. Generated security headers, deployment configuration, setup guide and browser CI are included. See `apps/dashboard/README.md`. The app still needs the chosen managed provider and hosted service configuration; no production account or deployment was created.
+
+Phase 8 validation: completed full regression run passed 3,506 tests across 104 files, with 2 platform skips (234.78 s). Six real-browser scenarios passed against the built app, generated CSP, ephemeral OIDC issuer and actual workerd/D1 (35.63 s under concurrent regression load). The final sign-in/device scenario also passed after removing an unnecessary sign-in unload prompt. Focused client/config/build checks passed 6 tests, including an additional deployment-build guard added after the full suite started. Workspace build/typecheck/lint, dependency/secrets/bundle checks, frozen lockfile, workflow YAML and whitespace checks pass. Desktop/mobile screenshots were inspected. Adapter bundle remains 1,208,800 bytes. No live accounts, provider credentials, paid requests, deployments, emails or installed Claude settings were changed.
+
+Phase 7 validation: full repository suite passed 3,499 tests across 104 files, with 2 platform-specific skips (227.10 s). Final focused service/publisher run passed 25 tests after the cron-isolation and browser-header fixes, including the actual workerd Queue consumer, unknown-field rejection on every mutation, concurrent writes/vends, signature checks, retention, and failed provider recovery. Workspace build/typecheck/lint, dependency/secrets/bundle checks, publisher workflow YAML, CLI help and whitespace checks pass. Final service typecheck/lint and build-graph guard pass. Adapter bundle remains 1,208,800 bytes. No production deployment, real credential access, paid requests, emails or installed Claude changes.
+
+Previous Phase 6 validation: full suite passed 3,472 tests across 103 files, with 2 platform-specific skips (215.51 s). Subsequent context-integrity/import/rewrite/mixed-model checks bring the focused Phase 6 suite to 28 passing tests (29 including the package export check); the complete eval suite also passed 89 tests before the final mixed-model test was added. Rule eval: 117/117 examples across 23 rules pass; 8.1 ms p95 on the fallback fixture. Rule and corpus-readiness reports remain PARTIAL because corpora are empty. The prior Phase 5 performance suite was 90/90.
 
 ## Waiting on Murray
 
-- **Urgent:** restore `~/.claude/settings.json` from `settings.json.prosegate-backup-20261018T072200Z` (it still has the stray 03:22 hooks), then start a new session. Optionally delete `~/.prosegate` and `C:\prosegate-guard-probe-home`.
+- **Recorded on October 18, not rechecked:** restore `~/.claude/settings.json` from `settings.json.prosegate-backup-20261018T072200Z` if the stray 03:22 hooks are still present, then start a new session. Optionally delete `~/.prosegate` and `C:\prosegate-guard-probe-home`.
 - After the restore, for dogfood: install from the packed tarball (`prosegate` is not on npm yet):
-  - `cd packages/adapter && pnpm pack --pack-destination <dir>`
-  - `npx --package=<dir>/prosegate-0.0.0.tgz prosegate init --harness claude-code --local`
-- `pnpm test:perf` on a quiet machine (HQ-6).
-- HQ-7 corpus licensing (most urgent), HQ-1, HQ-2, HQ-3, HQ-4, HQ-6, HQ-8.
+  - `pnpm release:prepare .scratch/release-preview`
+  - `npx --package=.scratch/release-preview/prosegate-0.1.0-alpha.1.tgz prosegate init --harness claude-code --local`
+- Local `pnpm test:perf` is now green (90/90, October 19); hosted cross-platform CI can now run in the supplied public repository.
+- HQ-7 corpus licensing (most urgent), HQ-1, HQ-2, HQ-8. HQ-3/HQ-4/HQ-6 are answered: Apache local tools, FSL service, Prosegate, Andrew Murray le Roux and Prosegate-for-AI/Prosegate.
 
 ## Remaining work
 
@@ -23,6 +43,9 @@ The rest of v0 is on the AI Taskboard as 46 tickets in New, under project Proseg
 
 ## When resumed
 
-1. Brief Phase 4, the reviewer: key store (ADR-14), BYOK, prompt builder, provider clients, D-16, D-21, D-26. Per plan §8, it is wired into turn-end only after the rules path has run a week on Murray's machine.
+1. Complete live reviewer smoke/rubric/latency checks using user-supplied keys; confirm a week of rules-only dogfood before turn-end integration. The 30-draft synthetic span test does not substitute for live evaluation. D-21 and D-33 remain open.
 2. Delete the old W3.2 worktree (`.claude/worktrees/agent-a2d1ea5c6f002cba0`) once the settings restore is confirmed.
-3. Priority debt: D-30 (profile choice not compared), D-31 (lowered dedupe keyed on text).
+3. Priority debt: D-30 (direct profile-file choices not compared), D-31 (lowered dedupe keyed on text), D-32 (lock owner gap), D-34 (Node path changes), D-38 (automatic identity for concurrent same-folder MCP sessions).
+4. For Phase 6 exit, resolve HQ-7/HQ-8 and follow `eval/README.md`; require corpus readiness and live reports before claiming quality. D-39/D-40 track remaining qualification and reviewer-enabled e2e.
+5. Complete Phase 7 deployment integration (D-41): choose the managed OIDC provider and account onboarding, provision D1/Queues/signing and adapter trust/sync, and implement/qualify the administrative and email bridges after written S2 acceptance. Local fake-binding tests do not constitute a live exposure measurement.
+6. Finish D-43 repository/npm setup and publish the explicitly labeled alpha only after hosted checks. RC remains blocked on corpus/live/human/reviewer-enabled e2e evidence. Phase 10 is 30 days of team dogfood after service integration, with weekly advisory/rule reviews.

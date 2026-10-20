@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// Prosegate launcher (ADR-33): the one file Claude Code's settings name, ~/.prosegate/app/hook.mjs.
-// It runs app/current's shim and owns what must work when the shim cannot: exit 0 always, a 7.5 s
-// watchdog, one JSON object on stdout, and a visible line when a turn was not reviewed.
+// Stable launcher: bounded fail-open hooks (ADR-33), or a long-lived MCP stream (ADR-36).
 import { clearTimeout, setTimeout } from "node:timers";
 import { performance } from "node:perf_hooks";
 import { createHash } from "node:crypto";
@@ -13,14 +11,23 @@ const APP = dirname(fileURLToPath(import.meta.url));
 const HOME = dirname(APP);
 process.env.PROSEGATE_HOME = HOME; // the hooks use the home they were installed under
 const [event, ...flags] = process.argv.slice(2);
+if (event === "mcp") {
+  // MCP is a long-lived stream, so it must not use the hook's stdout guard or watchdog.
+  try {
+    const version = readFileSync(join(APP, "current"), "utf8").trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(version)) throw new Error("invalid version");
+    await import(pathToFileURL(join(APP, version, "dist", "prosegate.mjs")).href);
+  } catch {
+    const message = 'Prosegate: MCP failed; run "prosegate init --harness claude-code" again.';
+    process.stderr.write(message + "\n");
+    process.exitCode = 1;
+  }
+} else {
 const LOG = join(HOME, "logs", `${new Date().toISOString().slice(0, 10)}.log`);
 const MISSING = 'its files are missing; run "npx prosegate init" again';
-// Only this file writes to stdout, which Claude Code reads as JSON: console.log and the like are
-// muted and the one reply goes straight to fd 1. Residual (D-29): a dependency that writes to fd 1
-// itself while the bundle is imported cannot be stopped.
+// One JSON reply via fd 1; mute stdout helpers. Raw dependency fd writes remain D-29.
 process.stdout.write = () => true;
 let [answered, problem, sid] = [false, null, null]; // answered: one JSON object only
-
 function reply(text) {
   if (answered) return;
   answered = true;
@@ -31,7 +38,6 @@ function reply(text) {
     }
   }
 }
-
 function log(code, detail) {
   try {
     mkdirSync(dirname(LOG), { recursive: true });
@@ -39,7 +45,6 @@ function log(code, detail) {
     appendFileSync(LOG, `${new Date().toISOString()} error shim_${code} ${line}\n`);
   } catch { /* logging never fails a hook */ }
 }
-
 /** True the first time this session has this reason (a file per session, one reason per line). */
 function firstTime() {
   const id = createHash("sha256").update(sid ?? "unknown-session").digest("hex").slice(0, 16);
@@ -53,9 +58,7 @@ function firstTime() {
   } catch { /* shown again next time */ }
   return true;
 }
-
-// At most one line per turn: UserPromptSubmit only logs; SessionStart may show its line (it is not
-// reliably displayed, so it does not count as shown); Stop shows each reason once per session.
+// Prompt only logs; startup may show but never spends a notice; Stop dedupes per session.
 function unreviewed() {
   try {
     if (answered || !problem || event === "UserPromptSubmit") return;
@@ -109,8 +112,7 @@ async function main() {
   else if (r.text) reply(r.text);
 }
 
-// The timer also keeps the process alive (an unsettled promise would end it with code 13). It fires
-// 7.5 s after process start, inside Claude Code's 10 s (D-29: it cannot stop a synchronous loop).
+// Inside Claude's 10 s; also holds unsettled promises alive. Cannot stop synchronous loops (D-29).
 const left = Math.max(0, 7500 - performance.now());
 const late = () => giveUp("timeout", `${event} over 7.5 s`, "it took too long");
 const watchdog = setTimeout(late, left);
@@ -123,3 +125,4 @@ try { await main(); } catch (error) {
 }
 clearTimeout(watchdog);
 unreviewed();
+}

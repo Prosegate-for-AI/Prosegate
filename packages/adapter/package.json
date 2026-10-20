@@ -1,17 +1,25 @@
 {
   "name": "prosegate",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0-alpha.1",
+  "private": false,
   "type": "module",
   "bin": {
     "prosegate": "./dist/prosegate.mjs"
   },
   "files": [
-    "dist",
-    "shims"
+    "dist/prosegate.mjs",
+    "shims/claude-code/hook.mjs",
+    "shims/claude-code/launcher.mjs",
+    "LICENSE",
+    "PRIVACY.md",
+    "THIRD_PARTY_NOTICES.txt",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=20"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "2.1.1"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -19,11 +27,18 @@
     "test": "vitest run --root ../.. packages/adapter/"
   },
   "devDependencies": {
-    "@prosegate/schema": "workspace:*",
-    "@prosegate/segmenter": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@prosegate/engine": "workspace:*",
     "@prosegate/profiles": "workspace:*",
     "@prosegate/reviewer": "workspace:*",
+    "@prosegate/schema": "workspace:*",
+    "@prosegate/segmenter": "workspace:*",
     "zod": "4.6.7"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prosegate-for-AI/Prosegate.git",
+    "directory": "packages/adapter"
   }
 }

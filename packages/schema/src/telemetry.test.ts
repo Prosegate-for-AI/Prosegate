@@ -17,6 +17,7 @@ import {
   type WireEvent,
 } from './telemetry.js';
 import { CATEGORIES } from './types.js';
+import { REVIEWER_MODELS } from './reviewer-models.js';
 import type { Category, SkippedReason } from './types.js';
 
 // ---- compile-time: the schema's output type is exactly this, no wider (toEqualTypeOf) -------
@@ -77,7 +78,7 @@ const VALID: Record<string, WireEvent> = {
     prose_words_bucket: 300,
     by_category: { hedge: 1, vocab: 2, unsupported_claim: 1 },
     rule_ids: ['core.hedge.001', 'core.vocab.003'],
-    reviewer: { model: 'gpt-5-mini', latency_bucket_ms: 2000, findings: 1, span_misses: 0 },
+    reviewer: { model: REVIEWER_MODELS[0], latency_bucket_ms: 2000, findings: 1, span_misses: 0 },
     cleared: 2,
     cleared_categories: ['filler', 'triad'],
   },
@@ -207,8 +208,8 @@ describe('telemetry allowlist: per-field formats', () => {
   };
 
   it('accepts a 64-char and rejects a 65-char value in every string field that has room for one', () => {
-    // fields whose format permits 64 characters: the model id
-    expect(wireOk(set('review_full', ['reviewer', 'model'], `${'a'.repeat(30)}.${'a'.repeat(33)}`))).toBe(true); // 64 chars, no 40-char run
+    // Reviewer model is now an allowlist, not a free-form token (D-16).
+    expect(wireOk(set('review_full', ['reviewer', 'model'], `${'a'.repeat(30)}.${'a'.repeat(33)}`))).toBe(false);
     expect(wireOk(set('review_full', ['reviewer', 'model'], `${'a'.repeat(30)}.${'a'.repeat(34)}`))).toBe(false); // 65 chars
     // every other string field is bounded by its own, tighter format; 65 chars never passes
     expect(wireOk(set('session_start', ['adapter_version'], `1.0.0-${'a'.repeat(28)}.${'a'.repeat(29)}`))).toBe(true);
@@ -235,8 +236,8 @@ describe('telemetry allowlist: per-field formats', () => {
   });
 
   it.each([
-    ['gpt-5-mini', true], ['claude-haiku-4-5-20251001', true], ['openai:gpt-5.1', true], ['org/model@v2', true], ['o3', true], ['0', true],
-    ['GPT-5', true], ['GPT4o-Prod', true], ['ft:gpt-4o-mini-2024-07-18:acme-corp::9qTVM5AR', true], ['meta-llama/Meta-Llama-3.1-8B-Instruct', true], ['gpt+5', false], ['gpt_5 ', false], ['-gpt', false], ['.model', false], ['gpt 5', false], ['gpt\n5', false], ['gpt#5', false], ['', false], ['This_PR_introduces_a_robust_caching_layer', false],
+    [REVIEWER_MODELS[0], true], [REVIEWER_MODELS[1], true], ['gpt-5-mini', false], ['claude-haiku-4-5-20251001', false], ['openai:gpt-5.1', false], ['org/model@v2', false], ['o3', false], ['0', false],
+    ['GPT-5', false], ['GPT4o-Prod', false], ['ft:gpt-4o-mini-2024-07-18:acme-corp::9qTVM5AR', false], ['meta-llama/Meta-Llama-3.1-8B-Instruct', false], ['gpt+5', false], ['gpt_5 ', false], ['-gpt', false], ['.model', false], ['gpt 5', false], ['gpt\n5', false], ['gpt#5', false], ['', false], ['This_PR_introduces_a_robust_caching_layer', false],
   ])('reviewer.model %j is %s', (v, valid) => {
     expect(wireOk(set('review_full', ['reviewer', 'model'], v))).toBe(valid);
   });
@@ -524,7 +525,7 @@ describe('telemetry property: prose cannot leak', () => {
         };
         if (e.t === 'review' && e.verdict === 'skipped' && rnd() < 0.5) e.skipped_reason = pick(['below_floor', 'no_prose', 'advisory_mode', 'reviewer_unavailable'] as const);
         if (e.t === 'review' && rnd() < 0.5) {
-          e.reviewer = { model: `gpt-${slug()}`, latency_bucket_ms: pick([500, 1000, 2000, 4000, 8000] as const), findings: int(9), span_misses: int(3) };
+          e.reviewer = { model: pick(REVIEWER_MODELS), latency_bucket_ms: pick([500, 1000, 2000, 4000, 8000] as const), findings: int(9), span_misses: int(3) };
         }
         return e;
       }

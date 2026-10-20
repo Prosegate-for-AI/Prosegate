@@ -1,3 +1,30 @@
 name = "prosegate-config"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
+
+[vars]
+DASHBOARD_ORIGIN = "http://localhost:5173"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "prosegate-config"
+# Replace only when provisioning a real deployment.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[queues.producers]]
+binding = "TELEMETRY"
+queue = "prosegate-telemetry"
+
+[[queues.consumers]]
+queue = "prosegate-telemetry"
+max_batch_size = 50
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "prosegate-telemetry-dlq"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[observability]
+enabled = false

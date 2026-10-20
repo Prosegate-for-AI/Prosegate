@@ -75,7 +75,8 @@ describe("09 mock 1: pass-1 revise, pr-description, interactive", () => {
     expect(cc.cli(["profile", "pr-description"]).stdout).toBe("Prosegate: profile set to local/pr-description; it applies from the next turn.\n");
 
     const prompt = cc.prompt("write the PR description for this branch");
-    expect(prompt).toMatchObject({ code: 0, stdout: "", stderr: "" });
+    expect(prompt).toMatchObject({ code: 0, stderr: "" });
+    expect(prompt.stdout).toContain("Active profile: PR description.");
 
     // Pass 1: the model's reply has a hedge, a vocab word and a triad.
     const pass1 = cc.stop(MOCK1_TEXT);

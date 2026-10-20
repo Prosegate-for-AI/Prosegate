@@ -36,12 +36,14 @@ function realSettingsFiles(): string[] {
   // The real Prosegate program files too (stat only): the launcher every registration names, and the directories init writes.
   const files = [...homes].flatMap((h) => [
     join(h, ".claude", "settings.json"),
+    join(h, ".claude.json"),
+    join(h, ".claude", ".claude.json"),
     join(h, ".claude", "settings.local.json"),
     join(h, ".prosegate", "app"),
     join(h, ".prosegate", "app", "hook.mjs"),
     join(h, ".prosegate", "bin"),
   ]);
-  for (const dir of [process.env["CLAUDE_CONFIG_DIR"], process.env["PROSEGATE_CLAUDE_HOME"]]) if (dir !== undefined && dir !== "") files.push(join(dir, "settings.json"));
+  for (const dir of [process.env["CLAUDE_CONFIG_DIR"], process.env["PROSEGATE_CLAUDE_HOME"]]) if (dir !== undefined && dir !== "") files.push(join(dir, "settings.json"), join(dir, ".claude.json"));
   return [...new Set(files)];
 }
 
