@@ -153,10 +153,14 @@ describe("init, user scope", () => {
 
   it("the `prosegate` command it writes runs the current version", () => {
     const e = env();
-    init(e);
+    expect(init(e).code).toBe(0);
     const script = process.platform === "win32" ? join(e.home, "bin", "prosegate.cmd") : join(e.home, "bin", "prosegate");
+    if (process.platform !== "win32") {
+      chmodSync(script, 0o600);
+      expect(init(e).code).toBe(0); // Re-init repairs an existing non-executable script.
+    }
     const r = spawnSync(script, ["--version"], { encoding: "utf8", shell: process.platform === "win32" });
-    expect(r.status).toBe(0);
+    expect(r.status, r.error?.message ?? r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^\S+\n$/);
     const sh = BASH && process.platform === "win32" ? spawnSync(detectShell(createCtx({ env: {}, home: "x", cwd: "x" })).file, ["-c", `'${fwd(join(e.home, "bin", "prosegate"))}' --version`], { encoding: "utf8" }) : null;
     if (sh !== null) expect(sh.stdout).toBe(r.stdout);

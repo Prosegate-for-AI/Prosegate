@@ -7,7 +7,7 @@
 // Hooks therefore never point into an npx cache or at a version that a later init prunes.
 
 import { createHash, randomBytes } from "node:crypto";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Ctx } from "./ctx.js";
@@ -221,6 +221,9 @@ export function writeBin(ctx: Ctx, nodePath: string): string[] | string {
     written.push(file);
   };
   put("prosegate", sh);
+  // Atomic writes use 0600; this owner-only entry point must also be executable.
+  // Repair permissions on an unchanged script from an earlier installation too.
+  if (ctx.platform !== "win32") chmodSync(join(dir, "prosegate"), 0o700);
   if (ctx.platform === "win32") {
     const cmd = ["@echo off", "setlocal", `set /p V=<"${appDir(ctx)}\\current"`, `"${nodePath}" "${appDir(ctx)}\\%V%\\dist\\prosegate.mjs" %*`, ""].join("\r\n");
     put("prosegate.cmd", cmd);

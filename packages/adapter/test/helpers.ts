@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +17,8 @@ afterAll(() => {
 
 /** A fresh empty directory, removed when the test file ends. */
 export function tmpDir(prefix = "pg-adapter-"): string {
-  const d = mkdtempSync(join(tmpdir(), prefix));
+  // macOS aliases /var to /private/var; child cwd and ESM URLs use the real path.
+  const d = realpathSync(mkdtempSync(join(tmpdir(), prefix)));
   cleanups.push(d);
   return d;
 }

@@ -146,9 +146,14 @@ const isObject = (v: unknown): v is Json => typeof v === "object" && v !== null 
 const BOM = String.fromCharCode(0xfeff);
 
 /** Where JSON.parse gave up, without quoting the file (it can hold secrets). */
-function whereBroken(error: unknown): string {
+function whereBroken(error: unknown, body: string): string {
   const m = error instanceof Error ? /line (\d+) column (\d+)/.exec(error.message) : null;
-  return m === null ? "" : ` at line ${m[1] ?? "?"}, column ${m[2] ?? "?"}`;
+  if (m !== null) return ` at line ${m[1] ?? "?"}, column ${m[2] ?? "?"}`;
+  // Node 20 can report only an offset. Derive coordinates without exposing text.
+  const offset = error instanceof Error ? /position (\d+)/.exec(error.message) : null;
+  if (offset === null) return "";
+  const before = body.slice(0, Number(offset[1]));
+  return ` at line ${before.split("\n").length}, column ${before.length - before.lastIndexOf("\n")}`;
 }
 
 interface Loaded {
@@ -171,7 +176,7 @@ function load(path: string): Loaded | string {
   try {
     parsed = JSON.parse(body);
   } catch (error) {
-    return `Prosegate: ${path} is not valid JSON${whereBroken(error)}, so nothing was changed. Fix or move that file, then run this again.`;
+    return `Prosegate: ${path} is not valid JSON${whereBroken(error, body)}, so nothing was changed. Fix or move that file, then run this again.`;
   }
   if (!isObject(parsed)) return `Prosegate: ${path} is not a JSON object, so nothing was changed. Fix or move that file, then run this again.`;
   return { settings: parsed, text };

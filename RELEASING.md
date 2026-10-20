@@ -34,7 +34,8 @@ The offline smoke validates fallback operation. CI also installs the package wit
 optional dependencies on Windows, Linux and macOS, covering x64 and arm64 through
 the main and package-architectures jobs. Runner labels follow the
 [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
-These hosted jobs still need their first run. Actual native keychain access
+Initial architecture package jobs passed on Windows/Linux ARM and Intel macOS;
+full platform qualification remains in CI. Actual native keychain access
 still depends on the host's keychain/session; architecture and native-store evidence
 must be recorded before claiming support beyond the tested runner matrix.
 
