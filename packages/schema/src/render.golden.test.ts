@@ -637,6 +637,12 @@ describe('trimming counts code points, never splits a surrogate pair, and prefer
     expect(trimSpan(` ${'b'.repeat(70)}`, 60)).toEqual({ text: ` ${'b'.repeat(58)}`, trimmed: true });
   });
 
+  it('raw CRLF is one grapheme, while printable ASCII counts one character at a time', () => {
+    expect(trimSpan('a\r\nb', 3)).toEqual({ text: 'a\r\nb', trimmed: false });
+    expect(trimSpan('abcd', 3)).toEqual({ text: 'ab', trimmed: true });
+    expect(trimSpan('a\u0301bc', 3)).toEqual({ text: 'a\u0301bc', trimmed: false });
+  });
+
   it('feedback_text: 80 code points pass, 81 trim to 79, the ellipsis outside the quotes, same word rule', () => {
     const pre = '1. vocab (core.vocab.003) \u2014 ';
     expect(feedbackSpan('b'.repeat(80))).toBe(`${pre}"${'b'.repeat(80)}" \u2192 x`);

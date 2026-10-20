@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { RE2JS } from "re2js";
 import { parseRulePackYaml, type RulePack } from "@prosegate/profiles";
 import { clearPackCache, compilePack, PackCompileError } from "../src/index.js";
-import { stripOuterBoundaries } from "../src/compile.js";
+import { escapeRegex, stripOuterBoundaries } from "../src/compile.js";
 import { CORE, hits, packOf, ruleYaml, run } from "./helpers.js";
 
 const at = (p: RulePack, i: number): RulePack["rules"][number] => p.rules[i] as RulePack["rules"][number];
@@ -13,6 +14,32 @@ function mutate(pack: RulePack, fn: (p: RulePack) => void): RulePack {
 }
 
 describe("compilePack", () => {
+  it("literal phrase searches preserve RE2 offsets, alternative order and whitespace semantics", () => {
+    const phrases = ["foo bar", "foo", "a+b", "a.b", "[x]", "(a+)+$", "\\path", "caf\u00e9", "\u{10428}word", "a|b"];
+    const pack = packOf(ruleYaml("core.vocab.001", JSON.stringify({ kind: "phrase", phrases })));
+    const match = pack.rules[0]?.match;
+    if (match?.kind !== "search") throw new Error("expected search");
+    const part = match.parts[0];
+    if (part === undefined || part.phrases === null) throw new Error("expected phrases");
+    const reference = RE2JS.compile(`(?:${part.phrases.map((p) => p.split(" ").map(escapeRegex).join("\\s+")).join("|")})`);
+    const texts = [
+      "foo barx foo bar foo", "a+b a.b [x] (a+)+$ \\path a|b", "caf\u00e9 \u{10428}word",
+      ...[" ", "  ", "\t", "\n", "\r\n", "\f", "\v", "\u00a0", "\u2028"].map((ws) => `foo${ws}bar`),
+      `${"f".repeat(1900)}foo bar`, `${"a".repeat(1900)}!`, "",
+    ];
+    for (const text of texts) {
+      expect(part.re.test(text)).toBe(reference.test(text));
+      const actual = part.re.matcher(text);
+      const expected = reference.matcher(text);
+      // Repeated and out-of-order starts also detect leaked RegExp.lastIndex.
+      for (const start of [0, Math.min(1, text.length), Math.floor(text.length / 2), text.length, 0]) {
+        const found = expected.find(start);
+        expect(actual.find(start), JSON.stringify({ text, start })).toBe(found);
+        if (found) expect([actual.start(0), actual.end(0)]).toEqual([expected.start(0), expected.end(0)]);
+      }
+    }
+  });
+
   it("compiles core once and caches by id@version", () => {
     clearPackCache();
     const a = compilePack(CORE);

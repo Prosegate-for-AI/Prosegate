@@ -34,11 +34,23 @@ export interface SearchFilters {
   sentenceExclude: RE2JS | null;
 }
 
+/** The offset-producing operations used by the search pipeline. */
+export interface SearchMatcher {
+  find(start: number): boolean;
+  start(group: number): number;
+  end(group: number): number;
+}
+
+export interface SearchExpression {
+  test(text: string): boolean;
+  matcher(text: string): SearchMatcher;
+}
+
 /** One phrase or regex part of a rule (a `phrase` or `regex` rule has exactly one; `any` has several). */
 export interface SearchPart {
   readonly kind: "search";
   readonly source: "phrase" | "regex";
-  readonly re: RE2JS;
+  readonly re: SearchExpression;
   /** Index of the `span` group in `re`, or 0 for the whole match. */
   readonly spanGroup: number;
   /** Index of the `key` group (the rule's key word for allow_terms, ADR-26), or 0 for none. */
@@ -112,11 +124,39 @@ export function escapeRegex(s: string): string {
   return s.replace(REGEX_META, "\\$&");
 }
 
-function phraseSource(phrases: readonly string[]): { source: string; list: string[] } {
+function normalizedPhrases(phrases: readonly string[]): string[] {
   const list = [...new Set(phrases.map((p) => normalizeForMatching(p).trim().replace(/\s+/g, " ")))].filter((p) => p.length > 0);
   list.sort((a, b) => b.length - a.length || (a < b ? -1 : a > b ? 1 : 0));
-  const alts = list.map((p) => p.split(" ").map(escapeRegex).join("\\s+"));
-  return { source: `(?:${alts.join("|")})`, list };
+  return list;
+}
+
+/**
+ * Literal alternatives only: every metacharacter is escaped and whitespace runs
+ * are separated by non-whitespace literals. There are no user-authored regexes,
+ * nested quantifiers or ambiguous repetitions. Work is bounded by the phrase
+ * list and search windows. Use RE2's ASCII whitespace class, not JS's wider \s.
+ */
+function compilePhrases(phrases: readonly string[]): SearchExpression {
+  const source = `(?:${phrases.map((p) => p.split(" ").map(escapeRegex).join("[\\t\\n\\f\\r ]+")).join("|")})`;
+  const re = new RegExp(source, "gu");
+  return {
+    test(text) {
+      re.lastIndex = 0;
+      return re.test(text);
+    },
+    matcher(text) {
+      let hit: RegExpExecArray | null = null;
+      return {
+        find(start) {
+          re.lastIndex = start;
+          hit = re.exec(text);
+          return hit !== null;
+        },
+        start: () => hit?.index ?? -1,
+        end: () => hit === null ? -1 : hit.index + hit[0].length,
+      };
+    },
+  };
 }
 
 /**
@@ -259,9 +299,9 @@ type PartInput =
 function compilePart(part: PartInput, ruleId: string, packId: string): SearchPart {
   const filters = compileFilters(part, ruleId, packId);
   if (part.kind === "phrase") {
-    const { source, list } = phraseSource(part.phrases);
+    const list = normalizedPhrases(part.phrases);
     if (list.length === 0) throw new PackCompileError(`Rule ${ruleId}: a phrase part has no usable phrase`, ruleId, packId);
-    const re = compileRe2(source, ruleId, "phrase list", packId);
+    const re = compilePhrases(list);
     const cache: Array<RegExp | undefined> = [];
     const sticky = (i: number): RegExp => {
       let r = cache[i];

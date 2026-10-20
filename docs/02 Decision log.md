@@ -502,3 +502,22 @@ bundled with esbuild, with system fonts and no design-system dependency.
 - Render the canonical PRIVACY.md as a public, script-free dashboard page. Explicitly disclose local draft caches, provider requests, user-authored configuration, opt-in excerpts, retention and deletion limitations. Local tools are open source; the FSL service is source-available.
 
 See RELEASING.md, docs/ADMIN.md and D-43. Local validation is not hosted publication or Phase 6/10 qualification.
+
+## ADR-41 · Cold-start work reduction (2026-10-20)
+
+D-44 profiling found eager Unicode segmentation/setup initialization and repeated
+literal-phrase compilation/search on the fresh-process path. Keep the 400 ms
+adapter and 200 ms rules budgets unchanged.
+
+- Initialize Intl.Segmenter only when needed. Printable ASCII has one code unit
+  per grapheme; Unicode and controls retain Intl segmentation, including CRLF.
+- Load init/uninit and explicit reviewer commands on demand inside the existing
+  single-file bundle. Hook behavior and enforcement boundaries are unchanged.
+- Phrase rules use escaped literal alternatives with RE2's ASCII whitespace
+  class. Only spaces become repetition, separated by non-whitespace literals;
+  user-authored regex patterns, sentence exclusions and metrics still use RE2.
+  Phrase/list limits, search windows, Unicode boundaries, masks, rejected-match
+  retries and budgets remain enforced. Differential tests compare offsets and
+  alternative order with RE2, including regex metacharacters and whitespace.
+
+Local timings are diagnostic; D-44 closes only after hosted CI passes.

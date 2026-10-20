@@ -58,10 +58,14 @@ const STRIP_RE = new RegExp(String.raw`\p{Cc}|(?!\u200c|\u200d)\p{Cf}|${INVISIBL
 const LONE_SURROGATE_RE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g;
 const MAX_MARKS_PER_GRAPHEME = 2;
 
-const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+let segmenter: Intl.Segmenter | undefined;
 
 /** Extended grapheme clusters (Intl.Segmenter: available in Node and in Workers). */
 function graphemes(s: string): string[] {
+  // Printable ASCII has exactly one code unit per grapheme. Keep CR/LF and all
+  // non-ASCII on the Unicode path (CRLF, for example, is one grapheme).
+  if (/^[\x20-\x7e]*$/.test(s)) return s.split('');
+  segmenter ??= new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   return Array.from(segmenter.segment(s), (x) => x.segment);
 }
 

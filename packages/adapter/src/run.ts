@@ -2,13 +2,11 @@ import { join } from "node:path";
 import type { ZodType } from "zod";
 import { COMMAND_NAMES, runCommand } from "./commands.js";
 import { createCtx, type Ctx } from "./ctx.js";
-import { runInit, runUninit } from "./init.js";
 import { describeError, log } from "./log.js";
 import { sessionStart, turnEnd, turnStart, type HandlerOutcome } from "./hooks.js";
 import { SessionStartInputSchema, TurnEndInputSchema, TurnStartInputSchema } from "./schemas.js";
 import { recordErrorLockFree } from "./telemetry.js";
 import { VERSION } from "./version.js";
-import { runKeyCommand, runReviewCommand } from "./reviewer-command.js";
 import type { Readable, Writable } from "node:stream";
 
 export interface Writer {
@@ -185,13 +183,18 @@ export async function run(argv: readonly string[], io: RunIO): Promise<number> {
     await serveMcp(ctx, io.streams.stdin, io.streams.stdout, io.streams.stderr);
     return 0;
   }
-  if (first === "key") return runKeyCommand(args.slice(1), io, ctx);
+  if (first === "key") {
+    const { runKeyCommand } = await import("./reviewer-command.js");
+    return runKeyCommand(args.slice(1), io, ctx);
+  }
   if (first === "review") {
+    const { runReviewCommand } = await import("./reviewer-command.js");
     try { return await runReviewCommand(args.slice(1), await readWithin(io.stdin, STDIN_TIMEOUT_MS), io, ctx); }
     catch { io.stderr.write("Prosegate: review input could not be read.\n"); return 1; }
   }
   if (first === "init" || first === "uninit") {
     try {
+      const { runInit, runUninit } = await import("./init.js");
       const r = (first === "init" ? runInit : runUninit)(args.slice(1), ctx);
       if (r.out !== "") io.stdout.write(r.out);
       if (r.err !== "") io.stderr.write(r.err);
