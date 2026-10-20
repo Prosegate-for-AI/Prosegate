@@ -9,7 +9,7 @@
 // Usage: node scripts/check-bundle.mjs [bundle-path] [--max-bytes N] [--no-exec]
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -100,6 +100,15 @@ export function executeRoundTrip(file, { timeoutMs = 60_000 } = {}) {
     const passed = call("turn-end", { ...turn, turn_id: "t2", assistant_text: CLEAN_TEXT });
     if (passed !== null && (passed.decision !== "allow" || passed.feedback_text !== "" || passed.notice !== null || passed.result?.verdict !== "pass")) {
       problems.push(`turn-end did not pass a clean text silently: ${clip(JSON.stringify(passed), 300)}`);
+    }
+    // ADR-45: bundled JSON no longer initializes YAML. Exercise a custom profile
+    // too, and require its distinct name so a fail-open fallback cannot pass.
+    const profiles = join(env.PROSEGATE_HOME, "profiles");
+    mkdirSync(profiles, { recursive: true });
+    writeFileSync(join(profiles, "base.yaml"), "schema: prosegate.profile/1\nid: local/base\nversion: 1\nname: Bundle Check\n");
+    const custom = call("session-start", { harness: "claude-code", session_id: "check-custom-profile", cwd: home, mode: "interactive" });
+    if (custom === null || typeof custom.inject !== "string" || !custom.inject.includes("Active profile: Bundle Check.")) {
+      problems.push("custom profile did not resolve through the bundled YAML parser");
     }
   } finally {
     rmSync(home, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });

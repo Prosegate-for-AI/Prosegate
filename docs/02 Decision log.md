@@ -558,3 +558,33 @@ The first alpha.2 attempt also exceeded cold-start limits on Windows; track
 remaining shared-runner variability in D-45 rather than hide failed attempts.
 Retain alpha.1/alpha.2 tags and use unpublished alpha.3 for the scheduling fix,
 including the first-publication attestation restriction.
+
+## ADR-45 · Audit native core expressions and defer optional parser initialization (2026-10-20)
+
+Alpha.3 passed macOS and the isolated deadline checks, but Windows still exceeded
+the unchanged cold budgets: adapter adjusted p95 413/449/456 ms and engine overhead
+313.6/306.5/303.7 ms. The earlier green runs do not establish repeatable headroom.
+
+Extend ADR-41's native literal matching to an explicit allowlist of the twelve
+byte-identical core regexes and its literal digit exclusion. These expressions
+have no backreferences, lookaround or ambiguous nested repetitions: unbounded
+letters and whitespace have disjoint delimiters, and wildcard repetitions are
+bounded by 80 characters. Editing a pattern or using another pack selects RE2.
+Preserve RE2 whitespace, LF-only dot behavior, capture indices and forward-only
+Unicode retry offsets. Differential tests compare every audited expression and
+its strict retry against RE2, including Unicode, whitespace and long misses.
+Existing window, overlap, deadline and finding limits remain unchanged.
+
+Load RE2 and YAML synchronously on first actual use through bundled CommonJS
+factories. The exact bundled-JSON/core path avoids their initialization, while
+custom YAML, custom regexes and metric prefixes retain the original validators
+and RE2 compiler. Both dependencies remain in the single-file distribution.
+The injection filter uses a strictly equivalent ASCII allowlist/normalization
+fast path; the denylist still runs and every ASCII character is compared with
+the generic path. Unicode and conditional characters retain the original checks.
+
+Keep the three failed release tags immutable. Qualify these changes on main
+before creating the next release tag. D-44 is reopened alongside D-45 until
+hosted functional, performance and packaging checks pass with this change.
+The unpublished candidate is 0.1.0-alpha.4; this supersedes ADR-44's bootstrap
+version restriction. No alpha.4 tag is created until main qualification passes.

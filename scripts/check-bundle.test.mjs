@@ -64,7 +64,7 @@ describe("disallowedSpecifiers", () => {
   });
 });
 
-// A stand-in for the CLI that answers the three calls the way the real one does, with any part replaced.
+// A stand-in for the CLI's default/custom profile and turn calls, with any part replaced.
 function fakeCli(over = {}) {
   const answers = {
     sessionStart: {
@@ -75,6 +75,7 @@ function fakeCli(over = {}) {
     },
     revise: { decision: "continue", feedback_text: "[Prosegate] 2 findings", notice: null, result: { verdict: "revise" } },
     pass: { decision: "allow", feedback_text: "", notice: null, result: { verdict: "pass" } },
+    custom: { inject: "Active profile: Bundle Check." },
     // Run when each call starts, with the process environment; return text to exit 1 with that message.
     guard: "",
     ...over,
@@ -86,6 +87,7 @@ function fakeCli(over = {}) {
     `  ${answers.guard}`,
     "  const name = process.argv[2];",
     "  const body = input ? JSON.parse(input) : {};",
+    `  if (body.session_id === "check-custom-profile") return console.log(JSON.stringify(${JSON.stringify(answers.custom)}));`,
     `  if (name === "session-start") return console.log(JSON.stringify(${JSON.stringify(answers.sessionStart)}));`,
     `  console.log(JSON.stringify(body.turn_id === "t1" ? ${JSON.stringify(answers.revise)} : ${JSON.stringify(answers.pass)}));`,
     "});",
@@ -104,6 +106,14 @@ describe("check-bundle execution step (DEBT D-17)", () => {
     const res = checkExec(bundle('console.log("hello");\n'));
     expect(res.code).toBe(1);
     expect(res.err).toMatch(/execution: session-start printed something that is not JSON: hello/);
+  });
+
+  it("rejects a custom-profile parser failure hidden by a default-profile fallback", () => {
+    for (const custom of [{ inject: "Active profile: Base." }, { inject: 7 }, null]) {
+      const res = checkExec(bundle(fakeCli({ custom })));
+      expect(res.code).toBe(1);
+      expect(res.err).toContain("custom profile did not resolve");
+    }
   });
 
   it("fails a bundle that crashes at runtime with the dynamic-require error, and shows the error", () => {
@@ -304,6 +314,6 @@ describe("the createRequire banner (DEBT D-17)", () => {
     expect(check(file).code).toBe(0); // the static scan alone is blind to it
     const res = checkExec(file);
     expect(res.code).toBe(1);
-    expect(res.err).toContain("execution: session-start did not run");
+    expect(res.err).toContain("execution: custom profile did not resolve");
   }, 120_000);
 });

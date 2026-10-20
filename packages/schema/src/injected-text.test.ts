@@ -18,6 +18,16 @@ import { FORK_TEXT } from './types.js';
 
 const u = (...cps: number[]): string => String.fromCodePoint(...cps);
 
+it('the ASCII allowlist fast path agrees with the Unicode path for every ASCII character', () => {
+  for (let code = 0; code < 128; code++) {
+    // A permitted non-letter forces the generic path without adding a script,
+    // command, domain or other denylist token to the input.
+    for (const text of [`A ${String.fromCharCode(code)} B`, `A ${String.fromCharCode(code)}`]) {
+      expect(v(text), JSON.stringify(text)).toBe(v(`${text} —`));
+    }
+  }
+});
+
 function rejects(text: string, reason?: RegExp): void {
   const got = v(text);
   expect(got, `filter should reject ${JSON.stringify(text.slice(0, 80))}`).not.toBeNull();

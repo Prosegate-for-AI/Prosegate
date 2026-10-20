@@ -1,7 +1,8 @@
-import { RE2JS } from "re2js";
+import compileRe2Pattern from "./re2-lazy.cjs";
 import type { Action } from "@prosegate/schema";
 import { DOCUMENT_METRICS, SENTENCE_METRICS, type Rule, type RulePack } from "@prosegate/profiles";
 import { normalizeForMatching } from "@prosegate/segmenter";
+import { isNativeCorePattern, nativeCoreSearch } from "./core-regex.js";
 
 // compilePack: turns a parsed rule pack into an immutable CompiledPack (04, ADR-15, S4 "opt B").
 //
@@ -31,7 +32,7 @@ export interface SearchFilters {
   maxDocWords: number | null;
   sentenceMaxWords: number | null;
   /** A unit in which this pattern matches anywhere is skipped. */
-  sentenceExclude: RE2JS | null;
+  sentenceExclude: SearchExpression | null;
 }
 
 /** The offset-producing operations used by the search pipeline. */
@@ -67,10 +68,10 @@ export interface SearchPart {
   readonly sticky: (i: number) => RegExp;
   /**
    * Regex parts whose trailing  was stripped: the same pattern with RE2's own trailing  kept, compiled on
-   * first use. When the stripped pattern's match fails the trailing boundary, RE2 backtracks into the other
+   * first use. When the stripped pattern's match fails the trailing boundary, the matcher tries the other
    * alternatives (or a longer lazy match) at the same start with this one; the JS Unicode check runs again after.
    */
-  readonly strict: () => RE2JS | null;
+  readonly strict: () => SearchExpression | null;
   readonly filters: SearchFilters;
 }
 
@@ -81,7 +82,7 @@ export interface SentenceMetricMatch {
   readonly below: number | null;
   readonly minWords: number;
   /** `starts_with`: the pattern, anchored at the start of the sentence's text. */
-  readonly startsWith: RE2JS | null;
+  readonly startsWith: ReturnType<typeof compileRe2Pattern> | null;
 }
 
 export interface DocumentMetricMatch {
@@ -259,10 +260,10 @@ export function stripOuterBoundaries(pattern: string): { source: string; lead: b
   return { source, lead, trail };
 }
 
-function compileRe2(source: string, ruleId: string, what: string, packId: string): RE2JS {
+function compileRe2(source: string, ruleId: string, what: string, packId: string): ReturnType<typeof compileRe2Pattern> {
   try {
     // Flags 0 on purpose: never RE2JS.LOOKBEHINDS, never CASE_INSENSITIVE (the text is lowercased).
-    return RE2JS.compile(source, 0);
+    return compileRe2Pattern(source);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     throw new PackCompileError(`Rule ${ruleId}: ${what} does not compile in RE2: ${reason}`, ruleId, packId);
@@ -278,7 +279,8 @@ function compileFilters(
     position: f.position ?? "any",
     maxDocWords: f.max_doc_words ?? null,
     sentenceMaxWords: f.sentence_max_words ?? null,
-    sentenceExclude: f.sentence_exclude === undefined ? null : compileRe2(f.sentence_exclude, ruleId, "sentence_exclude", packId),
+    sentenceExclude: f.sentence_exclude === undefined ? null : packId === "core" && f.sentence_exclude === "\\d"
+      ? nativeCoreSearch("\\d") : compileRe2(f.sentence_exclude, ruleId, "sentence_exclude", packId),
   };
 }
 
@@ -320,21 +322,28 @@ function compilePart(part: PartInput, ruleId: string, packId: string): SearchPar
     return { kind: "search", source: "phrase", re, spanGroup: 0, keyGroup: 0, checkLead: word, checkTrail: word, phrases: list, sticky, strict: () => null, filters };
   }
   const { source, lead, trail } = stripOuterBoundaries(whitespaceRuns(part.pattern));
-  const re = compileRe2(source, ruleId, "pattern", packId);
-  const group = re.namedGroups()["span"];
-  let strictRe: RE2JS | undefined;
+  const native = isNativeCorePattern(packId, part.pattern);
+  const compiled = native ? null : compileRe2(source, ruleId, "pattern", packId);
+  const re = compiled ?? nativeCoreSearch(source);
+  // Each named capture in the audited set is its pattern's first capture.
+  const groups = compiled?.namedGroups() ?? {
+    span: part.pattern.includes("(?P<span>") ? 1 : undefined,
+    key: part.pattern.includes("(?P<key>") ? 1 : undefined,
+  };
+  const group = groups["span"];
+  let strictRe: SearchExpression | undefined;
   return {
     kind: "search",
     source: "regex",
     re,
     spanGroup: group ?? 0,
-    keyGroup: re.namedGroups()["key"] ?? 0,
+    keyGroup: groups["key"] ?? 0,
     checkLead: lead,
     checkTrail: trail,
     phrases: null,
     strict: () => {
       if (!trail) return null;
-      strictRe ??= compileRe2(`(?:${source})\\b`, ruleId, "pattern", packId);
+      strictRe ??= native ? nativeCoreSearch(`(?:${source})\\b`) : compileRe2(`(?:${source})\\b`, ruleId, "pattern", packId);
       return strictRe;
     },
     sticky: () => {

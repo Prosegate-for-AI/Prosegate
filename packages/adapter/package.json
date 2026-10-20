@@ -1,6 +1,6 @@
 {
   "name": "prosegate",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.4",
   "private": false,
   "type": "module",
   "bin": {

@@ -1,4 +1,4 @@
-import { LineCounter, isAlias, isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
+import loadYaml from "./yaml-lazy.cjs";
 import { z } from "zod";
 import { clip, type Issue } from "./errors.js";
 import { BUNDLED_PARSED_JSON } from "./bundled.generated.js";
@@ -118,6 +118,7 @@ export function parseYamlStrict(text: unknown, maxBytes: number, maxNodes: numbe
     return { ok: true, value: JSON.parse(BUNDLED_PARSED_JSON[text] as string) as unknown };
   }
 
+  const { LineCounter, isAlias, isCollection, isMap, isScalar, parseDocument, visit } = loadYaml();
   const lineCounter = new LineCounter();
   let doc;
   try {

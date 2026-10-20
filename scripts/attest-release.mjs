@@ -10,7 +10,7 @@ import { authorizedRelease } from "./lib/release-authorization.mjs";
 // exact file with npm's --provenance-file and local 2FA. No npm token enters CI.
 const dir = process.env.RELEASE_DIR;
 const { manifest, pkg } = authorizedRelease(dir);
-if (pkg.version !== "0.1.0-alpha.3") throw new Error("Bootstrap attestation is only for the first publication candidate.");
+if (pkg.version !== "0.1.0-alpha.4") throw new Error("Bootstrap attestation is only for the first publication candidate.");
 const npmRoot = execFileSync("npm", ["root", "--global"], { encoding: "utf8" }).trim();
 const npmDir = join(npmRoot, "npm");
 if (JSON.parse(readFileSync(join(npmDir, "package.json"), "utf8")).version !== "12.2.0") {

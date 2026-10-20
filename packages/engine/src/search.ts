@@ -80,7 +80,7 @@ function runPart(part: SearchPart, isVocab: boolean, env: RunEnv, out: Candidate
     if (state === 0) {
       const u = units[ui] as Unit;
       let pass = f.sentenceMaxWords === null || u.words <= f.sentenceMaxWords;
-      if (pass && f.sentenceExclude !== null) pass = !f.sentenceExclude.matcher(text.slice(u.start, u.end)).find();
+      if (pass && f.sentenceExclude !== null) pass = !f.sentenceExclude.test(text.slice(u.start, u.end));
       state = pass ? 1 : 2;
       unitOk[ui] = state;
     }
@@ -161,7 +161,7 @@ function runPart(part: SearchPart, isVocab: boolean, env: RunEnv, out: Candidate
             const strict = part.strict();
             if (strict !== null) {
               const sm = strict.matcher(text.slice(s0, Math.min(text.length, s0 + RETRY_CHARS)));
-              if (sm.lookingAt()) {
+              if (sm.find(0) && sm.start(0) === 0) {
                 const end = s0 + sm.end(0);
                 if (!endsMidWord(text, s0, end)) {
                   e0 = end;

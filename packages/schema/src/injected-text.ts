@@ -97,6 +97,10 @@ function scriptOf(ch: string): string {
 
 /** Allowlist pass: returns a reason or null. `s` is already length-bounded. */
 function checkAllowlist(s: string): string | null {
+  // This subset contains only Latin letters, digits, ASCII space, permitted
+  // punctuation and the ASCII currency symbol. It cannot mix scripts, marks or
+  // invisibles. Conditional characters (#, @, ~) still take the full check.
+  if (!/[^A-Za-z0-9 .,;:!?'"()/%&+=$-]/.test(s)) return null;
   const chars = Array.from(s);
   let marks = 0;
   let afterLetter = false;
@@ -215,6 +219,8 @@ interface Views {
 
 function buildViews(s: string): Views {
   const a = s.toLowerCase();
+  // ASCII is unchanged by either normalization, mark removal or skeleton fold.
+  if (!/[^\p{ASCII}]/u.test(s)) return { forms: [a], d: a };
   const b = s.normalize('NFKC').toLowerCase();
   const stripped = s.normalize('NFKD').replace(/\p{M}/gu, '');
   const c = stripped.toLowerCase();
