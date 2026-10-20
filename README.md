@@ -34,5 +34,5 @@ Common commands: `pnpm install`, `pnpm build`, `pnpm typecheck`, `pnpm lint`, `p
 Local tools, packs, profiles and evaluation tooling are Apache-2.0. The service and
 dashboard use FSL-1.1-ALv2, with each version converting to Apache-2.0 after two years.
 See [licensing](LICENSE.md), [privacy](PRIVACY.md), [administrator guide](docs/ADMIN.md)
-and [release procedure](RELEASING.md). The current package version is `0.1.0-alpha.2`;
+and [release procedure](RELEASING.md). The current package version is `0.1.0-alpha.3`;
 release-candidate qualification and actual npm publication remain separate gates.

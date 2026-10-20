@@ -546,3 +546,15 @@ Keep the protected alpha.1 tag unchanged and advance the unpublished preview to
 0.1.0-alpha.2. This supersedes ADR-42's alpha.1-only bootstrap restriction; the
 protected attestation bootstrap is now restricted to alpha.2. No package was
 published by the failed run.
+
+
+## ADR-44 · Run real-deadline integration checks serially (2026-10-20)
+
+Alpha.2 qualification exposed timing assertions still in the parallel functional
+suite: the shim watchdog and evaluator CLI fixtures, whose rules enforce the
+real engine deadline. Include both files in the serial performance suite and
+limit concurrent cases to one there. Preserve every test and time budget.
+The first alpha.2 attempt also exceeded cold-start limits on Windows; track
+remaining shared-runner variability in D-45 rather than hide failed attempts.
+Retain alpha.1/alpha.2 tags and use unpublished alpha.3 for the scheduling fix,
+including the first-publication attestation restriction.

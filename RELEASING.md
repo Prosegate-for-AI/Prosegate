@@ -1,7 +1,7 @@
 # Preview releases
 
 Phase 9 provides the packaging and publishing path. Actual npm publication and
-hosted qualification are separate outcomes. `0.1.0-alpha.2` describes today's
+hosted qualification are separate outcomes. `0.1.0-alpha.3` describes today's
 preview. `0.1.0-rc.1` is reserved for qualified evidence; no stable version or
 automatic promotion to `latest` is supported by this workflow.
 
@@ -85,9 +85,11 @@ of its two-day initial validation window.
 
 The immutable alpha.1 tag passed validation but failed strict preparation due to
 npm 12 JSON output compatibility. It was never published. Alpha.2 includes that
-packaging fix; the original tag remains unchanged.
+packaging fix; the original tag remains unchanged. Alpha.2 then exposed real-clock
+checks still scheduled in the parallel functional suite. Alpha.3 runs those
+checks serially with every original deadline retained; both earlier tags remain.
 
-After all gates pass, dispatch the exact `v0.1.0-alpha.2` tag with
+After all gates pass, dispatch the exact `v0.1.0-alpha.3` tag with
 `bootstrap_attestation=true`. CI and strict preparation run normally. Review the
 `npm-preview` artifact, then approve the `npm-release` environment. Instead of
 publishing, that job signs the checked tarball using npm 12.2.0's own provenance
@@ -100,7 +102,7 @@ Download that artifact from the successful tagged run and run
 run, then publish the exact tarball from a terminal signed in as `murrayleroux`:
 
 ```sh
-npm publish <download-directory>/prosegate-0.1.0-alpha.2.tgz --provenance=false --provenance-file=<download-directory>/provenance.sigstore.json --access public --tag next --ignore-scripts --registry=https://registry.npmjs.org/
+npm publish <download-directory>/prosegate-0.1.0-alpha.3.tgz --provenance=false --provenance-file=<download-directory>/provenance.sigstore.json --access public --tag next --ignore-scripts --registry=https://registry.npmjs.org/
 ```
 
 Complete npm's 2FA prompt locally. `--provenance=false` overrides the package's

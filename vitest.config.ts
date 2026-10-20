@@ -1,9 +1,13 @@
 import { defineConfig } from "vitest/config";
 
-// Wall-clock budget tests (ADR-10) live in `perf.test.ts` / `cold.test.ts` files and run
-// separately, serially, via `pnpm test:perf` (vitest.perf.config.ts). In the parallel unit run
-// they flake under machine load and say nothing about the code.
-export const PERF_TESTS = ["**/test/perf.test.ts", "**/test/cold.test.ts"];
+// Real-clock checks run separately via `pnpm test:perf`, without other test workers.
+// This includes the shim watchdog and CLI evaluation fixtures: both exercise real
+// deadlines even when their primary assertion is functional. Keep all limits intact.
+export const PERF_TESTS = [
+  "**/test/perf.test.ts", "**/test/cold.test.ts",
+  "packages/adapter/test/golden/shim.test.ts",
+  "eval/runners/eval-rules.test.ts",
+];
 
 export default defineConfig({
   test: {
