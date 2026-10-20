@@ -102,9 +102,20 @@ function claudeHome(env: Ctx["env"], platform: NodeJS.Platform): { dir: string; 
 }
 
 function isUnder(path: string, dir: string, platform: NodeJS.Platform): boolean {
-  const norm = (p: string): string => (platform === "win32" ? resolve(p).toLowerCase() : resolve(p));
-  const base = norm(dir);
-  return norm(path).startsWith(base.endsWith(sep) ? base : base + sep);
+  const norm = (p: string): string => {
+    let existing = resolve(p);
+    const missing: string[] = [];
+    while (!existsSync(existing) && dirname(existing) !== existing) {
+      missing.unshift(basename(existing));
+      existing = dirname(existing);
+    }
+    const real = join(realpathSync(existing), ...missing);
+    return platform === "win32" ? real.toLowerCase() : real;
+  };
+  try {
+    const base = norm(dir);
+    return norm(path).startsWith(base.endsWith(sep) ? base : base + sep);
+  } catch { return false; }
 }
 
 export interface Target {

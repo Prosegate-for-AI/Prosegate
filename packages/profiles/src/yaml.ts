@@ -1,6 +1,7 @@
 import { LineCounter, isAlias, isCollection, isMap, isScalar, parseDocument, visit } from "yaml";
 import { z } from "zod";
 import { clip, type Issue } from "./errors.js";
+import { BUNDLED_PARSED_JSON } from "./bundled.generated.js";
 
 /** 06: `PUT /profiles` accepts `yaml` up to 64 KB; `PUT /rule-packs` up to 256 KB. UTF-8 bytes. */
 export const MAX_PROFILE_BYTES = 64 * 1024;
@@ -99,7 +100,7 @@ export function estimateNodes(text: string): number {
  *  - parsing stops at the first YAML error, and messages are a fixed string per error code plus the
  *    line number, never library text, which can echo the source.
  */
-export function parseYamlStrict(text: unknown, maxBytes: number, maxNodes: number): YamlResult {
+export function parseYamlStrict(text: unknown, maxBytes: number, maxNodes: number, useBundled = true): YamlResult {
   if (typeof text !== "string") return { ok: false, issues: [{ path: "", message: "the document must be text" }] };
   if (utf8Length(text, maxBytes) > maxBytes) {
     return { ok: false, issues: [{ path: "", message: `document is larger than the ${maxBytes}-byte limit` }] };
@@ -109,6 +110,13 @@ export function parseYamlStrict(text: unknown, maxBytes: number, maxNodes: numbe
   }
   const heavy = prescan(text, maxNodes);
   if (heavy !== null) return { ok: false, issues: [{ path: "", message: heavy }] };
+
+  // Only byte-identical shipped documents use pre-parsed data. Schema validation
+  // still runs in the caller; every edited or external document takes the strict
+  // parser below. JSON.parse gives callers independent, mutation-safe objects.
+  if (useBundled && Object.hasOwn(BUNDLED_PARSED_JSON, text)) {
+    return { ok: true, value: JSON.parse(BUNDLED_PARSED_JSON[text] as string) as unknown };
+  }
 
   const lineCounter = new LineCounter();
   let doc;

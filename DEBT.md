@@ -14,7 +14,7 @@ Accepted should-fix findings, known gaps and parked ideas. Each has the phase th
 | D-8 | S1 live observation (systemMessage on Stop, prompt_id stability, last_assistant_message fidelity) | S1; HQ-5 | 3 | closed 2026-10-17 |
 | D-9 | S2 live run (hard-cap enforcement lag, cost lag, revoke latency → exposure number) | S2; HQ-1 | 7 | blocked on HQ-1 |
 | D-10 | Usage poller should read `usage/completions` at 1m/1h buckets for intra-day burn; `/costs` is daily-only (06 "Usage poller" to be updated with S2 data) | S2 | 7 | open |
-| D-11 | GitHub Actions workflow never executed (no remote); run it once a private remote exists | Phase 0 exit; HQ-6 | 3 | blocked on HQ-6 |
+| D-11 | First hosted GitHub Actions runs completed in the approved public repository; remaining release qualification tracked in D-43 | Phase 0 exit; HQ-6 | 3 | closed 2026-10-20 |
 | D-12 | macOS untested for keyring (ad-hoc signed binaries, upstream #149; keychain ACL tied to node binary) | S3 | 9 | open |
 | D-13 | Feedback block is user-visible in Claude Code (ADR-13): every `feedback_text` line needs UX review as user copy | S1 TUI | 3 | open |
 | D-14 | (decided ADR-27) A per-rule escape hatch for the first false positive (e.g. `prosegate allow <rule_id>` writing a local overlay with `enabled: false`). Free tier, one-sentence explainable; decide in Phase 3 | W1.1 UX review | 3 | idea |
@@ -28,7 +28,7 @@ Accepted should-fix findings, known gaps and parked ideas. Each has the phase th
 | D-22 | `prosegate profile diff` (what changed between the last-seen and current profile), removed from the 09 notice until built | ADR-28 | 5 | open |
 | D-23 | A reply written entirely as a blockquote, as indented paragraphs or in an unclosed fence is never reviewed (no_prose). Blockquotes are excluded by design (03: users' words); measure how often models do this in the eval corpus | W3.1 security F15 | 6 | open |
 | D-24 | 'Fail closed' when re-resolution fails under an org `required` policy has no defined behaviour (hook fails open today). Decide with the config client | W3.1 conformance S5 | 7 | open |
-| D-25 | `@prosegate/profiles` should export pre-parsed bundled content at `gen:bundled` time; the adapter re-parses the bundled pack and profile YAML on every hook (~58 ms of the cold path) | W3.1 cycle 1 | 5 | open |
+| D-25 | Generated exact-text bundled JSON avoids repeated YAML parsing; byte/node limits and schema validation remain, external edits use the full parser, and parity/immutability checks guard the generated cache | W3.1 cycle 1; hosted cold-start budget | 5/9 | closed 2026-10-20 |
 | D-26 | Schema renderers accept the display pass cap; adapter string rewriting removed (ADR-35) | W3.1 cycle 1 | 4 | closed 2026-10-19 |
 | D-27 | A quoted mention of a flagged phrase without an attribution cue is linted (seen live: a Stop-hook revision request on a reply that quoted the hedge it was describing). Consider treating short quoted spans that exactly equal a rule phrase as mentions, not uses | live incident 2026-10-18 | 6 | open |
 | D-28 | `feedback_text`'s last line and the notices say `prosegate <command>`, which fails until the user adds `~/.prosegate/bin` to PATH after an npx install (ADR-33 prints the line but cannot make it so). Measure at dogfood; consider printing the `npx` form when `prosegate` does not resolve | W3.2 UX review | 5 | open |

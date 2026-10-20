@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir, userInfo } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCtx } from "../../src/ctx.js";
 import { roundTripEnv, runInit, settingsTarget } from "../../src/init.js";
@@ -14,7 +14,16 @@ import { FakeClaudeCode, releasePkg, testPkg, type Pkg } from "./driver.js";
 // only) and the init self-check's homes. The global setup also fails the whole run if the real settings' mtime moves.
 
 const under = (path: string, dir: string): boolean => {
-  const norm = (p: string): string => (process.platform === "win32" ? resolve(p).toLowerCase() : resolve(p));
+  const norm = (p: string): string => {
+    let existing = resolve(p);
+    const missing: string[] = [];
+    while (!existsSync(existing) && dirname(existing) !== existing) {
+      missing.unshift(basename(existing));
+      existing = dirname(existing);
+    }
+    const real = join(realpathSync(existing), ...missing);
+    return process.platform === "win32" ? real.toLowerCase() : real;
+  };
   const base = norm(dir);
   return norm(path).startsWith(base.endsWith(sep) ? base : base + sep);
 };
@@ -162,6 +171,13 @@ describe("the product guard (test builds and source runs only)", () => {
     const temp = tmpDir();
     const underTemp = createCtx({ env: { HOME: temp, USERPROFILE: temp }, home: tmpDir() });
     expect(settingsTarget(underTemp, "user")).toMatchObject({ path: join(temp, ".claude", "settings.json"), claudeDir: join(temp, ".claude") });
+  });
+
+  it("refuses a default home that escapes the temp directory through a symlink", () => {
+    const link = join(tmpDir(), "outside");
+    symlinkSync(process.cwd(), link, process.platform === "win32" ? "junction" : "dir");
+    const ctx = createCtx({ env: { HOME: link, USERPROFILE: link }, home: tmpDir() });
+    expect(settingsTarget(ctx, "user")).toMatch(/refusing to write/);
   });
 
   it("derives the default from the environment's home, never from os.homedir()", () => {
