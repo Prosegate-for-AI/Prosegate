@@ -7,7 +7,9 @@ pnpm release:prepare .scratch/release-preview
 npx --package=.scratch/release-preview/prosegate-0.1.0-alpha.1.tgz prosegate init --harness claude-code --local
 ```
 
-Re-running init upgrades an existing hook installation and adds MCP. It checks both hook execution and MCP initialization/tool discovery before completing. Start a new Claude Code session afterward. The package has not been published to npm.
+Re-running init upgrades an existing hook installation and adds MCP. It checks both hook execution and MCP initialization/tool discovery before completing. Start a new Claude Code session afterward.
+
+For a published preview, use `npx --package=prosegate@next prosegate init --harness claude-code --local`. For an unreleased build, use the prepared tarball above. Preview releases do not use npm's `latest` tag.
 
 This is an alpha preview. Local tools are Apache-2.0; LICENSE, PRIVACY.md and bundled
 dependency notices ship in the release tarball. Release preparation requires a new

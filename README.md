@@ -6,7 +6,7 @@ A prose linter for AI-agent output. It runs locally as a CLI and enforces at tur
 
 For the manual AI-review preview, provider data flow, key commands and request format, see [the reviewer README](packages/reviewer/README.md). No provider calls run during normal hooks in this build.
 
-For MCP setup, automatic profile suggestions, one-shot profiles and session binding, see [the adapter guide](packages/adapter/README.md). Re-run `prosegate init --harness claude-code --local` from the newly built package to add MCP to an existing hook installation, then start a new Claude session. This package is not published to npm yet; use the packed tarball as described in `STATUS.md`.
+For MCP setup, automatic profile suggestions, one-shot profiles and session binding, see [the adapter guide](packages/adapter/README.md). Re-run `prosegate init --harness claude-code --local` from the newly built package to add MCP to an existing hook installation, then start a new Claude session. See `STATUS.md` for registry availability; use a prepared tarball before publication, or `prosegate@next` for a published preview.
 
 Phase 6's corpus, annotation, budgeted generation and quality-reporting tools are implemented. See
 [the evaluation guide](eval/README.md). Corpus collection, independent human labels and live model

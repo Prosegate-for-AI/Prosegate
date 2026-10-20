@@ -36,8 +36,8 @@ the main and package-architectures jobs. Runner labels follow the
 [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Initial architecture package jobs passed on Windows/Linux ARM and Intel macOS;
 full functional suites now pass on every main runner. The adapter cold-start
-performance gate still fails on hosted Windows/macOS (D-44), so no release tag or
-publication is ready. See [the latest qualification run](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39494876819). Actual native keychain access
+performance gate now passes on Windows/macOS (D-44), with the original limits
+enforced. All seven jobs passed in [the qualification run](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39505398458). Actual native keychain access
 still depends on the host's keychain/session; architecture and native-store evidence
 must be recorded before claiming support beyond the tested runner matrix.
 
@@ -77,8 +77,8 @@ package name remains the unscoped `prosegate`; organization membership does not
 reserve that name. npm also supports organization management of unscoped packages
 ([organization scopes and packages](https://docs.npmjs.com/about-organization-scopes-and-packages/)).
 The registry still returns 404 for `prosegate`. First-publication bootstrap,
-package access and trusted-publisher configuration remain pending. Resolve D-44
-before publishing, and configure the trusted publisher close to release because
+package access and trusted-publisher configuration remain pending. D-44 is resolved;
+configure the trusted publisher close to release because
 of its two-day initial validation window.
 
 ## First publication
@@ -96,11 +96,12 @@ Download that artifact from the successful tagged run and run
 run, then publish the exact tarball from a terminal signed in as `murrayleroux`:
 
 ```sh
-npm publish <download-directory>/prosegate-0.1.0-alpha.1.tgz --provenance-file=<download-directory>/provenance.sigstore.json --access public --tag next --ignore-scripts --registry=https://registry.npmjs.org/
+npm publish <download-directory>/prosegate-0.1.0-alpha.1.tgz --provenance=false --provenance-file=<download-directory>/provenance.sigstore.json --access public --tag next --ignore-scripts --registry=https://registry.npmjs.org/
 ```
 
-Complete npm's 2FA prompt locally. Do not add `--provenance`: npm accepts either
-generation in CI or a supplied signed file, not both. Its publisher checks the
+Complete npm's 2FA prompt locally. `--provenance=false` overrides the package's
+default of generating provenance in CI; the signed file still supplies provenance.
+npm accepts generation or a supplied signed file, not both. Its publisher checks the
 signature and tarball SHA-512 against the attestation before submission. The
 registry's provenance verification and a clean `npm audit signatures` remain the
 post-publication checks. This path cannot mint attestations on a developer machine.
