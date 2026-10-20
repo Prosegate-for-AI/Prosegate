@@ -35,7 +35,9 @@ optional dependencies on Windows, Linux and macOS, covering x64 and arm64 throug
 the main and package-architectures jobs. Runner labels follow the
 [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Initial architecture package jobs passed on Windows/Linux ARM and Intel macOS;
-full platform qualification remains in CI. Actual native keychain access
+full functional suites now pass on every main runner. The adapter cold-start
+performance gate still fails on hosted Windows/macOS (D-44), so no release tag or
+publication is ready. See [the latest qualification run](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39494876819). Actual native keychain access
 still depends on the host's keychain/session; architecture and native-store evidence
 must be recorded before claiming support beyond the tested runner matrix.
 
