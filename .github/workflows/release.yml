@@ -4,6 +4,10 @@ name: npm preview release
 on:
   workflow_dispatch:
     inputs:
+      bootstrap_attestation:
+        description: First alpha only - sign the checked tarball for local npm publication with 2FA
+        type: boolean
+        default: false
       evaluation_run:
         description: Successful paid-evaluation run ID at this commit (required for RC)
         type: string
@@ -83,6 +87,20 @@ jobs:
           name: npm-preview
           path: ${{ runner.temp }}/release
       - name: Publish verified tarball using npm trusted publishing
+        if: ${{ !inputs.bootstrap_attestation }}
         env:
           RELEASE_DIR: ${{ runner.temp }}/release
         run: node scripts/publish-release.mjs
+      - name: Sign first-release tarball without npm credentials
+        if: inputs.bootstrap_attestation
+        env:
+          RELEASE_DIR: ${{ runner.temp }}/release
+        run: node scripts/attest-release.mjs
+      - name: Retain signed first-release artifact
+        if: inputs.bootstrap_attestation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: npm-bootstrap
+          path: ${{ runner.temp }}/release/
+          if-no-files-found: error
+          retention-days: 7

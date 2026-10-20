@@ -521,3 +521,16 @@ adapter and 200 ms rules budgets unchanged.
   alternative order with RE2, including regex metacharacters and whitespace.
 
 Local timings are diagnostic; D-44 closes only after hosted CI passes.
+
+## ADR-42 · First-publication provenance without an npm CI token (2026-10-20)
+
+npm trusted publishing requires an existing registry package. For the first
+0.1.0-alpha.1 only, the release workflow accepts bootstrap_attestation=true.
+After the same reusable CI, strict artifact preparation and protected-environment
+review, npm 12.2.0's provenance generator signs the exact tarball in GitHub Actions.
+Its verifier checks the Sigstore bundle before uploading the bootstrap artifact.
+The owner publishes that tarball with --provenance-file using local npm login/2FA,
+then configures release.yml as the package's trusted publisher. Subsequent
+releases use the existing OIDC publication path. No placeholder version, npm token
+in GitHub, rebuilt tarball or relaxed performance gate is required. The npm
+internal provenance API is pinned and version-checked; review it on upgrades.

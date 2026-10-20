@@ -5,6 +5,7 @@ import { join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { releaseProblems, verifyArtifact, payloadFiles, hash } from "./release.mjs";
+import { authorizedRelease } from "./lib/release-authorization.mjs";
 
 const pkg = { name: "prosegate", version: "0.1.0-alpha.1", private: false, license: "Apache-2.0", repository: { url: "https://github.com/example/prosegate.git", directory: "packages/adapter" } };
 const context = { sha: "a".repeat(40), dirty: false, tag: "v0.1.0-alpha.1", repository: "example/prosegate" };
@@ -69,6 +70,31 @@ it("rejects unrecognized paths before reading them", () => {
   writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest)); expect(() => verifyArtifact(dir)).toThrow("Invalid release manifest");
   manifest.tarball = "prosegate-0.1.0-alpha.1.tgz"; manifest.files["../../secret"] = hash("x");
   writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest)); expect(() => verifyArtifact(dir)).toThrow("Unexpected release payload");
+});
+it("binds publishing and bootstrap attestation to the exact checked source and tag", () => {
+  const { dir, manifest } = fixture();
+  const body = JSON.stringify(pkg);
+  writeFileSync(join(dir, "package/package.json"), body);
+  manifest.files["package.json"] = hash(body);
+  Object.assign(manifest, { publishable: true, blockers: [], source: { sha: context.sha, dirty: false }, repository: context.repository, tag: context.tag, version: pkg.version });
+  const save = () => writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
+  save();
+  const env = { GITHUB_ACTIONS: "true", GITHUB_REF_TYPE: "tag", ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.com/oidc", GITHUB_SHA: context.sha, GITHUB_REPOSITORY: context.repository, GITHUB_REF_NAME: context.tag };
+  expect(authorizedRelease(dir, env).pkg.version).toBe(pkg.version);
+  for (const changed of [{ GITHUB_SHA: "b".repeat(40) }, { GITHUB_REPOSITORY: "other/repo" }, { GITHUB_REF_NAME: "v0.1.0-alpha.2" }, { GITHUB_REF_TYPE: "branch" }, { ACTIONS_ID_TOKEN_REQUEST_URL: "" }]) {
+    expect(() => authorizedRelease(dir, { ...env, ...changed })).toThrow();
+  }
+  manifest.source.dirty = true; save();
+  expect(() => authorizedRelease(dir, env)).toThrow("authorized source");
+  manifest.source.dirty = false; manifest.publishable = false; save();
+  expect(() => authorizedRelease(dir, env)).toThrow("authorized source");
+});
+it("refuses bootstrap attestation outside the protected OIDC job", () => {
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL("attest-release.mjs", import.meta.url))], {
+    env: { ...process.env, GITHUB_ACTIONS: "false", RELEASE_DIR: "" }, encoding: "utf8",
+  });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain("Publish requires the protected GitHub release job");
 });
 it("refuses publishing outside the GitHub OIDC job before invoking npm", () => {
   const result = spawnSync(process.execPath, [fileURLToPath(new URL("publish-release.mjs", import.meta.url))], {
