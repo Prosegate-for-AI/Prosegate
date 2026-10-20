@@ -23,7 +23,7 @@ describe("compilePack", () => {
     if (part === undefined || part.phrases === null) throw new Error("expected phrases");
     const reference = RE2JS.compile(`(?:${part.phrases.map((p) => p.split(" ").map(escapeRegex).join("\\s+")).join("|")})`);
     const texts = [
-      "foo barx foo bar foo", "a+b a.b [x] (a+)+$ \\path a|b", "caf\u00e9 \u{10428}word",
+      "foo barx foo bar foo", "a+b a.b [x] (a+)+$ \\path a|b", "caf\u00e9 \u{10428}word", "x\u{10428}word \u{10428}word",
       ...[" ", "  ", "\t", "\n", "\r\n", "\f", "\v", "\u00a0", "\u2028"].map((ws) => `foo${ws}bar`),
       `${"f".repeat(1900)}foo bar`, `${"a".repeat(1900)}!`, "",
     ];
@@ -32,7 +32,8 @@ describe("compilePack", () => {
       const actual = part.re.matcher(text);
       const expected = reference.matcher(text);
       // Repeated and out-of-order starts also detect leaked RegExp.lastIndex.
-      for (const start of [0, Math.min(1, text.length), Math.floor(text.length / 2), text.length, 0]) {
+      const starts = text.length < 100 ? Array.from({ length: text.length + 1 }, (_, i) => i) : [0, 1, Math.floor(text.length / 2), text.length];
+      for (const start of [...starts, 0]) {
         const found = expected.find(start);
         expect(actual.find(start), JSON.stringify({ text, start })).toBe(found);
         if (found) expect([actual.start(0), actual.end(0)]).toEqual([expected.start(0), expected.end(0)]);

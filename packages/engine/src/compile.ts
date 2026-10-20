@@ -148,6 +148,11 @@ function compilePhrases(phrases: readonly string[]): SearchExpression {
       let hit: RegExpExecArray | null = null;
       return {
         find(start) {
+          // RegExp /u rewinds a lastIndex inside a surrogate pair. RE2 searches
+          // forward, so skip the low surrogate when retrying a rejected hit.
+          const c = text.charCodeAt(start);
+          const prev = text.charCodeAt(start - 1);
+          if (c >= 0xdc00 && c <= 0xdfff && prev >= 0xd800 && prev <= 0xdbff) start++;
           re.lastIndex = start;
           hit = re.exec(text);
           return hit !== null;
