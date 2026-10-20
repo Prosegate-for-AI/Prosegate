@@ -69,8 +69,18 @@ dependencies and does not collect bundled notices. Use the staged release tarbal
 Current GitHub configuration: `npm-release` requires review by `Murraylr` and accepts
 only `v0.1.0-*` tags. The active Immutable preview tags ruleset prevents updates
 and deletion of these tags. The sole reviewer may approve their own dispatched
-release; the workflow does not approve itself. npm login/bootstrap and trusted
-publisher configuration are still pending.
+release; the workflow does not approve itself.
+
+npm login was verified on October 20, 2026: `npm whoami` returns `murrayleroux`,
+and `npm org ls prosegate --json` confirms that account is an organization owner.
+This npm identity differs from the GitHub reviewer `Murraylr`. The approved
+package name remains the unscoped `prosegate`; organization membership does not
+reserve that name. npm also supports organization management of unscoped packages
+([organization scopes and packages](https://docs.npmjs.com/about-organization-scopes-and-packages/)).
+The registry still returns 404 for `prosegate`. First-publication bootstrap,
+package access and trusted-publisher configuration remain pending. Resolve D-44
+before publishing, and configure the trusted publisher close to release because
+of its two-day initial validation window.
 
 ## Publish a preview
 
