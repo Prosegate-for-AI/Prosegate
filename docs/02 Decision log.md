@@ -588,3 +588,29 @@ before creating the next release tag. D-44 is reopened alongside D-45 until
 hosted functional, performance and packaging checks pass with this change.
 The unpublished candidate is 0.1.0-alpha.4; this supersedes ADR-44's bootstrap
 version restriction. No alpha.4 tag is created until main qualification passes.
+
+## ADR-46 · Validate immutable bundled content at generation (2026-10-20)
+
+ADR-45's main run passed Windows cold start at 339/326/326 ms but macOS still
+exceeded the 400 ms gate in two attempts (567/406/350 ms). The exact shipped core
+pack and profiles were still paying the full schema, sanitization and injection
+checks on each fresh hook. Generate separate schema-validated JSON tables using
+the complete strict YAML limits and the same runtime validators, including all
+defaults and transformations. Only a byte-identical table key selects this path;
+changed/local content always uses the full parser and validators. Each call parses
+an independent JSON value. No caller-supplied origin flag grants trust.
+
+This refines ADR-40's runtime validation of the immutable bundled cache. Generation
+and the stale-output CI check must reject invalid content; parity tests compare
+the fast path with uncached strict parsing plus schema validation, test changed
+content and wrong document kinds, and verify nested mutation isolation. The JSON
+tables reuse the YAML string constants as computed keys to avoid embedding the
+same source twice. The generator runs through tsx to use the actual TS validators.
+The dependency graph and Worker boundary remain unchanged. Local alternating
+measurements show roughly 20 ms additional typical savings over ADR-45; all
+original hosted performance limits still apply.
+
+The same run also had a Windows ARM installation error without retained details.
+Release smoke now emits bounded logs only from its newly created synthetic home
+when init fails. No product timeout or installation behavior is changed; the next
+run must either pass or supply evidence for a targeted fix.

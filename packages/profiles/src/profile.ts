@@ -4,6 +4,7 @@ import { ResolutionError, summariseIssues, type Issue, type ParseResult } from "
 import { injectedText, PackIdSchema, ProfileIdSchema, RangeSchema, RuleIdSchema, SeveritySchema } from "./fields.js";
 import { sanitizeInput } from "./sanitize.js";
 import { MAX_PROFILE_BYTES, MAX_PROFILE_NODES, parseYamlStrict, zodToIssues } from "./yaml.js";
+import { BUNDLED_VALIDATED_PROFILE_JSON } from "./bundled.generated.js";
 
 export { ProfileIdSchema };
 
@@ -133,6 +134,11 @@ export function parseProfile(input: unknown): ParseResult<Profile> {
 
 /** Parses and validates profile YAML (≤ 64 KB). Never throws; the error is a ResolutionError. */
 export function parseProfileYaml(text: unknown): ParseResult<Profile> {
+  // Exact shipped bytes only: generator + CI apply the full parser/schema/filter.
+  // Parse anew so callers cannot mutate a shared trusted value.
+  if (typeof text === "string" && Object.hasOwn(BUNDLED_VALIDATED_PROFILE_JSON, text)) {
+    return { ok: true, value: JSON.parse(BUNDLED_VALIDATED_PROFILE_JSON[text] as string) as Profile };
+  }
   const yaml = parseYamlStrict(text, MAX_PROFILE_BYTES, MAX_PROFILE_NODES);
   if (!yaml.ok) return { ok: false, error: invalidProfile(yaml.issues) };
   return parseProfile(yaml.value);

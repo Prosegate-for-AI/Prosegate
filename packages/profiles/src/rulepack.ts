@@ -6,6 +6,7 @@ import { injectedText, PackIdSchema, RuleIdSchema, SeveritySchema } from "./fiel
 import { lintPattern, lintPhrase, MAX_PATTERN_BYTES, MAX_REGEX_RULES } from "./patterns.js";
 import { sanitizeInput } from "./sanitize.js";
 import { MAX_PACK_BYTES, MAX_PACK_NODES, parseYamlStrict, utf8Length, zodToIssues } from "./yaml.js";
+import { BUNDLED_VALIDATED_PACK_JSON } from "./bundled.generated.js";
 
 export { PackIdSchema, RuleIdSchema, SeveritySchema };
 
@@ -313,6 +314,11 @@ export function parseRulePack(input: unknown): ParseResult<RulePack> {
 
 /** Parses and validates rule-pack YAML (≤ 256 KB). Never throws; the error is a ResolutionError. */
 export function parseRulePackYaml(text: unknown): ParseResult<RulePack> {
+  // Only byte-identical shipped content uses schema-validated generated data.
+  // Changed/local content takes the full path below; each result is independent.
+  if (typeof text === "string" && Object.hasOwn(BUNDLED_VALIDATED_PACK_JSON, text)) {
+    return { ok: true, value: JSON.parse(BUNDLED_VALIDATED_PACK_JSON[text] as string) as RulePack };
+  }
   const yaml = parseYamlStrict(text, MAX_PACK_BYTES, MAX_PACK_NODES);
   if (!yaml.ok) return { ok: false, error: invalidPack(yaml.issues) };
   return parseRulePack(yaml.value);

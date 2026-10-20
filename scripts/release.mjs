@@ -128,7 +128,18 @@ export function smokeArtifact(directory) {
   writeJson(join(project, ".claude/settings.local.json"), { env: { PROSEGATE_RELEASE_UNRELATED: "keep" } });
   const mcpPath = join(env.CLAUDE_CONFIG_DIR, ".claude.json"), projectKey = project.replaceAll("\\", "/");
   writeJson(mcpPath, { mcpServers: { unrelated: { command: "fixture-only-never-launched", args: [] } } });
-  call("init", "--harness", "claude-code", "--local", "--scope", "project");
+  try {
+    call("init", "--harness", "claude-code", "--local", "--scope", "project");
+  } catch (error) {
+    // This home was created above exclusively for synthetic smoke data. Retain
+    // bounded diagnostics in CI output before its ephemeral runner disappears.
+    // Never read the caller's real Prosegate home or an error-supplied path.
+    const logs = join(env.PROSEGATE_HOME, "logs");
+    if (existsSync(logs)) for (const name of readdirSync(logs).filter((name) => /^\d{4}-\d{2}-\d{2}\.log$/.test(name)).sort().slice(-2)) {
+      console.error(`Isolated init diagnostic (${name}):\n${readFileSync(join(logs, name), "utf8").slice(-12_000)}`);
+    }
+    throw error;
+  }
   const initialized = json(join(project, ".claude/settings.local.json"));
   if (!initialized.hooks || initialized.env?.PROSEGATE_RELEASE_UNRELATED !== "keep") throw new Error("Package init failed.");
   if (!json(mcpPath).projects?.[projectKey]?.mcpServers?.prosegate) throw new Error("Package MCP registration missing.");

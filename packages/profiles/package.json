@@ -10,7 +10,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "gen:bundled": "node scripts/gen-bundled.mjs"
+    "gen:bundled": "tsx scripts/gen-bundled.mjs"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
