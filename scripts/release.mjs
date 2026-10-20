@@ -10,6 +10,18 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const adapter = join(root, "packages/adapter");
 export const payloadFiles = ["package.json", "README.md", "LICENSE", "NOTICE", "PRIVACY.md", "THIRD_PARTY_NOTICES.txt", "dist/prosegate.mjs", "shims/claude-code/hook.mjs", "shims/claude-code/launcher.mjs"].sort();
 export const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+// npm 12 keys JSON results by package name; npm 11 and earlier return an array.
+export function packedPackage(output, pkg) {
+  const result = JSON.parse(output);
+  const entries = Array.isArray(result) ? result : result && typeof result === "object" ? Object.values(result) : [];
+  const packed = entries[0];
+  if (entries.length !== 1 || packed?.name !== pkg.name || packed?.version !== pkg.version ||
+      packed.filename !== `${pkg.name}-${pkg.version}.tgz` || !Array.isArray(packed.files) ||
+      JSON.stringify(packed.files.map((file) => file?.path).sort()) !== JSON.stringify(payloadFiles)) {
+    throw new Error("npm packed an unexpected package or file list.");
+  }
+  return packed;
+}
 const json = (path) => JSON.parse(readFileSync(path, "utf8"));
 const writeJson = (path, value) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" });
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
@@ -154,8 +166,7 @@ export function prepare(directory, { strict = false, repository, tag, report } =
     description: "Local prose checks and writing profiles for Claude Code. Alpha preview.", files: payloadFiles.filter((p) => p !== "package.json"), private: blockers.length > 0,
     publishConfig: { access: "public", registry: "https://registry.npmjs.org/", tag: "next", provenance: true } });
   writeFileSync(join(stage, "THIRD_PARTY_NOTICES.txt"), bundledNotices());
-  const packed = JSON.parse(npm(["pack", "--ignore-scripts", "--json", "--pack-destination", directory], stage))[0];
-  if (JSON.stringify(packed.files.map((file) => file.path).sort()) !== JSON.stringify(payloadFiles)) throw new Error("npm packed unexpected files.");
+  const packed = packedPackage(npm(["pack", "--ignore-scripts", "--json", "--pack-destination", directory], stage), pkg);
   const tarball = basename(packed.filename);
   const manifest = { schema: "prosegate.release/1", version, source: { sha, dirty }, repository: repository ?? null, tag: tag ?? null,
     blockers, publishable: blockers.length === 0, bundle_sha256: first, lockfile_sha256: hash(readFileSync(join(root, "pnpm-lock.yaml"))),

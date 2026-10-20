@@ -4,7 +4,7 @@ Build and pack the adapter from the repository, then install that tarball:
 
 ```sh
 pnpm release:prepare .scratch/release-preview
-npx --package=.scratch/release-preview/prosegate-0.1.0-alpha.1.tgz prosegate init --harness claude-code --local
+npx --package=.scratch/release-preview/prosegate-0.1.0-alpha.2.tgz prosegate init --harness claude-code --local
 ```
 
 Re-running init upgrades an existing hook installation and adds MCP. It checks both hook execution and MCP initialization/tool discovery before completing. Start a new Claude Code session afterward.

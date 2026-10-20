@@ -534,3 +534,15 @@ then configures release.yml as the package's trusted publisher. Subsequent
 releases use the existing OIDC publication path. No placeholder version, npm token
 in GitHub, rebuilt tarball or relaxed performance gate is required. The npm
 internal provenance API is pinned and version-checked; review it on upgrades.
+
+
+## ADR-43 · npm 12 pack output and immutable first-release retry (2026-10-20)
+
+The alpha.1 tagged run passed all seven validation jobs, but strict preparation
+failed because npm 12 returns a package-name map for `npm pack --json`; older
+npm versions return an array. Accept both formats while requiring exactly one
+package with the expected name, version, filename and nine-file allowlist.
+Keep the protected alpha.1 tag unchanged and advance the unpublished preview to
+0.1.0-alpha.2. This supersedes ADR-42's alpha.1-only bootstrap restriction; the
+protected attestation bootstrap is now restricted to alpha.2. No package was
+published by the failed run.

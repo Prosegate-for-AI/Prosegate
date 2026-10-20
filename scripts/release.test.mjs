@@ -4,12 +4,26 @@ import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { releaseProblems, verifyArtifact, payloadFiles, hash } from "./release.mjs";
+import { releaseProblems, verifyArtifact, payloadFiles, hash, packedPackage } from "./release.mjs";
 import { authorizedRelease } from "./lib/release-authorization.mjs";
 
 const pkg = { name: "prosegate", version: "0.1.0-alpha.1", private: false, license: "Apache-2.0", repository: { url: "https://github.com/example/prosegate.git", directory: "packages/adapter" } };
 const context = { sha: "a".repeat(40), dirty: false, tag: "v0.1.0-alpha.1", repository: "example/prosegate" };
 const dirs = [];
+describe("npm pack output", () => {
+  const packed = { name: pkg.name, version: pkg.version, filename: `${pkg.name}-${pkg.version}.tgz`, files: payloadFiles.map((path) => ({ path })) };
+  it("accepts npm 11 arrays and npm 12 package-name maps", () => {
+    for (const output of [[packed], { prosegate: packed }]) expect(packedPackage(JSON.stringify(output), pkg)).toEqual(packed);
+  });
+  it("refuses ambiguous, mismatched and unexpected payloads", () => {
+    for (const output of [null, [], {}, [packed, packed], { prosegate: packed, other: packed },
+      [{ ...packed, name: "other" }], [{ ...packed, version: "0.1.0-alpha.99" }],
+      [{ ...packed, filename: "../other.tgz" }], [{ ...packed, files: [] }],
+      [{ ...packed, files: [...packed.files, { path: ".npmrc" }] }]]) {
+      expect(() => packedPackage(JSON.stringify(output), pkg)).toThrow("unexpected package or file list");
+    }
+  });
+});
 afterEach(() => { for (const dir of dirs.splice(0)) {
   if (!resolve(dir).startsWith(`${resolve(tmpdir())}${sep}pg-release-test-`)) throw new Error("Unsafe cleanup path");
   rmSync(dir, { recursive: true, force: true });

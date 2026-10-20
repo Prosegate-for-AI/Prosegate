@@ -186,7 +186,7 @@ Phase 9's release tooling is implemented locally (ADR-40): reproducible adapter
 builds, an allowlisted licensed tarball, isolated installation checks, protected
 OIDC/provenance publishing, public privacy page and administrator guide. The
 approved licensing is Apache-2.0 locally and FSL-1.1-ALv2 for service/dashboard.
-The current preview is 0.1.0-alpha.1. Actual repository/publication setup, exact
+The current preview is 0.1.0-alpha.2. Actual repository/publication setup, exact
 copyright-holder notices and RC quality/service qualification remain outstanding.
 Next is Phase 10's 30-day team trial, after the service is integrated; local alpha
 testing does not by itself satisfy that milestone.

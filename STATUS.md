@@ -2,7 +2,9 @@
 
 Snapshot, rewritten at each change. Last updated 2026-10-20.
 
-**Phase:** Phase 9 release tooling passes hosted CI (ADR-40/42): reproducible packaging, dependency notices, isolated installation verification, protected npm OIDC/provenance workflow, public privacy page and administrator guide. Murray approved Apache-2.0 local tools, FSL-1.1-ALv2 service/dashboard, a public repo and Prosegate as the name. The adapter is 0.1.0-alpha.1. The public repository is Prosegate-for-AI/Prosegate and the copyright holder is Andrew Murray le Roux. npm login is verified as murrayleroux, owner of the prosegate organization. D-44 cold-start performance is resolved. First publication, package access, trusted-publisher setup and published provenance verification remain D-43; the token-free bootstrap attestation path is implemented. Source is public on main; no package has been published. GitHub release review and immutable preview tags are configured. RC requires the outstanding Phase 6/D-40 quality evidence; hosted integration remains D-41. Phase 10 is the subsequent 30-day team trial. Automatic paid review and live vending remain gated.
+**Phase:** Phase 9 release tooling passes hosted CI (ADR-40/42): reproducible packaging, dependency notices, isolated installation verification, protected npm OIDC/provenance workflow, public privacy page and administrator guide. Murray approved Apache-2.0 local tools, FSL-1.1-ALv2 service/dashboard, a public repo and Prosegate as the name. The adapter is 0.1.0-alpha.2. The public repository is Prosegate-for-AI/Prosegate and the copyright holder is Andrew Murray le Roux. npm login is verified as murrayleroux, owner of the prosegate organization. D-44 cold-start performance is resolved. First publication, package access, trusted-publisher setup and published provenance verification remain D-43; the token-free bootstrap attestation path is implemented. Source is public on main; no package has been published. GitHub release review and immutable preview tags are configured. RC requires the outstanding Phase 6/D-40 quality evidence; hosted integration remains D-41. Phase 10 is the subsequent 30-day team trial. Automatic paid review and live vending remain gated.
+
+Release retry: alpha.1's tagged run passed all seven validation jobs, then failed strict preparation on npm 12's changed pack JSON format. The unpublished candidate is now alpha.2 (ADR-43); alpha.1's immutable tag is retained. The compatibility fix passes 19 release tests and full preparation with npm 12.2.0 locally, including reproducible builds and isolated installation. Tagged strict preparation and provenance signing remain to be completed.
 
 ## Done
 
@@ -33,7 +35,7 @@ Previous Phase 6 validation: full suite passed 3,472 tests across 103 files, wit
 - **Recorded on October 18, not rechecked:** restore `~/.claude/settings.json` from `settings.json.prosegate-backup-20261018T072200Z` if the stray 03:22 hooks are still present, then start a new session. Optionally delete `~/.prosegate` and `C:\prosegate-guard-probe-home`.
 - After the restore, for dogfood: install from the packed tarball (`prosegate` is not on npm yet):
   - `pnpm release:prepare .scratch/release-preview`
-  - `npx --package=.scratch/release-preview/prosegate-0.1.0-alpha.1.tgz prosegate init --harness claude-code --local`
+  - `npx --package=.scratch/release-preview/prosegate-0.1.0-alpha.2.tgz prosegate init --harness claude-code --local`
 - Hosted functional and performance checks pass on every platform; D-44 is closed by run 39505398458.
 - HQ-7 corpus licensing (most urgent), HQ-1, HQ-2, HQ-8. HQ-3/HQ-4/HQ-6 are answered: Apache local tools, FSL service, Prosegate, Andrew Murray le Roux and Prosegate-for-AI/Prosegate.
 
