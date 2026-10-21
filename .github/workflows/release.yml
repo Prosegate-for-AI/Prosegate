@@ -37,6 +37,8 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: npm install --global npm@12.2.0 --ignore-scripts
+      - name: Check pinned signing implementation against local fixtures
+        run: node scripts/check-attestation.mjs
       - run: pnpm install --frozen-lockfile
       - name: Require complete corpus for release candidates
         if: contains(github.ref_name, '-rc.')

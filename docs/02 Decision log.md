@@ -614,3 +614,25 @@ The same run also had a Windows ARM installation error without retained details.
 Release smoke now emits bounded logs only from its newly created synthetic home
 when init fails. No product timeout or installation behavior is changed; the next
 run must either pass or supply evidence for a targeted fix.
+
+
+## ADR-47 — Recover duplicate transparency entries during bootstrap signing (2026-10-21)
+
+Alpha.4 passed all main and tagged validation and strict preparation. Both protected
+bootstrap signing attempts failed with Rekor HTTP 409. The pinned npm 12.2.0
+Sigstore wrapper uses five-second timeouts and retries but explicitly disables
+fetchOnConflict. An upload may be accepted before its response times out, producing
+a conflict on retry; the exact initial network failure is not retained in these logs.
+
+Use the same pinned npm Sigstore DSSE/Fulcio/OIDC primitives with RekorWitness
+fetchOnConflict enabled and a 30-second request timeout, keeping bounded retries.
+The recovered entry is untrusted until npm verifyProvenance validates the bundle
+and exact package subject/digest; failure still prevents artifact upload. No log,
+certificate or signature verification is disabled. The GitHub SLSA statement is
+explicitly bound to the release workflow/tag/source/run attempt and compared with
+npm's own generator in CI. Local HTTP fixtures exercise the actual pinned witness
+for creation, conflict recovery, missing locations/entries and unauthorized errors.
+No public signing service or OIDC token is used by those checks.
+
+Preserve the immutable unpublished alpha.4 tag; advance the candidate to alpha.5.
+Human environment approval and local npm 2FA remain required.

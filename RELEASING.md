@@ -1,7 +1,7 @@
 # Preview releases
 
 Phase 9 provides the packaging and publishing path. Actual npm publication and
-hosted qualification are separate outcomes. `0.1.0-alpha.4` describes today's
+hosted qualification are separate outcomes. `0.1.0-alpha.5` describes today's
 preview. `0.1.0-rc.1` is reserved for qualified evidence; no stable version or
 automatic promotion to `latest` is supported by this workflow.
 
@@ -36,8 +36,11 @@ the main and package-architectures jobs. Runner labels follow the
 [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 Initial architecture package jobs passed on Windows/Linux ARM and Intel macOS;
 full functional suites now pass on every main runner. The adapter cold-start
-performance gate passed earlier qualification, but later Windows runs failed (D-44/D-45), with the original limits
-enforced. All seven jobs passed in [the qualification run](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39505398458). Actual native keychain access
+performance gates now pass with their original limits after ADR-45/46. All seven
+jobs passed at 0195c225 in [main qualification](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39516064832)
+and [tagged alpha.4 validation](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39517105288).
+Tagged Windows cold-start adjusted p95 was 212/213/218 ms; macOS was 246/256/222 ms,
+all below the 400 ms limit. Actual native keychain access
 still depends on the host's keychain/session; architecture and native-store evidence
 must be recorded before claiming support beyond the tested runner matrix.
 
@@ -77,7 +80,7 @@ package name remains the unscoped `prosegate`; organization membership does not
 reserve that name. npm also supports organization management of unscoped packages
 ([organization scopes and packages](https://docs.npmjs.com/about-organization-scopes-and-packages/)).
 The registry still returns 404 for `prosegate`. First-publication bootstrap,
-package access and trusted-publisher configuration remain pending. D-44 is reopened;
+package access and trusted-publisher configuration remain pending. D-44 is closed;
 configure the trusted publisher close to release because
 of its two-day initial validation window.
 
@@ -87,22 +90,36 @@ The immutable alpha.1 tag passed validation but failed strict preparation due to
 npm 12 JSON output compatibility. It was never published. Alpha.2 includes that
 packaging fix; the original tag remains unchanged. Alpha.2 then exposed real-clock
 checks still scheduled in the parallel functional suite. Alpha.3 runs those
-checks serially with every original deadline retained. Its macOS checks pass, but Windows cold-start limits still fail. All three protected tags remain unpublished. ADR-45 must pass main CI before a new candidate is tagged.
+checks serially with every original deadline retained. Its macOS checks pass, but Windows cold-start limits still fail. All three protected tags remain unpublished. ADR-45/46 then passed main and tagged alpha.4 validation; strict preparation passed too.
 
-After all gates pass, dispatch the exact `v0.1.0-alpha.4` tag with
+The exact `v0.1.0-alpha.4` tag at `0195c22527ca16f8a7d775de6449f170def9d3ea` was dispatched with
 `bootstrap_attestation=true`. CI and strict preparation run normally. Review the
 `npm-preview` artifact, then approve the `npm-release` environment. Instead of
-publishing, that job signs the checked tarball using npm 12.2.0's own provenance
-generator and verifies the resulting Sigstore bundle. It uploads `npm-bootstrap`,
+publishing, that job signs the checked tarball using npm 12.2.0's bundled Sigstore
+primitives and verifies the result with npm's own provenance verifier. It uploads `npm-bootstrap`,
 containing the tarball, manifest, payload, checksums and `provenance.sigstore.json`.
 The internal npm API is version-checked and must be reviewed when npm is upgraded.
+ADR-47 enables built-in duplicate-entry recovery with a 30-second network timeout.
+A local fixture check against the actual pinned libraries proves successful creation,
+409 recovery, and failure on missing/unauthorized entries; it also checks statement
+parity against npm. This check runs before the protected environment review.
+Alpha.5 contains this fix and requires fresh tagged validation and signing.
+
+On October 21, the first signing attempt failed with Sigstore HTTP 409 (an equivalent
+transparency-log entry already exists). Murray approved a signing-only retry, which
+failed with the same error. Both attempts retain successful validation and preparation.
+The downloaded npm-preview artifact passed local hash verification. Its tarball
+SHA-256 is `f686e3c07f0945087bbcd7faea2f747083d852d92e9867eb3b6dd7e95d44bd0f`;
+bundle SHA-256 is `67c064cbf01b3bb234e45c7c27edacb7d41848735fc90feaf0ac7b33b7ab99a5`.
+The manifest has a clean source, the expected tag/repository, no blockers and
+`publishable: true`. No signed bootstrap artifact or npm publication is confirmed.
 
 Download that artifact from the successful tagged run and run
 `pnpm release:verify <download-directory>`. Confirm its source SHA/tag against the
 run, then publish the exact tarball from a terminal signed in as `murrayleroux`:
 
 ```sh
-npm publish <download-directory>/prosegate-0.1.0-alpha.4.tgz --provenance=false --provenance-file=<download-directory>/provenance.sigstore.json --access public --tag next --ignore-scripts --registry=https://registry.npmjs.org/
+npm publish <download-directory>/prosegate-0.1.0-alpha.5.tgz --provenance=false --provenance-file=<download-directory>/provenance.sigstore.json --access public --tag next --ignore-scripts --registry=https://registry.npmjs.org/
 ```
 
 Complete npm's 2FA prompt locally. `--provenance=false` overrides the package's
