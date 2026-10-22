@@ -5,6 +5,7 @@ import { isAgentContext } from "./agent-context.js";
 import type { Ctx } from "./ctx.js";
 import { KeyStore, KeyStoreError } from "./key-store.js";
 import { resolveAndLoad } from "./profiles.js";
+import { automaticReviewerStatus, setAutomaticReviewer } from "./reviewer-settings.js";
 import type { RunIO } from "./run.js";
 
 export function mergeReviewer(base: DetailedReview, outcome: ReviewerOutcome, request: ReviewRequest, enforce: boolean): ReviewResult {
@@ -28,7 +29,26 @@ export function mergeReviewer(base: DetailedReview, outcome: ReviewerOutcome, re
 
 export function providerArg(value: string | undefined): ReviewerProvider | null { return value === "openai" || value === "anthropic" ? value : null; }
 
-/** Explicit one-shot review. No hook calls this until the rules-only dogfood gate is met. */
+export async function runReviewerCommand(args: string[], io: RunIO, ctx: Ctx, store: Pick<KeyStore, "prepare" | "get"> = new KeyStore(ctx)): Promise<number> {
+  if (args.length === 1 && args[0] === "status") { io.stdout.write(`${automaticReviewerStatus(ctx)}\n`); return 0; }
+  const provider = args[0] === "on" && args[1] === "--provider" && args.length === 3 ? providerArg(args[2]) : null;
+  const off = args.length === 1 && args[0] === "off";
+  if (provider === null && !off) { io.stderr.write("Usage: prosegate reviewer on --provider openai|anthropic | off | status\n"); return 1; }
+  if (isAgentContext(ctx)) { io.stderr.write("Prosegate: change automatic reviewer settings from your own terminal.\n"); return 1; }
+  try {
+    if (provider !== null) {
+      const prepared = await store.prepare();
+      if (prepared.notice) io.stderr.write(`${prepared.notice}\n`);
+      if (await store.get(provider) === null) { io.stderr.write(`Prosegate: set a saved key first with prosegate key set ${provider}.\n`); return 1; }
+    }
+    setAutomaticReviewer(ctx, provider);
+    io.stdout.write(`${automaticReviewerStatus(ctx)}\n`);
+    if (provider !== null) io.stdout.write("Draft prose and the current user message will go to this provider. Profile floors and provider policy still apply. MCP stays local-only.\n");
+    return 0;
+  } catch { io.stderr.write("Prosegate: could not change automatic review settings; check the saved key and local files.\n"); return 1; }
+}
+
+/** Explicit one-shot review; automatic hooks share the transport and result merger. */
 export async function runReviewCommand(args: string[], raw: string, io: RunIO, ctx: Ctx, deps: { store?: KeyStore; fetch?: typeof fetch } = {}): Promise<number> {
   const provider = args[0] === "--provider" && args.length === 2 ? providerArg(args[1]) : null;
   if (!provider) { io.stderr.write("Usage: prosegate review --provider openai|anthropic < request.json\n"); return 1; }

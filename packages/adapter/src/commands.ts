@@ -21,6 +21,7 @@ import type { LastTurn, Mode } from "./schemas.js";
 import { SessionStore, defaultState, findSession, readCwdProfiles, normaliseCwd, rememberCwdProfile, type SessionCandidate } from "./store.js";
 import { enforcementEvent, profileSelectEvent, recordEvents } from "./telemetry.js";
 import { selectedState } from "./selection.js";
+import { automaticReviewerStatus } from "./reviewer-settings.js";
 
 export interface CommandResult {
   code: 0 | 1;
@@ -315,7 +316,7 @@ function statusCommand(ctx: Ctx): CommandResult {
   const lowered = lowering.categoriesLowered.length > 0 && lowering.severityLowered.length > 0 ? `; severity lowered on ${lowering.categoriesLowered.join(", ")}` : "";
   const mode = `${modeText(ctx, eff.mode, eff.source, resolved.policy?.org_name ?? null)}${lowering.what === "" ? "" : ` — lowered: ${lowering.what}`}`;
   const profile = `${profileSlug(resolved.id)} v${integerVersion(resolved.version)}${loaded.fellBack ? ` [fell back from ${profileSlug(state.active_profile)}; run prosegate reload]` : ""}`;
-  return ok([`Mode: ${mode}`, `Profile: ${profile}`, `Rules off: ${rulesOff}${lowered}`, `Last turn: ${LAST_TURN_TEXT(state.last_turn)}`].join("\n"));
+  return ok([`Mode: ${mode}`, `Profile: ${profile}`, `Rules off: ${rulesOff}${lowered}`, `Last turn: ${LAST_TURN_TEXT(state.last_turn)}`, automaticReviewerStatus(ctx)].join("\n"));
 }
 
 // ---- rule off / on / list ----------------------------------------------------------------------------

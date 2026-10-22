@@ -1,15 +1,15 @@
 # Prosegate
 
-Status: pre-release. Local rules, Claude Code hooks, MCP tools and automatic profile suggestions are implemented. An explicit BYOK reviewer preview is available; automatic reviewer hooks remain gated on one week of rules-only dogfood.
+Status: pre-release. Local rules, Claude Code hooks, MCP tools and automatic profile suggestions are implemented. BYOK review is available explicitly or through opt-in automatic Stop-hook review. Automatic review is off by default and remains an experimental preview.
 
 A prose linter for AI-agent output. It runs locally as a CLI and enforces at turn end through Claude Code's Stop hook. Its MCP tools list and select profiles and check drafts; turn-start heuristics prompt the model to choose a suitable profile. Design docs are in `docs/`; the build order is `docs/11 Implementation plan.md`.
 
-For the manual AI-review preview, provider data flow, key commands and request format, see [the reviewer README](packages/reviewer/README.md). No provider calls run during normal hooks in this build.
+For the manual AI-review preview, provider data flow, key commands and request format, see [the reviewer README](packages/reviewer/README.md). Hooks call a provider only after you enable `prosegate reviewer on --provider openai` (or `anthropic`) with a saved key. MCP draft checks stay local-only.
 
 The [contextual writing review profile](docs/WRITING-REVIEW.md) adds 34 checks with
 explicit exceptions, warning-only findings and optional audience, original-draft
 and source context. Select `local/writing-review` for its narrow local checks; the
-explicit BYOK review command runs the full contextual rubric.
+explicit BYOK review command or opted-in Stop hook runs the full contextual rubric.
 
 Start with the [installation and usage quick start](docs/QUICKSTART.md), including
 a complete review request and PowerShell commands for this source build.

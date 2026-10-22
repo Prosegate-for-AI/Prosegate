@@ -125,7 +125,7 @@ export class KeyStore {
     if (!r.ok) throw new KeyStoreError(r.reason === "timeout" ? "keychain_timeout" : "keychain_unavailable");
     return r.value ?? null;
   }
-  /** Called only by explicit setup/review commands until the Phase 4 rollout gate is cleared. */
+  /** Explicit setup/review commands may probe/migrate. Automatic hooks use get() without probing. */
   async prepare(): Promise<{ backend: "file" | "keychain"; notice: string | null }> {
     return this.locked(() => this.prepareLocked());
   }

@@ -57,6 +57,8 @@ export type Mode = z.infer<typeof ModeSchema>;
 const FindingRef = z.strictObject({ id: z.string().regex(/^[0-9a-f]{10}$/), category: z.enum(CATEGORIES) });
 
 export const TurnRecordSchema = z.strictObject({
+  /** Distinguishes repeated user prompts when the harness supplies no unique turn id. */
+  reviewer_turn_started_at: z.number().int().min(0).optional(),
   /** Review passes that ended in `continue` for this turn: 0, 1, or 2 (the cap). */
   count: z.number().int().min(0).max(2),
   /** Findings reported on pass 1 (ids and categories only; ids are hashes of span text and stay on this machine). */

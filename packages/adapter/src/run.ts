@@ -3,7 +3,7 @@ import type { ZodType } from "zod";
 import { COMMAND_NAMES, runCommand } from "./commands.js";
 import { createCtx, type Ctx } from "./ctx.js";
 import { describeError, log } from "./log.js";
-import { sessionStart, turnEnd, turnStart, type HandlerOutcome } from "./hooks.js";
+import { sessionStart, turnEndWithReviewer, turnStart, type HandlerOutcome } from "./hooks.js";
 import { SessionStartInputSchema, TurnEndInputSchema, TurnStartInputSchema } from "./schemas.js";
 import { recordErrorLockFree } from "./telemetry.js";
 import { VERSION } from "./version.js";
@@ -55,12 +55,16 @@ Run these in your own terminal, in the directory your agent works in:
   rule list        list the rules switched off
   reload           re-read profiles and rule packs
 
-Reviewer preview (explicit calls only; hooks still run local rules):
+AI reviewer (automatic review is opt-in and uses your provider account):
   key set openai|anthropic        save a key using hidden terminal input
   key set openai|anthropic --stdin  read a piped key, never an argument
   key status|remove openai|anthropic
   review --provider openai|anthropic < request.json
                    read prosegate.review/1 JSON; send prose directly to provider
+  reviewer on --provider openai|anthropic
+                   enable automatic Stop-hook AI review with a saved key
+  reviewer off|status
+                   disable automatic review, or show its current setting
 
 advisory, quiet, off, rule off and profile <id> are refused when the agent runs
 them. In Claude Code, a command typed after ! counts as the agent, so use a
@@ -79,7 +83,7 @@ export const STDIN_TIMEOUT_MS = 5000;
 const HOOKS = {
   "session-start": { schema: SessionStartInputSchema, handler: sessionStart, what: "start Prosegate for this session" },
   "turn-start": { schema: TurnStartInputSchema, handler: turnStart, what: "prepare this turn" },
-  "turn-end": { schema: TurnEndInputSchema, handler: turnEnd, what: "review this turn" },
+  "turn-end": { schema: TurnEndInputSchema, handler: turnEndWithReviewer, what: "review this turn" },
 } as const;
 type HookName = keyof typeof HOOKS;
 
@@ -131,8 +135,8 @@ async function runHook(name: HookName, io: RunIO, ctx: Ctx): Promise<number> {
     const raw = await readWithin(io.stdin, STDIN_TIMEOUT_MS);
     const entry = HOOKS[name];
     const input: unknown = (entry.schema as ZodType).parse(JSON.parse(raw.replace(/^\uFEFF/, "")));
-    const handler = entry.handler as (i: unknown, c: Ctx) => HandlerOutcome<unknown>;
-    const { output, stderr } = handler(input, ctx);
+    const handler = entry.handler as (i: unknown, c: Ctx) => HandlerOutcome<unknown> | Promise<HandlerOutcome<unknown>>;
+    const { output, stderr } = await handler(input, ctx);
     io.stdout.write(`${JSON.stringify(output)}\n`);
     for (const line of stderr) io.stderr.write(`${line}\n`);
     return 0;
@@ -191,6 +195,10 @@ export async function run(argv: readonly string[], io: RunIO): Promise<number> {
     const { runReviewCommand } = await import("./reviewer-command.js");
     try { return await runReviewCommand(args.slice(1), await readWithin(io.stdin, STDIN_TIMEOUT_MS), io, ctx); }
     catch { io.stderr.write("Prosegate: review input could not be read.\n"); return 1; }
+  }
+  if (first === "reviewer") {
+    const { runReviewerCommand } = await import("./reviewer-command.js");
+    return runReviewerCommand(args.slice(1), io, ctx);
   }
   if (first === "init" || first === "uninit") {
     try {

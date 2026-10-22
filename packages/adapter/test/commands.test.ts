@@ -243,13 +243,14 @@ describe("profile [<id>]", () => {
 });
 
 describe("status", () => {
-  it("prints Mode, Profile, Rules off and Last turn, in four lines, from the effective mode", () => {
+  it("prints effective mode, profile, disabled rules, last turn and automatic reviewer setting", () => {
     const { ctx } = started();
     cmd(ctx, "rule", "off", "core.hedge.001");
     const r = cmd(ctx, "status");
     const lines = r.out.trimEnd().split("\n");
     expect(r.code).toBe(0);
-    expect(lines).toHaveLength(4);
+    expect(lines).toHaveLength(5);
+    expect(lines[4]).toBe("Automatic AI reviewer: off");
     expect(lines[0]).toMatch(/^Mode: enforce \u2014 lowered: 1 rule switched off$/);
     expect(lines[1]).toBe("Profile: base v1");
     expect(lines[2]).toBe("Rules off: core.hedge.001");

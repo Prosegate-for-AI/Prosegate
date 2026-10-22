@@ -185,7 +185,7 @@ export function prepare(directory, { strict = false, repository, tag, report } =
     files: Object.fromEntries(payloadFiles.map((path) => [path, hash(readFileSync(join(stage, path)))])) };
   writeJson(join(directory, "manifest.json"), manifest);
   writeFileSync(join(directory, "SHA256SUMS"), `${manifest.tarball_sha256}  ${tarball}\n${first}  package/dist/prosegate.mjs\n`);
-  writeFileSync(join(directory, "RELEASE.md"), `# Prosegate ${version}\n\n${manifest.publishable ? "Preview candidate for publication" : "Local verification only; publication blocked"}.\n\nSource: ${sha}${dirty ? " (uncommitted changes included)" : ""}\n\nBundle SHA-256: ${first}\n\nTarball SHA-256: ${manifest.tarball_sha256}\n\nLocal hooks and MCP are rules-only. Explicit BYOK review is experimental. Hosted services, automatic paid review and full corpus qualification remain pending.\n\n${blockers.map((p) => `- ${p}`).join("\n")}\n`);
+  writeFileSync(join(directory, "RELEASE.md"), `# Prosegate ${version}\n\n${manifest.publishable ? "Preview candidate for publication" : "Local verification only; publication blocked"}.\n\nSource: ${sha}${dirty ? " (uncommitted changes included)" : ""}\n\nBundle SHA-256: ${first}\n\nTarball SHA-256: ${manifest.tarball_sha256}\n\nHooks run local rules by default; experimental automatic BYOK review requires explicit local opt-in. MCP remains rules-only. Explicit BYOK review is also available. Hosted services, general automatic-review rollout and full corpus qualification remain pending.\n\n${blockers.map((p) => `- ${p}`).join("\n")}\n`);
   smokeArtifact(directory);
   return manifest;
 }

@@ -6,8 +6,8 @@ identity providers, and applicable provider terms before inviting users.
 
 ## Local checks
 
-Deterministic checks run on your machine. Normal Claude Code hooks and MCP tools
-use local rules only; they do not upload drafts or telemetry to Prosegate.
+Deterministic checks run on your machine. Claude Code hooks default to local rules, and MCP tools
+always use local rules. Neither uploads drafts or telemetry to Prosegate.
 Session-start hooks supply writing instructions to Claude. The adapter reads the
 current user message and relevant turn information from the local session.
 Private session files can contain the current prompt and cached MCP findings with
@@ -27,7 +27,18 @@ local findings are included when supplied. Code segments in the candidate draft
 are replaced with placeholders; original text and source material are sent verbatim.
 Prosegate does not relay these requests. The provider's data terms and your
 contract apply. A request setting is not a guarantee of zero provider retention.
-Automatic paid review in hooks and MCP is not enabled in this preview.
+Automatic Stop-hook review is off by default. Enabling `prosegate reviewer on
+--provider openai` (or `anthropic`) opts this Prosegate home into paid provider
+calls across its installed projects. Eligible Stop hooks send candidate prose, the
+current user message, register requirements and selected local findings directly
+to that provider using the saved key. They do not read conversation history or
+retrieve source documents. Code in the draft is masked as for explicit review.
+MCP stays local-only. `prosegate reviewer off` disables automatic calls.
+
+Per-session duplicate-call receipts contain only hashed turn IDs, pass numbers
+and timestamps. They contain no keys, drafts or provider responses, are pruned
+on later attempts, and disappear when the session directory is swept. Automatic
+review failures retain local checks; failed attempts also consume their receipt.
 
 ## Configuration service
 

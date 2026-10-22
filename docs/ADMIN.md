@@ -24,7 +24,11 @@ Initialization checks hook execution and MCP initialization/tool discovery. It
 preserves unrelated settings and refuses conflicting MCP registrations. A session
 start supplies the active profile's writing instructions; MCP lists/selects profiles
 and offers advisory draft checks. Stop hooks may request up to two revision passes.
-Ordinary hooks and MCP remain deterministic and incur no reviewer API charge.
+Hooks default to deterministic checks; MCP stays deterministic. An explicit
+`prosegate reviewer on --provider openai` (or `anthropic`) opt-in enables paid
+Stop-hook review across projects using that Prosegate home. Use `reviewer status`
+and `reviewer off` to inspect and disable it. This experimental opt-in does not
+replace your organization's rollout qualification.
 
 Project hooks live in `.claude/settings.local.json`; MCP uses Claude's private
 project scope in its user configuration. User-scope hooks use Claude's user settings.
@@ -139,4 +143,5 @@ Phase 10 is a 30-day team trial after service integration. Review advisory sessi
 and dominant rule IDs weekly. Track false positives, at least 80% pass-two
 clearance, under 5% advisory sessions, median added latency under two seconds and
 three profiles in daily use. Do not count an incomplete hosted rollout as satisfying
-the full trial, or enable automatic paid review before its separate rollout gates.
+the full trial. A user's experimental automatic-review opt-in is not evidence that
+the separate organization-wide rollout gates have passed.

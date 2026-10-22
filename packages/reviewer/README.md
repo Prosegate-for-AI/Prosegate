@@ -2,7 +2,7 @@
 
 The reviewer detects unsupported claims, generic answers to specific questions, and problems with clarity, meaning preservation, tone, format or length. Its 34 contextual writing checks include explicit exceptions and start as warnings. It never rewrites. The originating agent remains responsible for revisions. See the [writing review guide](../../docs/WRITING-REVIEW.md) for the catalog and warning-only `local/writing-review` profile.
 
-This is an explicit preview. Normal Claude Code hooks still run deterministic rules only. The plan requires one week of rules-only dogfood before reviewer wiring, and live rubric/latency evaluation is still required before either provider is release-qualified.
+This is an experimental preview. Hooks default to deterministic rules. A user can explicitly opt into automatic Stop-hook review with `prosegate reviewer on --provider openai` (or `anthropic`) after saving a key. Use `prosegate reviewer status` to inspect it and `prosegate reviewer off` to disable it. MCP remains local-only. This opt-in does not qualify either provider for general rollout; independent rubric/latency evaluation and the planned dogfood evidence remain outstanding.
 
 ## Try it
 
@@ -51,6 +51,17 @@ node packages/adapter/dist/prosegate.mjs review --provider openai < request.json
 ```
 
 Stdout is a findings JSON result. Stderr explains a missing key or reviewer failure; deterministic findings remain available. Exit 0 means a result was produced, not that prose passed: inspect `verdict` and `stats.reviewer`. A null reviewer statistic means no successful AI review occurred. Pass 2 accepts the prior finding IDs, ignores word floors, and does not promote newly introduced findings. If the reviewer fails on pass 2, the preview conservatively reports no cleared IDs.
+
+## Automatic review
+
+The setting is stored locally in `automatic-reviewer.json` and applies to all
+installed projects using that Prosegate home. Automatic review uses the active
+profile and its word floors (150 words for base; zero for writing-review). It
+sends the candidate draft, current user message and local findings; it does not
+load earlier conversation history, sources or an original draft. Use explicit
+review with optional context for those comparisons. Duplicate Stop deliveries
+share a per-turn/pass receipt. Initialization checks never make paid calls.
+Provider failure preserves local checks and cannot clear earlier reviewer findings.
 
 ## Data and failure boundaries
 

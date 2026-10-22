@@ -2,7 +2,7 @@
 // and a Ctx and returns the JSON the shim reads. Nothing here writes to the process; the caller
 // prints the output and maps any exception to fail-open (exit 1).
 
-import { PackVersionError, reviewRulesDetailed } from "@prosegate/engine";
+import { PackVersionError, reviewRulesDetailed, type DetailedReview } from "@prosegate/engine";
 import { BUNDLED_PROFILE_YAML, suggestProfile, type ResolvedProfile } from "@prosegate/profiles";
 import { type Category, type ReviewRequest, type ReviewResult, renderNotice, renderFeedbackText } from "@prosegate/schema";
 import { countWords } from "@prosegate/segmenter";
@@ -43,6 +43,8 @@ import {
   turnKey,
 } from "./store.js";
 import { INIT_CHECK_SESSION } from "./init-check.js";
+import { automaticReviewer, automaticReviewerStatus } from "./reviewer-settings.js";
+import type { AutomaticReviewDeps } from "./automatic-review.js";
 import { selectableProfiles } from "./selection.js";
 import { withFakeReviewer } from "./test-seam.js";
 import { timed, timingsLine } from "./timing.js";
@@ -158,6 +160,7 @@ export function sessionStart(input: SessionStartInput, ctx: Ctx): HandlerOutcome
   const eff = effectiveMode(ctx, provisional, resolved);
   const lowering = lowerFor(ctx, provisional, eff, loaded);
   const quiet = suppressesNotices(eff);
+  if (!quiet && automaticReviewer(ctx) !== null) lines.push(`Prosegate · ${automaticReviewerStatus(ctx)}`);
 
   const showOverlays = !quiet && resolved.overlays_ignored && !provisional.overlays_notice_shown && resolved.policy !== null;
   if (showOverlays && resolved.policy !== null) lines.push(overlaysIgnoredLine(resolved.policy.org_name));
@@ -231,6 +234,10 @@ export function turnStart(input: TurnStartInput, ctx: Ctx): HandlerOutcome<TurnS
       const suggestion = suggestProfile(s, profiles, message, input.tool_calls_so_far);
       // Re-delivery of a hook cannot count as a second consecutive user turn.
       if (duplicate) return { ...s, turns };
+      if (automaticReviewer(ctx) !== null) {
+        const current = turns[key] ?? EMPTY_RECORD;
+        turns[key] = { ...current, reviewer_turn_started_at: Math.max(now, (current.reviewer_turn_started_at ?? 0) + 1) };
+      }
       store.deleteReviewCache();
       store.writeTurn({ turn_id: turnId, user_message: message, ts: now });
       const active = s.profile_context_pending === true ? profiles.find((p) => p.id === s.active_profile) : undefined;
@@ -280,7 +287,10 @@ const EMPTY_RECORD: TurnRecord = { count: 0, pass1: [], pass1_block_count: 0, pr
 
 export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutput> {
   try {
-    return turnEndInner(input, ctx);
+    const work = turnEndInner(input, ctx);
+    let step = work.next();
+    while (!step.done) step = work.next(step.value.detailed.result);
+    return step.value;
   } catch (error) {
     // The hook fails open (the reply is not held), so the turn is over: its user message must not outlive it (ADR-31).
     try {
@@ -292,7 +302,36 @@ export function turnEnd(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOu
   }
 }
 
-function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutput> {
+export interface HookReview {
+  attemptId: string;
+  request: ReviewRequest;
+  resolved: ResolvedProfile;
+  detailed: DetailedReview;
+  enforce: boolean;
+  capCheck: boolean;
+  stderr: string[];
+}
+
+/** The ordinary synchronous path stays network-free. Only this opt-in driver awaits a reviewer. */
+export async function turnEndWithReviewer(input: TurnEndInput, ctx: Ctx, deps: AutomaticReviewDeps = {}): Promise<HandlerOutcome<TurnEndOutput>> {
+  const provider = automaticReviewer(ctx);
+  if (provider === null || input.session_id === INIT_CHECK_SESSION) return turnEnd(input, ctx);
+  try {
+    const work = turnEndInner(input, ctx);
+    let step = work.next();
+    while (!step.done) {
+      const { automaticReview } = await import("./automatic-review.js");
+      step = work.next(await automaticReview(step.value, ctx, provider, deps));
+    }
+    return step.value;
+  } catch (error) {
+    try { new SessionStore(ctx, input.session_id).deleteTurn(); } catch { /* swept at startup */ }
+    throw error;
+  }
+}
+
+/** Pause between local analysis and decision/persistence so both drivers share the same pass semantics. */
+function* turnEndInner(input: TurnEndInput, ctx: Ctx): Generator<HookReview, HandlerOutcome<TurnEndOutput>, ReviewResult> {
   crashIfAsked(ctx, "turn-end");
   const startupMs = ctx.elapsedMs();
   const store = new SessionStore(ctx, input.session_id);
@@ -396,7 +435,8 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
         } else if (ctx.elapsedMs() > cutoff) {
           result = trip("turn_budget_exceeded", "the review finished after the 6 s cap");
         } else {
-          result = detailed.result;
+          const attemptId = turnKey(`${turnId}:${state.turns[key]?.reviewer_turn_started_at ?? state.created_at}`);
+          result = yield { attemptId, request, resolved, detailed, enforce, capCheck, stderr };
           result = withFakeReviewer(result, ctx, { text: input.assistant_text, pass, capCheck, enforce, priorIds: request.prior_findings, profileId: resolved.id });
           reviewed = true;
           truncated = detailed.diagnostics.truncated;
@@ -479,6 +519,10 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
     ...extra,
     ...(reviewNotice === null ? [] : [reviewNotice]),
     ...(truncatedNotice === null ? [] : [truncatedNotice]),
+    ...(!suppressesNotices(eff) && render !== "none" && decision === "allow" && result.stats.reviewer !== null
+      ? [`Prosegate · AI review completed · ${result.findings.filter((f) => f.source === "reviewer").length} reviewer findings`,
+        ...(reviewNotice === null ? result.findings.filter((f) => f.source === "reviewer").map((f) => `  ${f.instruction.text}`) : [])]
+      : []),
   ];
   const notice = noticeLines.length === 0 ? null : noticeLines.join("\n");
 
@@ -502,6 +546,7 @@ function turnEndInner(input: TurnEndInput, ctx: Ctx): HandlerOutcome<TurnEndOutp
   const pass1BlockCount = pass === 1 && reviewed ? result.findings.filter((f) => f.severity === "block").length : rec.pass1_block_count;
   const pinned = rec.count > 0 && rec.profile_id !== "";
   const nextRecord: TurnRecord = {
+    ...(state.turns[key]?.reviewer_turn_started_at !== undefined ? { reviewer_turn_started_at: state.turns[key].reviewer_turn_started_at } : {}),
     count: newCount,
     pass1,
     pass1_block_count: pass1BlockCount,

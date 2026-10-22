@@ -44,10 +44,25 @@ writing.”** It can use `list_profiles`, `select_profile`, and `review_prose`.
 You can also run `prosegate profile local/writing-review` in the same project
 after a Claude session starts, and inspect `prosegate status`.
 
-This profile's automatic checks are the two local warning rules for redundant
-padding and hedging. **The 34 contextual checks run only through the explicit
-review command below.** Selecting a profile does not enable paid calls in hooks
-or MCP. The existing profiles retain their own local-rule settings.
+Without an AI-review opt-in, this profile runs its two local warning rules for
+redundant padding and hedging. Selecting the profile alone does not enable paid
+calls. The existing profiles retain their own local-rule settings.
+
+To enable the 34 contextual checks automatically at Stop, save your OpenAI key
+and enable the reviewer from your own terminal:
+
+```powershell
+prosegate key set openai
+prosegate reviewer on --provider openai
+prosegate reviewer status
+```
+
+If `prosegate key status openai` already reports a saved key, skip `key set`.
+The setting applies to all installed projects using this Prosegate home, with
+the active profile's word floors and severity. Writing-review findings remain
+warnings; they do not force revisions. MCP stays local-only. Disable paid hooks
+with `prosegate reviewer off`. Upgrade the installed package and re-run `init`
+before using this command if your current package predates this feature.
 
 ## Full contextual review
 
@@ -82,7 +97,7 @@ Enter keys only at the hidden prompt, never in the request file.
 
 OpenAI is also supported with `key set openai` and `review --provider openai`;
 the latest live writing evaluation used Anthropic. These synthetic regression
-results do not qualify either provider for automatic rollout.
+results do not qualify either provider for organization-wide rollout.
 
 ## Update or remove
 

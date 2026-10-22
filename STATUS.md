@@ -2,13 +2,34 @@
 
 Snapshot, rewritten at each change. Last updated 2026-10-22.
 
+**Automatic BYOK review (October 22):** Murray explicitly requested automatic OpenAI
+review. The new `reviewer on --provider openai`, `reviewer off` and `reviewer status`
+commands control an experimental per-home opt-in. Eligible Stop drafts use the active
+profile, saved provider key and current user message, with existing deadlines,
+validated findings and local-check fallback. Duplicate events cannot repeat paid
+review attempts; genuinely new turns can repeat a prompt. Initialization checks and
+MCP remain local-only. This opt-in does not establish general rollout qualification.
+Full functional validation: 3,705 passed, two skipped; the subsequent four-file
+regression run passed 125 tests with one skip. All 181 performance checks passed,
+as did type checking, lint, dependency/secret/bundle checks and reproducible package
+preparation with isolated installation. Bundle: 1,285,651 bytes. The local alpha.5
+build is now installed user-wide as `0.1.0-alpha.5-4cf02d02`, with automatic OpenAI
+review enabled. The existing OS-keychain key passed explicit review and an actual
+installed-hook review (2,752 ms, zero findings on supported synthetic prose).
+Duplicate Stop review was suppressed. At Murray's subsequent request, the real
+project now uses `local/writing-review`, enabling all 34 contextual checks with
+warning severity and a zero-word floor. Automatic OpenAI review remains enabled.
+Restart Claude Code to load the updated installation. This source update is
+prepared for main; no new package publication is claimed.
+
 **Contextual writing review (local implementation):** Added the `local/writing-review`
 profile, 34 contextual checks in `reviewer_prompt/11`, two narrow local warning rules,
 and optional audience/original/source context. The profile disables overlapping core
 heuristics; catalog findings cannot block. Tests cover the 34 exception pairs,
 meaning-loss eligibility, protected text, context bounds and duplicate suppression.
-The command carries these fields to the explicit BYOK reviewer; normal hooks/MCP
-remain local-only. Existing profiles retain their settings. See
+The command carries these fields to the explicit BYOK reviewer; hooks remain
+local-only unless automatic review is enabled, and MCP remains local-only.
+Existing profiles retain their settings. See
 [the writing review guide](docs/WRITING-REVIEW.md).
 
 Initial implementation validation: the full functional run passed 3,597 tests with two skips; six assertions
@@ -88,7 +109,7 @@ The rest of v0 is on the AI Taskboard as 46 tickets in New, under project Proseg
 
 ## When resumed
 
-1. Complete live reviewer smoke/rubric/latency checks using user-supplied keys; confirm a week of rules-only dogfood before turn-end integration. The 30-draft synthetic span test does not substitute for live evaluation. D-21 and D-33 remain open.
+1. Complete live reviewer smoke/rubric/latency and dogfood qualification before general automatic-review rollout. Murray's explicitly requested local opt-in is implemented above; synthetic span tests do not substitute for quality qualification. D-21 and D-33 remain open.
 2. Delete the old W3.2 worktree (`.claude/worktrees/agent-a2d1ea5c6f002cba0`) once the settings restore is confirmed.
 3. Priority debt: D-30 (direct profile-file choices not compared), D-31 (lowered dedupe keyed on text), D-32 (lock owner gap), D-34 (Node path changes), D-38 (automatic identity for concurrent same-folder MCP sessions).
 4. For Phase 6 exit, resolve HQ-7/HQ-8 and follow `eval/README.md`; require corpus readiness and live reports before claiming quality. D-39/D-40 track remaining qualification and reviewer-enabled e2e.

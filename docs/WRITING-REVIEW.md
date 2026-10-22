@@ -9,10 +9,10 @@ flag legitimate technical vocabulary, contrasts, lists or necessary uncertainty.
 Select it with `prosegate profile local/writing-review` in a bound session, or use
 `select_profile` with that ID. Requests containing “writing review”, “review my
 writing” or “review this prose” can suggest it through the existing profile
-selection mechanism. Selection does not enable paid reviewer calls in hooks or
-MCP: those still run local rules only. Use the explicit `review --provider` command
-for all contextual checks, with `profile_id` set to `local/writing-review` and
-`stages` containing `reviewer`. This profile has zero word floors so short passages
+selection mechanism. Profile selection alone does not enable paid calls. Opt into automatic Stop-hook
+review with `prosegate reviewer on --provider openai` (or `anthropic`), or use the
+explicit `review --provider` command with `profile_id` set to
+`local/writing-review` and `stages` containing `reviewer`. MCP stays local-only. This profile has zero word floors so short passages
 can be checked. It does not change the active profile in existing installations.
 
 ## Checks
