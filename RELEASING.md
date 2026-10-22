@@ -73,7 +73,7 @@ only `v0.1.0-*` tags. The active Immutable preview tags ruleset prevents updates
 and deletion of these tags. The sole reviewer may approve their own dispatched
 release; the workflow does not approve itself.
 
-npm login was verified on October 20, 2026: `npm whoami` returns `murrayleroux`,
+npm login was renewed and verified on October 22, 2026: `npm whoami` returns `murrayleroux`,
 and `npm org ls prosegate --json` confirms that account is an organization owner.
 This npm identity differs from the GitHub reviewer `Murraylr`. The approved
 package name remains the unscoped `prosegate`; organization membership does not
@@ -92,7 +92,8 @@ packaging fix; the original tag remains unchanged. Alpha.2 then exposed real-clo
 checks still scheduled in the parallel functional suite. Alpha.3 runs those
 checks serially with every original deadline retained. Its macOS checks pass, but Windows cold-start limits still fail. All three protected tags remain unpublished. ADR-45/46 then passed main and tagged alpha.4 validation; strict preparation passed too.
 
-The exact `v0.1.0-alpha.4` tag at `0195c22527ca16f8a7d775de6449f170def9d3ea` was dispatched with
+The exact `v0.1.0-alpha.5` tag at `c1f16f6dcfc895cd033943620a3615444ce8ad29` was dispatched in
+[run 39798721628](https://github.com/Prosegate-for-AI/Prosegate/actions/runs/39798721628) with
 `bootstrap_attestation=true`. CI and strict preparation run normally. Review the
 `npm-preview` artifact, then approve the `npm-release` environment. Instead of
 publishing, that job signs the checked tarball using npm 12.2.0's bundled Sigstore
@@ -103,9 +104,15 @@ ADR-47 enables built-in duplicate-entry recovery with a 30-second network timeou
 A local fixture check against the actual pinned libraries proves successful creation,
 409 recovery, and failure on missing/unauthorized entries; it also checks statement
 parity against npm. This check runs before the protected environment review.
-Alpha.5 contains this fix and requires fresh tagged validation and signing.
+Alpha.5 contains this fix. On October 22 its main macOS retry passed every test
+and packaging step, including all 181 performance checks, after an initial warm
+segmenter timing failure. The tagged validation run is active. GitHub has acknowledged
+[delays processing Actions results](https://www.githubstatus.com/incidents/q29p76qtnkyk);
+the main retry remains marked in progress despite all steps completing successfully.
+Wait for tagged validation and strict preparation, verify its artifact, and then
+request the protected environment review. Signing/publication remain unconfirmed.
 
-On October 21, the first signing attempt failed with Sigstore HTTP 409 (an equivalent
+For historical alpha.4, on October 21 the first signing attempt failed with Sigstore HTTP 409 (an equivalent
 transparency-log entry already exists). Murray approved a signing-only retry, which
 failed with the same error. Both attempts retain successful validation and preparation.
 The downloaded npm-preview artifact passed local hash verification. Its tarball
@@ -114,7 +121,7 @@ bundle SHA-256 is `67c064cbf01b3bb234e45c7c27edacb7d41848735fc90feaf0ac7b33b7ab9
 The manifest has a clean source, the expected tag/repository, no blockers and
 `publishable: true`. No signed bootstrap artifact or npm publication is confirmed.
 
-Download that artifact from the successful tagged run and run
+Download the alpha.5 npm-bootstrap artifact only after successful tagged signing and run
 `pnpm release:verify <download-directory>`. Confirm its source SHA/tag against the
 run, then publish the exact tarball from a terminal signed in as `murrayleroux`:
 
