@@ -23,6 +23,7 @@
     "eval:annotate": "tsx eval/runners/annotate.ts",
     "eval:import": "tsx eval/runners/phase6.ts import",
     "eval:reviewer": "tsx eval/runners/phase6.ts reviewer",
+    "eval:writing": "tsx eval/runners/eval-writing.ts",
     "eval:e2e": "tsx eval/runners/phase6.ts e2e",
     "eval:release": "tsx eval/runners/phase6.ts release",
     "check:bundle": "node scripts/check-bundle.mjs",

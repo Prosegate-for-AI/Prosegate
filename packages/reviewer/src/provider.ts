@@ -1,5 +1,6 @@
 import { REVIEWER_MODEL_BY_PROVIDER, type ReviewerProvider } from "@prosegate/schema";
 import type { ReviewerPrompt } from "./prompt.js";
+import { WRITING_CHECK_IDS } from "./writing-checks.js";
 
 export type ReviewerFailure = "reviewer_timeout" | "reviewer_http_error" | "reviewer_schema_invalid" | "reviewer_key_missing";
 export class ReviewerError extends Error {
@@ -10,9 +11,11 @@ export const OUTPUT_SCHEMA = {
   type: "object", additionalProperties: false, required: ["findings"],
   properties: { findings: { type: "array", maxItems: 6, items: {
     type: "object", additionalProperties: false,
-    required: ["span_text", "category", "severity", "confidence", "action", "instruction", "evidence"],
+    required: ["span_text", "category", "severity", "confidence", "action", "instruction", "evidence", "check_id", "exception_applies"],
     properties: {
       span_text: { type: "string", minLength: 1, maxLength: 240 },
+      check_id: { type: ["string", "null"], enum: [...WRITING_CHECK_IDS, null] },
+      exception_applies: { type: "boolean" },
       category: { type: "string", enum: ["unsupported_claim", "vague_claim", "register"] },
       severity: { type: "string", enum: ["block", "warn"] }, confidence: { type: "number", minimum: 0, maximum: 1 },
       action: { type: "string", enum: ["cite_or_soften_or_remove", "specify", "shorten", "restructure", "rephrase"] },

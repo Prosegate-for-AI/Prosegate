@@ -188,7 +188,7 @@ describe("profile [<id>]", () => {
     const { ctx } = started();
     expect(cmd(ctx, "profile")).toEqual({
       code: 0,
-      out: "Prosegate: profiles (active: local/base):\n  local/base\n  local/chat-reply\n  local/design-doc\n  local/email\n  local/pr-description\n",
+      out: "Prosegate: profiles (active: local/base):\n  local/base\n  local/chat-reply\n  local/design-doc\n  local/email\n  local/pr-description\n  local/writing-review\n",
       err: "",
     });
   });
@@ -196,10 +196,10 @@ describe("profile [<id>]", () => {
   it("on an unknown name suggests the nearest id and lists what is available", () => {
     const { ctx } = started();
     expect(cmd(ctx, "profile", "pr-descripton").err).toBe(
-      'Prosegate: no profile "pr-descripton". Did you mean local/pr-description? Available: local/base, local/chat-reply, local/design-doc, local/email, local/pr-description.\n',
+      'Prosegate: no profile "pr-descripton". Did you mean local/pr-description? Available: local/base, local/chat-reply, local/design-doc, local/email, local/pr-description, local/writing-review.\n',
     );
     expect(cmd(ctx, "profile", "zzzzzzzz").err).toBe(
-      'Prosegate: no profile "zzzzzzzz". Available: local/base, local/chat-reply, local/design-doc, local/email, local/pr-description.\n',
+      'Prosegate: no profile "zzzzzzzz". Available: local/base, local/chat-reply, local/design-doc, local/email, local/pr-description, local/writing-review.\n',
     );
   });
 
@@ -207,7 +207,7 @@ describe("profile [<id>]", () => {
     const { home, ctx } = started();
     for (let i = 0; i < 12; i++) put(home, `profiles/p${i}.yaml`, `schema: prosegate.profile/1\nid: team/p${String(i).padStart(2, "0")}\nversion: 1\nname: P ${i}\n`);
     const err = cmd(ctx, "profile", "qqqqqqqq").err;
-    expect(err).toContain("(+7 more; run prosegate profile with no argument)");
+    expect(err).toContain("(+8 more; run prosegate profile with no argument)");
     expect(err.split("\n")[0]?.length).toBeLessThan(400);
   });
 

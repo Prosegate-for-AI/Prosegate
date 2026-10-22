@@ -43,9 +43,14 @@ function tmp(prefix: string): string {
 }
 
 /** Runs the CLI (tsx on eval-rules.ts) as a subprocess; the report goes to a private temp directory. */
-function harness(args: string[], corpora: FixtureCorpora | string | null, baseline: string | null = baselineFile()): Promise<Run> {
+function harness(args: string[], corpora: FixtureCorpora | string | null, baseline: string | null = baselineFile(), allBundled = false): Promise<Run> {
   const reports = tmp("reports");
   const all = ["--reports", reports, "--rule-examples", EXAMPLES];
+  // These planted gold labels and baselines target core. Other packs must not be
+  // graded against core's labels; discovery and full-repository cases opt in below.
+  if (!allBundled && !args.includes("--bundled-packs") && !args.includes("--no-bundled")) {
+    all.push("--no-bundled", "--pack", join(BUNDLED, "core.yaml"));
+  }
   if (corpora !== null) all.push("--corpora", typeof corpora === "string" ? corpora : corpora.root);
   if (baseline !== null) all.push("--baseline", baseline);
   all.push(...args);
@@ -282,6 +287,7 @@ describe("eval:rules gates (subprocess, fixture corpora)", { timeout: 180_000 },
     expect(bad.stderr).toContain("fx@0.1.0");
     const same = tmp("packs-same");
     copyFileSync(join(BUNDLED, "core.yaml"), join(same, "core.yaml"));
+    copyFileSync(join(BUNDLED, "writing.yaml"), join(same, "writing.yaml"));
     ok(await harness(["--bundled-packs", same], new FixtureCorpora()));
     // A registered pack missing from disk is the other half of the same drift.
     const none = tmp("packs-none");
@@ -479,13 +485,14 @@ describe("eval:rules gates (subprocess, fixture corpora)", { timeout: 180_000 },
   });
 
   it.concurrent("the real repo: examples pass, FP / precision / recall are n/a, headline PARTIAL, exit 0", async () => {
-    const run = await harness([], join(REPO, "eval", "corpora"), join(REPO, "eval", "baseline.json"));
+    const run = await harness([], join(REPO, "eval", "corpora"), join(REPO, "eval", "baseline.json"), true);
     ok(run);
     const rep = run.report as Report;
     expect(rep.exit_code).toBe(0);
     expect(rep.result).toBe("partial");
     expect(rep.packs[0]?.examples).toMatchObject({ rules_pass: 23, rules_total: 23, pass: coreExampleCount(), total: coreExampleCount() });
-    expect(rep.metric_coverage.false_positive).toEqual({ "n/a": 23 });
+    expect(rep.packs[1]).toMatchObject({ id: "writing", examples: { rules_pass: 2, rules_total: 2, pass: 8, total: 8, status: "pass" } });
+    expect(rep.metric_coverage.false_positive).toEqual({ "n/a": 25 });
     expect(rep.packs[0]?.latency.source).toBe("engine-fixture");
     expect(rep.packs[0]?.latency.note).toContain("fallback");
     expect(rep.packs[0]?.invalid_findings_dropped).toBe(0);
@@ -501,8 +508,8 @@ function inProcess(corpora: FixtureCorpora, extra: Partial<RunOptions> = {}): Re
     repoRoot: REPO,
     corporaDir: corpora.root,
     ruleExamplesDir: EXAMPLES,
-    packPaths: [],
-    useBundled: true,
+    packPaths: [join(BUNDLED, "core.yaml")],
+    useBundled: false,
     bundledPacksDir: BUNDLED,
     baselinePath: baselineFile(),
     reportsDir: tmp("ip-reports"),

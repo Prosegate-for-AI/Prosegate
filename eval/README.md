@@ -181,6 +181,56 @@ Phase 6 exit still requires licensed sources/consent, the model matrix and gener
 independent annotators, collected corpora, live runs, human rewrite checks and rule triage.
 Triad severity is not changed without control-set evidence. D-19/20/21/23/27 remain measurement debt.
 
+## Contextual writing regression evaluation
+
+`pnpm eval:writing` runs the actual local engine and production reviewer transport,
+deadline, retry and enforcement against synthetic writing cases. It is an exploratory
+check, not the independently adjudicated reviewer qualification above. It uses only
+an environment API key; it never reads or changes installed Prosegate credentials.
+
+```text
+pnpm eval:writing --live --model pricing.json --out eval/reports/my-writing-run --name first --cap-usd 2 --set all
+pnpm eval:writing --live --model pricing.json --out eval/reports/my-writing-run --name repeat --cap-usd 2 --set exceptions --repeat 2
+```
+
+`pricing.json` contains one model object using the generation workflow's model
+fields (including verified prices, pricing date and output limit). The exact model
+must match the production reviewer. `--live` is mandatory. The cap applies to all
+reservations in the output directory, including failed/timed-out attempts and
+earlier runs. Names cannot overwrite existing reports. Use one sequential writer
+per output directory. Prices must be verified within 31 days; the included October
+22 manifest is historical evidence, not a permanently current price list.
+
+`all` includes the 34 contrast pairs, explicit context cases and additional probes;
+`exceptions` selects accepted cases; `holdout` selects the additional probes alone.
+The `holdout` name records their initial use; after inspection/tuning they are
+regression cases, not an independent holdout.
+`support-actors` selects the two original source-support/ambiguous-reference
+failures and 12 related controls, including narrowed source scope, uncertain
+evidence, multiple antecedents, contextual references, generic pronouns and passive
+voice. These 12 controls also participate in `all` and `exceptions` where relevant.
+Repeat counts range from 1 to 10.
+`--ids-file selected.json` restricts the selected set to an explicit JSON array of
+unique case IDs; unknown IDs are rejected before any paid request.
+All inputs are stored in `eval/fixtures/writing-*.json`. Context corrections are
+part of the fixture: an expressed feeling or measured benefit must actually be
+provided to test its exception.
+
+Reports retain requests, raw findings, enforced findings, prompt/fixture hashes,
+the prompt text, costs and per-case failures. An exception only counts as accepted
+after a completed review with no local or contextual findings. Positive examples
+report both any retained finding and the intended check; a discarded raw finding
+does not count as detection. Errors/skips are separate and make the CLI exit 2.
+A completed run can still contain false positives and misses; inspect its summary
+and rows rather than treating exit 0 as a quality pass. No paid runs occur in tests.
+`raw_exceptions` separately reports empty responses, nonempty responses and cases
+accepted only after output filtering. A filtered false diagnosis does not establish
+correct semantic recognition; inspect the raw reason and instruction.
+
+The [initial October 22 evaluation](reports/writing-live-20261022/README.md) and
+[source-support/actor follow-up](reports/writing-fixes-20261022/README.md) record
+the observed failures, fixes and remaining limitations.
+
 Transport references checked during implementation:
 [OpenAI text generation](https://developers.openai.com/api/docs/guides/text) and
 [Anthropic Messages](https://platform.claude.com/docs/en/build-with-claude/working-with-messages).

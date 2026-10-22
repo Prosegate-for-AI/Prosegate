@@ -1,0 +1,17 @@
+{
+  "schema": "prosegate.review/1",
+  "text": "Retiring the old server removes our last dependency on the unsupported runtime.",
+  "context": {
+    "user_message": "Explain what retiring the old server accomplishes.",
+    "style_constraints": "Be clear and concise.",
+    "mode": "interactive",
+    "audience": "Engineering managers",
+    "source_material": "Only the old server uses the unsupported runtime. All other servers were migrated."
+  },
+  "profile_id": "local/writing-review",
+  "pass": 1,
+  "stages": ["rules", "reviewer"],
+  "session_id": "manual",
+  "turn_id": "manual-1",
+  "prior_findings": []
+}

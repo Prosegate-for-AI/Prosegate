@@ -2,6 +2,49 @@
 
 Snapshot, rewritten at each change. Last updated 2026-10-22.
 
+**Contextual writing review (local implementation):** Added the `local/writing-review`
+profile, 34 contextual checks in `reviewer_prompt/11`, two narrow local warning rules,
+and optional audience/original/source context. The profile disables overlapping core
+heuristics; catalog findings cannot block. Tests cover the 34 exception pairs,
+meaning-loss eligibility, protected text, context bounds and duplicate suppression.
+The command carries these fields to the explicit BYOK reviewer; normal hooks/MCP
+remain local-only. Existing profiles retain their settings. See
+[the writing review guide](docs/WRITING-REVIEW.md).
+
+Initial implementation validation: the full functional run passed 3,597 tests with two skips; six assertions
+for the old profile/pack inventory were updated and the affected nine files passed
+261 tests. Final writing/evaluation checks passed 155 tests. All 181 performance-suite
+tests passed across the original run and corrected evaluation-fixture rerun, including
+Windows cold starts. Build, typecheck, lint, dependency, secrets and bundle checks
+passed; bundle size is 1,269,728 bytes. All 125 local rule examples pass. The baseline
+now includes the two new rules with null quality metrics: corpus quality remains
+unmeasured. This work has not been published or applied to installed
+Claude settings; the immutable alpha.5 release tag is unchanged.
+
+**Live writing evaluation (October 22):** The initial 547-request investigation
+improved exception precedence, meaning equivalence and output contracts, but left
+a source-support false positive and an ambiguous-actor miss. It cost $0.3748432
+measured / $1.997623 reserved under its $2 cap.
+[Initial evidence](eval/reports/writing-live-20261022/README.md).
+
+The follow-up fixes both original cases: each passed 9/9 final-prompt checks.
+The supported claim returned genuinely empty raw findings; the ambiguous reference
+returned a retained missing-actor warning. Added 12 controls for scope, uncertain
+evidence, multiple/clear antecedents, generic pronouns and passive voice. Final
+focused repetitions passed all 42 cases (24 raw-empty exceptions, 18 useful warnings).
+The 122-case broad run accepted 74/76 exceptions, warned on 45/45 completed positives
+(35 exact target checks), and had one timeout. Two unsourced acceptance fixtures
+still receive support warnings; six other exceptions rely on output filtering.
+This is synthetic regression evidence, not zero-FP or model qualification.
+
+The follow-up made 422 requests, costing $0.3762092 measured / $1.830255 reserved
+under a separate $2 cap. Confidence floors, warning severity and category settings
+are unchanged: all 34 catalog checks remain enabled, while the writing profile
+excludes legacy vague_claim. The evaluator now distinguishes raw-empty responses
+from filtered findings. All 330 affected tests pass, as do typecheck, lint, build,
+dependency, secret and bundle checks (1,280,605-byte adapter bundle).
+[Follow-up evidence and limitations](eval/reports/writing-fixes-20261022/README.md).
+
 **Phase:** Phase 9 release tooling passes hosted CI (ADR-40/42): reproducible packaging, dependency notices, isolated installation verification, protected npm OIDC/provenance workflow, public privacy page and administrator guide. Murray approved Apache-2.0 local tools, FSL-1.1-ALv2 service/dashboard, a public repo and Prosegate as the name. The adapter is 0.1.0-alpha.5. The public repository is Prosegate-for-AI/Prosegate and the copyright holder is Andrew Murray le Roux. npm login is verified as murrayleroux, owner of the prosegate organization. D-44 cold-start performance is closed after all seven jobs passed in main and tagged alpha.4 validation at 0195c225, with unchanged limits. First publication, package access, trusted-publisher setup and published provenance verification remain D-43; the token-free bootstrap attestation path is implemented. Source is public on main; no package has been published. GitHub release review and immutable preview tags are configured. RC requires the outstanding Phase 6/D-40 quality evidence; hosted integration remains D-41. Phase 10 is the subsequent 30-day team trial. Automatic paid review and live vending remain gated.
 
 Release retry: alpha.1 passed validation but exposed npm 12 pack JSON compatibility in strict preparation; that fix passes 19 release tests and npm 12.2.0 preparation locally. Alpha.2 hit Windows cold-start variability and a macOS evaluator deadline; its single rerun passed macOS but failed a Windows watchdog wall-time assertion in the parallel suite. Alpha.3 schedules the evaluator and watchdog files serially with unchanged limits (ADR-44). Alpha.3 passed six validation jobs, including macOS and the isolated deadline checks, but failed Windows cold start (adapter 413/449/456 ms; engine overhead 313.6/306.5/303.7 ms). All three tags are retained and unpublished. ADR-45 main run 39514677882 passed Windows x64 (339/326/326 ms) but failed macOS cold start (567/406/350 ms) and Windows ARM init. ADR-46 prevalidates exact bundled content during generation and preserves diagnostics from isolated smoke failures. Main run 39516064832 and tagged run 39517105288 both passed all seven validation jobs at 0195c225; strict release preparation also passed. The first signing attempt failed with a Sigstore transparency-log HTTP 409 duplicate-entry error. Murray approved a signing-only retry, which failed with the same 409. ADR-47 uses the pinned Sigstore library recovery path with mandatory npm verification. Alpha.5 main run 39677784900 passed six jobs; the macOS job initially failed four warm segmenter benchmarks while passing cold start. A single retry on October 22 passed every test and packaging step (3,475 functional tests, 181 performance checks; cold 168/162/155 ms). GitHub is still finalizing its result during an acknowledged Actions-results incident. The immutable alpha.5 tag points to c1f16f6; tagged release run 39798721628 is active with bootstrap attestation enabled. Its validation/preparation/signing are not yet confirmed. No package has been published. D-45 retains the unexplained earlier Windows ARM init failure; both latest ARM jobs passed.

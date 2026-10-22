@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { reviewDraft, PROMPT_VERSION } from "@prosegate/reviewer";
+import { reviewDraft, PROMPT_VERSION, WRITING_CHECK_IDS } from "@prosegate/reviewer";
 import { FORK_TEXT, REVIEWER_CATEGORIES, REVIEWER_MODEL_BY_PROVIDER, type Finding } from "@prosegate/schema";
 import { analyse } from "@prosegate/segmenter";
 import { HarnessError, type GoldSpan } from "../runners/rules-corpus.js";
@@ -13,6 +13,8 @@ const Raw = z.strictObject({ findings: z.array(z.strictObject({
   span_text: z.string().min(1).max(240), category: z.enum(REVIEWER_CATEGORIES), severity: z.enum(["block", "warn"]),
   confidence: z.number().min(0).max(1), action: z.enum(["cite_or_soften_or_remove", "specify", "shorten", "restructure", "rephrase"]),
   instruction: z.string().max(160), evidence: z.string().max(500),
+  check_id: z.enum(WRITING_CHECK_IDS).nullable(),
+  exception_applies: z.boolean(),
 })).max(6) });
 export const ratio = (n: number, d: number): number | null => d ? n / d : null;
 export type Gate = { value: number | null; target: number; status: "pass" | "fail" | "insufficient" };

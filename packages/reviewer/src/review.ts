@@ -3,6 +3,7 @@ import { FindingSchema, FORK_TEXT, REVIEWER_MODEL_BY_PROVIDER, findingId, findKe
 import { analyse, countWords, normalizeForMatching, type Analysis } from "@prosegate/segmenter";
 import { buildPrompt } from "./prompt.js";
 import { callProvider, object, ReviewerError, type ReviewerFailure } from "./provider.js";
+import { writingCheck, reviewerConfidenceFloor } from "./writing-checks.js";
 
 export interface ReviewerOutcome {
   findings: Finding[];
@@ -20,6 +21,8 @@ export interface ReviewDraftInput {
   keySource?: "byok" | "vended";
   timeoutMs?: number;
   fetch?: typeof fetch;
+  /** Local findings already selected for this draft; used for nomination and overlap suppression. */
+  localFindings?: readonly Finding[];
 }
 const empty = (): ReviewerOutcome => ({ findings: [], stats: null, span_misses: 0, error: null, skipped: null });
 
@@ -59,16 +62,25 @@ function enforce(raw: unknown, input: ReviewDraftInput, a: Analysis): { findings
     if (!r) throw new ReviewerError("reviewer_schema_invalid", true);
     if (typeof r["span_text"] !== "string" || typeof r["category"] !== "string" || typeof r["confidence"] !== "number" || typeof r["instruction"] !== "string" || typeof r["evidence"] !== "string" || typeof r["action"] !== "string") throw new ReviewerError("reviewer_schema_invalid", true);
     const { span_text: spanText, category, confidence, instruction, evidence } = r;
+    const check = writingCheck(r["check_id"]);
+    if (r["check_id"] != null && !check) continue;
+    if (r["exception_applies"] === true || (check && r["exception_applies"] !== false)) continue;
+    if (check && check.category !== category) continue;
+    if (check?.requiresOriginal && (!input.request.context.original_text?.trim() || input.request.context.original_text.length > 20000 || input.request.context.original_text.trim() === input.request.text.trim())) continue;
     if (category !== "unsupported_claim" && category !== "vague_claim" && category !== "register") continue;
-    if (!effective.categories.includes(category) || confidence < 0.6 || confidence > 1 || !Number.isFinite(confidence)) continue;
+    if (!effective.categories.includes(category) || confidence < reviewerConfidenceFloor(input.resolved.resolved_from, !!check) || confidence > 1 || !Number.isFinite(confidence)) continue;
     if (!spanText || [...spanText].length > 240 || (r["severity"] !== "block" && r["severity"] !== "warn")) continue;
     if (findKeyShapedStrings(item).length || (input.key && JSON.stringify(item).includes(input.key))) continue;
     if (countWords(evidence) > 25 || evidence.length > 500 || /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(evidence)) continue;
     const span = refind(input.request.text, spanText, a);
     if (!span) { misses++; continue; }
+    // Exact user/source assertions are not unsupported merely because the model missed their attribution.
+    if (check?.category === "unsupported_claim" && [input.request.context.user_message, input.request.context.source_material].some((s) => s?.includes(spanText))) continue;
+    if (check && input.localFindings?.some((f) => f.span.start < span.end && span.start < f.span.end)) continue;
     const id = findingId(category, null, normalizeForMatching(spanText).replace(/\s+/g, " ").trim());
     const override = input.resolved.categories[category];
     let severity = override?.severity ?? r["severity"];
+    if (check && severity === "block") severity = "warn";
     if (category === "register" && severity === "block") severity = "warn";
     if (input.request.pass === 2 && !(severity === "block" && prior.has(id))) severity = "info";
     const action = category === "unsupported_claim" ? "cite_or_soften_or_remove" : category === "vague_claim" ? "specify" : r["action"];
@@ -76,7 +88,7 @@ function enforce(raw: unknown, input: ReviewDraftInput, a: Analysis): { findings
     const text = category === "unsupported_claim" ? FORK_TEXT.unsupported_claim : instruction;
     if ([...text].length > 160 || injectedTextViolation(text, 160) !== null) continue;
     const parsed = FindingSchema.safeParse({ id, span, category, source: "reviewer", rule_id: null, severity, confidence, instruction: { action, text }, evidence, profile_origin: override?.origin ?? effective.origin.categories });
-    if (parsed.success && !findings.some((f) => f.id === id && f.span.start === span.start)) findings.push(parsed.data);
+    if (parsed.success && !findings.some((f) => f.span.start < span.end && span.start < f.span.end)) findings.push(parsed.data);
     if (findings.length === 6) break;
   }
   return { findings, misses };
@@ -92,7 +104,7 @@ export async function reviewDraft(input: ReviewDraftInput): Promise<ReviewerOutc
   if (!Number.isFinite(budget) || budget <= 0) return { ...outcome, error: "reviewer_timeout" };
   const start = performance.now();
   const analysis = analyse(input.request.text);
-  const prompt = buildPrompt(input.request, input.resolved, analysis);
+  const prompt = buildPrompt(input.request, input.resolved, analysis, input.localFindings);
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new ReviewerError("reviewer_timeout")); }, Math.max(0, budget - (performance.now() - start))); });

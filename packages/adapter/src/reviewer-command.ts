@@ -55,7 +55,7 @@ export async function runReviewCommand(args: string[], raw: string, io: RunIO, c
       key = await store.get(provider);
     }
     catch (e) { keyError = e instanceof KeyStoreError ? e.code : "keychain_unavailable"; }
-    const outcome = await reviewDraft({ request, resolved: loaded.resolved, provider, key, timeoutMs: Math.max(0, 6000 - (performance.now() - started)), ...(deps.fetch ? { fetch: deps.fetch } : {}) });
+    const outcome = await reviewDraft({ request, resolved: loaded.resolved, provider, key, localFindings: base.result.findings, timeoutMs: Math.max(0, 6000 - (performance.now() - started)), ...(deps.fetch ? { fetch: deps.fetch } : {}) });
     const result = mergeReviewer(base, outcome, request, enforce);
     io.stdout.write(`${JSON.stringify(result)}\n`);
     if (keyError) io.stderr.write(`Prosegate: local rules only; the reviewer key could not be read (${keyError}). Run prosegate key status ${provider} in your terminal.\n`);

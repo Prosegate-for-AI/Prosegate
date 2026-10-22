@@ -1,0 +1,29 @@
+schema: prosegate.rulepack/1
+id: writing
+version: 0.1.0
+findings_schema: 1
+rules:
+  - id: writing.filler.001
+    category: filler
+    severity: warn
+    match:
+      kind: phrase
+      phrases: ["at this point in time", "in order to"]
+    instruction:
+      action: shorten
+      text: "Use 'now' or 'to' where it preserves the meaning; remove the verbal padding."
+    examples:
+      hit: ["At this point in time, the cache is empty.", "Restart in order to reload the file."]
+      miss: ["The cache is empty now.", "The records are in order."]
+  - id: writing.hedge.001
+    category: hedge
+    severity: warn
+    match:
+      kind: phrase
+      phrases: ["might possibly", "could potentially"]
+    instruction:
+      action: shorten
+      text: "Keep one accurate uncertainty statement and its reason; remove only the redundant hedge."
+    examples:
+      hit: ["The patch might possibly reduce latency.", "This could potentially fail if the cache is full."]
+      miss: ["The patch might reduce latency.", "The vendor may terminate only after giving notice."]

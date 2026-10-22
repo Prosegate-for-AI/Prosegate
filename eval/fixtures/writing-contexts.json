@@ -1,0 +1,13 @@
+{
+  "meaning-lost/exception": {"original_text":"The vendor may terminate only after giving 30 days' written notice."},
+  "meaning-lost/positive": {"original_text":"The vendor may terminate only after giving 30 days' written notice."},
+  "audience-jargon/exception": {"audience":"Compiler engineers reading a compiler implementation note."},
+  "abstract-cluster/exception": {"audience":"Statisticians familiar with robust estimation."},
+  "unattributed-authority/exception": {"source_material":"Report A, Table 2: the median latency is 20 ms."},
+  "canned-empathy/exception": {"user_message":"The delay is frustrating. When is the next update?","source_material":"The next update is due Friday."},
+  "empty-benefit/exception": {"source_material":"The new process removes one approval step. Timed trials found that reviewers spend ten fewer minutes per request."},
+  "request-echo/positive": {"user_message":"Explain how the cache works."},
+  "process-for-rationale/positive": {"user_message":"Why did we choose option B?"},
+  "indirect-statement/positive": {"user_message":"State what changed in the retry configuration.","source_material":"The maximum number of retries increased from two to three."},
+  "fragmented-structure/positive": {"user_message":"Explain this cache change in a short connected paragraph.","source_material":"We added a cache. It stores responses. Benchmarking found faster reads."}
+}

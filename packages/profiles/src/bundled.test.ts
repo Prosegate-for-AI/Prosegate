@@ -102,7 +102,7 @@ describe("the bundled core 0.1.0 pack", () => {
   });
 
   it("is available as the bundled core 0.1.0 source", () => {
-    expect(bundledPackSources()).toEqual({ core: [{ version: "0.1.0", signed: false, origin: "bundled" }] });
+    expect(bundledPackSources()).toEqual({ core: [{ version: "0.1.0", signed: false, origin: "bundled" }], writing: [{ version: "0.1.0", signed: false, origin: "bundled" }] });
   });
 });
 
@@ -132,8 +132,8 @@ function expectedSeverity(starter: string, id: string): Sev {
 }
 
 describe("bundled starter profiles", () => {
-  it("are exactly the five from 08, all in the local namespace, all bundled", () => {
-    expect(Object.keys(BUNDLED_PROFILE_YAML).sort()).toEqual(Object.keys(EXPECTED_OVERRIDES).sort());
+  it("include the five legacy starters and the contextual writing profile, all bundled", () => {
+    expect(Object.keys(BUNDLED_PROFILE_YAML).sort()).toEqual([...Object.keys(EXPECTED_OVERRIDES), "local/writing-review"].sort());
     for (const id of Object.keys(BUNDLED_PROFILE_YAML)) expect(id.startsWith("local/")).toBe(true);
     for (const source of Object.values(bundledProfileSources())) expect(source).toMatchObject({ origin: "bundled", signed: false });
   });
@@ -292,5 +292,15 @@ describe("bundled starter profiles", () => {
     expect(t.patterns).toEqual(["pull request", "PR description", "commit message", "changelog"]);
     expect(t.harness_hints).toEqual(["git_commit", "gh_pr_create"]);
     expect(t.description).toContain("pull request title or description, a commit message, or a changelog entry");
+  });
+});
+
+describe("contextual writing profile", () => {
+  it("disables every overlapping core heuristic and starts every category at warn", () => {
+    const p = resolveProfile("local/writing-review", sources);
+    for (const rule of pack.rules) expect(effectiveRule(p, rule).enabled).toBe(false);
+    expect(Object.values(p.categories).every((c) => c.severity === "warn")).toBe(true);
+    expect(p.thresholds).toEqual({ token_floor_words: 0, reviewer_floor_words: 0 });
+    expect(p.packs.map((p) => p.id)).toEqual(["core", "writing"]);
   });
 });

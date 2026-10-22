@@ -1,6 +1,6 @@
 # Reviewer preview
 
-The reviewer detects unsupported claims, generic answers to specific questions, and mismatches with a profile's tone, format or length. It never rewrites. The originating agent remains responsible for revisions.
+The reviewer detects unsupported claims, generic answers to specific questions, and problems with clarity, meaning preservation, tone, format or length. Its 34 contextual writing checks include explicit exceptions and start as warnings. It never rewrites. The originating agent remains responsible for revisions. See the [writing review guide](../../docs/WRITING-REVIEW.md) for the catalog and warning-only `local/writing-review` profile.
 
 This is an explicit preview. Normal Claude Code hooks still run deterministic rules only. The plan requires one week of rules-only dogfood before reviewer wiring, and live rubric/latency evaluation is still required before either provider is release-qualified.
 
@@ -32,6 +32,12 @@ The preview reads a `prosegate.review/1` JSON request on stdin. For example, sav
 }
 ```
 
+For the full contextual writing rubric, change `profile_id` to
+`local/writing-review`; that profile also accepts short drafts. Its optional
+`context.audience`, `context.original_text` and `context.source_material` fields
+help the reviewer assess technical language, revision meaning and supplied
+support. Omit them when unavailable; meaning-loss review requires an original.
+
 PowerShell:
 
 ```powershell
@@ -48,7 +54,7 @@ Stdout is a findings JSON result. Stderr explains a missing key or reviewer fail
 
 ## Data and failure boundaries
 
-- The draft, last user message (at most 2,000 characters), style constraints (at most 1,500), and register specification go directly to the selected provider. Code segments are replaced with `[code block omitted]`. Provider retention terms still apply; OpenAI requests set `store: false`.
+- The draft, last user message (at most 2,000 characters), style constraints (at most 1,500), register specification and selected local findings go directly to the selected provider. Optional audience context (500), original text (20,000) and source material (20,000) also go to the provider when supplied. Limits use UTF-16 code units. Code segments in the candidate draft are replaced with `[code block omitted]`; originals and source material are sent verbatim. Provider retention terms still apply; OpenAI requests set `store: false`.
 - Only fixed HTTPS endpoints are used. Redirects are refused. There is no Prosegate server request, transcript upload, conversation history, telemetry upload or logging of input/provider bodies.
 - The transport candidates are `gpt-5.4-mini-2026-03-17` (OpenAI Responses, strict JSON schema, no reasoning) and `claude-haiku-5-5` (Anthropic Messages, forced findings tool). These are not yet certified by live rubric or latency evals.
 - A maximum of six validated findings survive. The reviewer re-finds exact UTF-16 spans only within prose, excluding inline masks and quoted/code/table segments. Unsupported claims receive the fixed citation/softening/removal fork. Register findings cannot block. Injection filters and the profile category/provider policy apply locally.
@@ -58,4 +64,4 @@ Stdout is a findings JSON result. Stderr explains a missing key or reviewer fail
 
 ## Verification
 
-`pnpm exec vitest run packages/reviewer packages/adapter/test/key-store.test.ts packages/adapter/test/reviewer-command.test.ts` uses synthetic provider responses and temporary homes. The 30-draft span smoke test verifies local mapping, not real-model recall. Live provider latency, rubric quality, macOS native keychain behavior, and the one-week rollout gate remain unverified.
+`pnpm exec vitest run packages/reviewer packages/adapter/test/key-store.test.ts packages/adapter/test/reviewer-command.test.ts` uses synthetic provider responses and temporary homes. The 30-draft span smoke test verifies local mapping, not real-model recall. The [October 22 writing evaluation](../../eval/reports/writing-live-20261022/README.md) and [source-support/actor follow-up](../../eval/reports/writing-fixes-20261022/README.md) add live Anthropic exception checks and record remaining limitations. It does not qualify either provider: independent rubric quality, full-length latency, macOS native keychain behavior, and the one-week rollout gate remain outstanding.

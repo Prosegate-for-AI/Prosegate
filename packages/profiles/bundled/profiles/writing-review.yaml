@@ -1,0 +1,57 @@
+schema: prosegate.profile/1
+id: local/writing-review
+version: 1
+name: Contextual writing review
+extends: local/base
+trigger:
+  description: "Reviewing or revising prose for clarity, meaning, support and useful structure with contextual exceptions."
+  patterns: ["writing review", "review my writing", "review this prose"]
+  sticky: true
+rule_packs:
+  - { id: writing, version: ">=0.1.0 <1.0.0" }
+overrides:
+  categories:
+    filler: { severity: warn }
+    hedge: { severity: warn }
+    vocab: { severity: warn }
+    triad: { severity: warn }
+    structure: { severity: warn }
+    repetition: { severity: warn }
+    unsupported_claim: { severity: warn }
+    vague_claim: { severity: warn }
+    register: { severity: warn }
+  # These checks need context. The reviewer owns their replacements in this profile.
+  rules:
+    core.filler.001: { enabled: false }
+    core.filler.002: { enabled: false }
+    core.filler.003: { enabled: false }
+    core.filler.004: { enabled: false }
+    core.hedge.001: { enabled: false }
+    core.hedge.002: { enabled: false }
+    core.hedge.003: { enabled: false }
+    core.hedge.004: { enabled: false }
+    core.hedge.005: { enabled: false }
+    core.vocab.001: { enabled: false }
+    core.vocab.002: { enabled: false }
+    core.vocab.003: { enabled: false }
+    core.vocab.004: { enabled: false }
+    core.vocab.005: { enabled: false }
+    core.triad.001: { enabled: false }
+    core.triad.002: { enabled: false }
+    core.triad.003: { enabled: false }
+    core.structure.001: { enabled: false }
+    core.structure.002: { enabled: false }
+    core.structure.003: { enabled: false }
+    core.structure.004: { enabled: false }
+    core.structure.005: { enabled: false }
+    core.repetition.001: { enabled: false }
+  thresholds:
+    token_floor_words: 0
+    reviewer_floor_words: 0
+reviewer:
+  # The catalog covers clarity. Legacy vague_claim demanded details outside the user's scope in live checks.
+  categories: [unsupported_claim, register]
+  register:
+    max_words: 2000
+    tone: "Clear, concrete and appropriate to the audience. Preserve meaning, warranted uncertainty and technical precision."
+    format: "Use connected prose, distinct lists, steps or reference headings according to the task."

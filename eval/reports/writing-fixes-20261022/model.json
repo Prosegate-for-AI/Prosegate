@@ -1,0 +1,10 @@
+{
+  "id":"claude-haiku-5-5",
+  "provider":"anthropic",
+  "family":"claude",
+  "generation":"5.5",
+  "input_usd_per_million":0.1,
+  "output_usd_per_million":0.5,
+  "pricing_checked_on":"2026-10-22",
+  "max_output_tokens":2048
+}

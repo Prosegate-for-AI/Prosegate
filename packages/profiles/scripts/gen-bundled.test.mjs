@@ -14,7 +14,7 @@ describe("bundled.generated.ts", () => {
     expect(committed).toBe(render());
   });
   it("every cached document passes the complete strict parser and matches its result", () => {
-    expect(Object.keys(BUNDLED_PARSED_JSON)).toHaveLength(6);
+    expect(Object.keys(BUNDLED_PARSED_JSON)).toHaveLength(8);
     for (const text of Object.keys(BUNDLED_PARSED_JSON)) {
       const strict = parseYamlStrict(text, MAX_PACK_BYTES, MAX_PACK_NODES, false);
       expect(strict.ok).toBe(true);
@@ -33,8 +33,8 @@ describe("bundled.generated.ts", () => {
   });
 
   it("validated caches equal the full schema pipeline, including defaults, and cannot leak mutations", () => {
-    expect(Object.keys(BUNDLED_VALIDATED_PROFILE_JSON)).toHaveLength(5);
-    expect(Object.keys(BUNDLED_VALIDATED_PACK_JSON)).toHaveLength(1);
+    expect(Object.keys(BUNDLED_VALIDATED_PROFILE_JSON)).toHaveLength(6);
+    expect(Object.keys(BUNDLED_VALIDATED_PACK_JSON)).toHaveLength(2);
     for (const [cache, parseValue, parseText] of [
       [BUNDLED_VALIDATED_PROFILE_JSON, parseProfile, parseProfileYaml],
       [BUNDLED_VALIDATED_PACK_JSON, parseRulePack, parseRulePackYaml],

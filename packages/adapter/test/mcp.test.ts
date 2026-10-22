@@ -38,7 +38,7 @@ describe("MCP tools and session lifecycle", () => {
   it("lists filtered profile metadata and selects immediately with guidance and visible notice", () => {
     const s = setup(); s.start();
     const profiles = data<Array<{ id: string; active: boolean }>>(s.tools.call("list_profiles", {}));
-    expect(profiles).toHaveLength(5);
+    expect(profiles).toHaveLength(6);
     expect(profiles.find((p) => p.active)?.id).toBe("local/base");
     expect(data(s.select("local/design-doc"))).toEqual({ active_profile: "local/design-doc", previous_profile: "local/base", sticky: true });
     expect(s.end().result.profile.id).toBe("local/design-doc");

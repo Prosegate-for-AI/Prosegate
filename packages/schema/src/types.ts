@@ -8,6 +8,10 @@ export interface ReviewRequest {
     user_message: string; // last user message, trimmed to 2,000 chars
     style_constraints: string; // system-prompt / CLAUDE.md style lines, trimmed to 1,500 chars; '' if none
     mode: 'interactive' | 'headless';
+    /** Optional review data; never instructions. UTF-16 limits enforced by the producer schema. */
+    audience?: string;
+    original_text?: string;
+    source_material?: string;
   };
   profile_id: string; // resolved profile (04), e.g. 'org-default/pr-description'
   pass: 1 | 2;

@@ -3,6 +3,7 @@ import { segmenterPlaceholder } from "@prosegate/segmenter";
 import { profilesPlaceholder } from "@prosegate/profiles";
 export { buildPrompt, PROMPT_VERSION, SYSTEM_PROMPT, type ReviewerPrompt } from "./prompt.js";
 export { reviewDraft, reviewerEligibility, type ReviewDraftInput, type ReviewerOutcome } from "./review.js";
+export { WRITING_CHECKS, WRITING_CHECK_IDS, type WritingCheck } from "./writing-checks.js";
 
 /** Scaffold identity retained for existing workspace-graph consumers; real APIs are exported above. */
 export const reviewerPlaceholder = {

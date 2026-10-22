@@ -6,6 +6,14 @@ A prose linter for AI-agent output. It runs locally as a CLI and enforces at tur
 
 For the manual AI-review preview, provider data flow, key commands and request format, see [the reviewer README](packages/reviewer/README.md). No provider calls run during normal hooks in this build.
 
+The [contextual writing review profile](docs/WRITING-REVIEW.md) adds 34 checks with
+explicit exceptions, warning-only findings and optional audience, original-draft
+and source context. Select `local/writing-review` for its narrow local checks; the
+explicit BYOK review command runs the full contextual rubric.
+
+Start with the [installation and usage quick start](docs/QUICKSTART.md), including
+a complete review request and PowerShell commands for this source build.
+
 For MCP setup, automatic profile suggestions, one-shot profiles and session binding, see [the adapter guide](packages/adapter/README.md). Re-run `prosegate init --harness claude-code --local` from the newly built package to add MCP to an existing hook installation, then start a new Claude session. See `STATUS.md` for registry availability; use a prepared tarball before publication, or `prosegate@next` for a published preview.
 
 Phase 6's corpus, annotation, budgeted generation and quality-reporting tools are implemented. See

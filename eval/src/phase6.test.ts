@@ -19,7 +19,7 @@ const model = (over: Partial<Model> = {}): Model => ({
 });
 const response = (text: string) => ({ status: "completed", output: [{ type: "message", content: [{ type: "output_text", text }] }], usage: { input_tokens: 20, output_tokens: 10 } });
 const raw = (over = {}) => ({ span_text: "It always works.", category: "unsupported_claim", severity: "block", confidence: 0.9,
-  action: "cite_or_soften_or_remove", instruction: FORK_TEXT.unsupported_claim, evidence: "No supporting evidence.", ...over });
+  action: "cite_or_soften_or_remove", instruction: FORK_TEXT.unsupported_claim, evidence: "No supporting evidence.", check_id: null, exception_applies: false, ...over });
 const prompt = { id: "cache", profile: "base", system: "Write a factual explanation.", user: "Explain cache eviction.", style_constraints: "" };
 const text = `It always works. ${"The cache retains entries until the next request. ".repeat(35)}`;
 const gold = [{ category: "unsupported_claim" as const, start: 0, end: 16 }];
@@ -202,6 +202,9 @@ describe("reviewer measurements", () => {
   it("measures raw schema, unique prose occurrence and fork before enforcement", () => {
     const envelope = response(JSON.stringify({ findings: [raw()] }));
     expect(rawMetrics(envelope, "openai", text)).toMatchObject({ valid: true, found_once: 1, correct_forks: 1 });
+    expect(rawMetrics(response(JSON.stringify({ findings: [raw({ check_id: "unattributed-authority", exception_applies: false })] })), "openai", text)).toMatchObject({ valid: true, found_once: 1 });
+    expect(rawMetrics(response(JSON.stringify({ findings: [raw({ check_id: "unknown-check", exception_applies: false })] })), "openai", text).valid).toBe(false);
+    expect(rawMetrics(response(JSON.stringify({ findings: [raw({ check_id: undefined })] })), "openai", text).valid).toBe(false);
     expect(rawMetrics(envelope, "openai", "It always works. It always works.")).toMatchObject({ found_once: 0 });
     expect(rawMetrics(envelope, "openai", "```\nIt always works.\n```")).toMatchObject({ found_once: 0 });
     expect(rawMetrics(response(JSON.stringify({ findings: [raw({ extra: "bad" })] })), "openai", text).valid).toBe(false);

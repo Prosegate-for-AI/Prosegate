@@ -5,21 +5,25 @@ import {
   DESIGN_DOC_YAML,
   EMAIL_YAML,
   PR_DESCRIPTION_YAML,
+  WRITING_REVIEW_YAML,
+  WRITING_PACK_YAML,
 } from "./bundled.generated.js";
 import type { PackVersionSource, ProfileSource } from "./resolve.js";
 
-/** The five starter profiles (08 "Default profile membership"), keyed by profile id. */
+/** Bundled profiles, keyed by profile id. */
 export const BUNDLED_PROFILE_YAML: Readonly<Record<string, string>> = {
   "local/base": BASE_YAML,
   "local/pr-description": PR_DESCRIPTION_YAML,
   "local/design-doc": DESIGN_DOC_YAML,
   "local/email": EMAIL_YAML,
   "local/chat-reply": CHAT_REPLY_YAML,
+  "local/writing-review": WRITING_REVIEW_YAML,
 };
 
 /** The bundled rule packs (`core` 0.1.0), keyed by `<id>@<version>`. */
 export const BUNDLED_PACK_YAML: Readonly<Record<string, string>> = {
   "core@0.1.0": CORE_PACK_YAML,
+  "writing@0.1.0": WRITING_PACK_YAML,
 };
 
 /**

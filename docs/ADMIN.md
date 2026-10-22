@@ -1,6 +1,6 @@
 # Prosegate administrator guide
 
-The current distribution is `0.1.0-alpha.4`. Local rules, Claude Code hooks and
+The current distribution is `0.1.0-alpha.5`. Local rules, Claude Code hooks and
 MCP tools work without an account. Explicit BYOK review is experimental. Hosted
 enrollment/sync, automatic paid review and live key vending are not enabled by
 installing this package. Do not present the preview as a qualified release candidate.
@@ -16,7 +16,7 @@ it establishes identity only when you trust the source of that checksum.
 From a trusted terminal in the target project:
 
 ```sh
-npx --package=/absolute/path/prosegate-0.1.0-alpha.4.tgz prosegate init --harness claude-code --local --scope project
+npx --package=/absolute/path/prosegate-0.1.0-alpha.5.tgz prosegate init --harness claude-code --local --scope project
 ```
 
 Omit `--scope project` for user-wide installation. Start a new Claude Code session.

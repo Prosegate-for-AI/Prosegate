@@ -1,0 +1,4878 @@
+{
+  "started": "2026-10-22T16:32:12.176Z",
+  "prompt_version": "reviewer_prompt/3",
+  "prompt_hash": "39f887d6e8006c72547a6c99e5025f27f529d4b0e2b472e4fe565420e4a8f4c5",
+  "model": "claude-haiku-5-5",
+  "spend": {
+    "cap_usd": 1.7093630000000002,
+    "reserved_usd": 0.30951499999999976,
+    "measured_usd": 0.058003099999999995,
+    "attempts": 86,
+    "exhausted": false,
+    "pricing": [
+      {
+        "id": "claude-haiku-5-5",
+        "provider": "anthropic",
+        "family": "claude",
+        "generation": "5.5",
+        "input_usd_per_million": 0.1,
+        "output_usd_per_million": 0.5,
+        "pricing_checked_on": "2026-10-22",
+        "max_output_tokens": 2048
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "inflated-contrast/exception",
+      "check": "inflated-contrast",
+      "expected": "accept",
+      "text": "The bug is in the parser, not the tokenizer.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The bug is in the parser, not the tokenizer.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "inflated-contrast/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1128.4322000000002,
+          "input_tokens": 6194,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "inflated-contrast/positive",
+      "check": "inflated-contrast",
+      "expected": "flag",
+      "text": "This is not just a cache; it is a revolution.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "This is not just a cache; it is a revolution.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "inflated-contrast/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "e8264a6ffa",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 45,
+              "text": "This is not just a cache; it is a revolution."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the inflated contrast and manufactured significance with a concrete statement of what the system does differently from a cache."
+            },
+            "evidence": "The draft uses a 'not just X but Y' contrast with 'revolution' and no supplied description of what changes.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1259.3216000000002,
+          "input_tokens": 6192,
+          "output_tokens": 189
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "This is not just a cache; it is a revolution.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the inflated contrast and manufactured significance with a concrete statement of what the system does differently from a cache.",
+              "evidence": "The draft uses a 'not just X but Y' contrast with 'revolution' and no supplied description of what changes.",
+              "check_id": "inflated-contrast",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "slogan-fragments/exception",
+      "check": "slogan-fragments",
+      "expected": "accept",
+      "text": "Stop. The cable is live.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Stop. The cable is live.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "slogan-fragments/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 731.9313999999999,
+          "input_tokens": 6187,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "slogan-fragments/positive",
+      "check": "slogan-fragments",
+      "expected": "flag",
+      "text": "One team. One vision. Limitless possibilities.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "One team. One vision. Limitless possibilities.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "slogan-fragments/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "a1562c97fa",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 46,
+              "text": "One team. One vision. Limitless possibilities."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the slogan fragments with one concrete statement of what the team does or aims for, drawn from the user's supplied context."
+            },
+            "evidence": "Three short rhythmic fragments state no specific goal, actor, or result; 'Limitless possibilities' is an unsupported superlative.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 2076.0339000000004,
+          "input_tokens": 6193,
+          "output_tokens": 202
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "One team. One vision. Limitless possibilities.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the slogan fragments with one concrete statement of what the team does or aims for, drawn from the user's supplied context.",
+              "evidence": "Three short rhythmic fragments state no specific goal, actor, or result; 'Limitless possibilities' is an unsupported superlative.",
+              "check_id": "slogan-fragments",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ornamental-triad/exception",
+      "check": "ornamental-triad",
+      "expected": "accept",
+      "text": "The request requires a name, address and signature.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The request requires a name, address and signature.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "ornamental-triad/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1318.6506,
+          "input_tokens": 6189,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "ornamental-triad/positive",
+      "check": "ornamental-triad",
+      "expected": "flag",
+      "text": "The system is powerful, transformative and revolutionary.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The system is powerful, transformative and revolutionary.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "ornamental-triad/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1330.7259999999997,
+          "input_tokens": 6194,
+          "output_tokens": 211
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The system is powerful, transformative and revolutionary.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the three stacked adjectives with a concrete statement of what the system does and what measurable change it produces, or state that those details are not available.",
+              "evidence": "Three promotional adjectives repeat one unspecified claim of greatness with no supplied capability, result, or comparison baseline.",
+              "check_id": "ornamental-triad",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "negative-parallelism/exception",
+      "check": "negative-parallelism",
+      "expected": "accept",
+      "text": "Do not log passwords. Do not store tokens in URLs.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Do not log passwords. Do not store tokens in URLs.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "negative-parallelism/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1232.662699999999,
+          "input_tokens": 6197,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "negative-parallelism/positive",
+      "check": "negative-parallelism",
+      "expected": "flag",
+      "text": "Not a tool. Not a platform. Not a product. A movement.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Not a tool. Not a platform. Not a product. A movement.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "negative-parallelism/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "6ebc1328ea",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 54,
+              "text": "Not a tool. Not a platform. Not a product. A movement."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the slogan fragments with one direct statement of what the thing is, naming the actual nature instead of listing exclusions."
+            },
+            "evidence": "Four short fragments stage a contrast ('Not a tool... A movement') without supplying any concrete description of the subject.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1426.8315999999995,
+          "input_tokens": 6198,
+          "output_tokens": 201
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Not a tool. Not a platform. Not a product. A movement.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the slogan fragments with one direct statement of what the thing is, naming the actual nature instead of listing exclusions.",
+              "evidence": "Four short fragments stage a contrast ('Not a tool... A movement') without supplying any concrete description of the subject.",
+              "check_id": "slogan-fragments",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "punctuation-rhythm/exception",
+      "check": "punctuation-rhythm",
+      "expected": "accept",
+      "text": "The old request cached failures; the new request retries them.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The old request cached failures; the new request retries them.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "punctuation-rhythm/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 792.4766,
+          "input_tokens": 6192,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "punctuation-rhythm/positive",
+      "check": "punctuation-rhythm",
+      "expected": "flag",
+      "text": "The result: clarity; the goal: momentum; the future: limitless.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The result: clarity; the goal: momentum; the future: limitless.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "punctuation-rhythm/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1459.5437000000002,
+          "input_tokens": 6199,
+          "output_tokens": 212
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The result: clarity; the goal: momentum; the future: limitless.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Rewrite the slogan-like colon and semicolon sequence as connected sentences stating what the result, goal and outlook actually are, or state that no concrete content is available.",
+              "evidence": "The draft uses three colon-separated abstract slogans with no concrete actor, action, or observable outcome.",
+              "check_id": "slogan-fragments",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "padded-enumeration/exception",
+      "check": "padded-enumeration",
+      "expected": "accept",
+      "text": "Required fields are name, address, city, postal code and country.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Required fields are name, address, city, postal code and country.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "padded-enumeration/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 779.2047000000002,
+          "input_tokens": 6194,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "padded-enumeration/positive",
+      "check": "padded-enumeration",
+      "expected": "flag",
+      "text": "We deliver value, impact, excellence, success, progress and possibility.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "We deliver value, impact, excellence, success, progress and possibility.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "padded-enumeration/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "0d8875f6a1",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 72,
+              "text": "We deliver value, impact, excellence, success, progress and possibility."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the abstract list with a concrete statement of what the organization delivers, to whom, and the observable result."
+            },
+            "evidence": "The draft lists six abstract nouns with no product, service, beneficiary, or measurable outcome, so the claim conveys no concrete meaning.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1847.3006000000005,
+          "input_tokens": 6199,
+          "output_tokens": 205
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "We deliver value, impact, excellence, success, progress and possibility.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the abstract list with a concrete statement of what the organization delivers, to whom, and the observable result.",
+              "evidence": "The draft lists six abstract nouns with no product, service, beneficiary, or measurable outcome, so the claim conveys no concrete meaning.",
+              "check_id": "ornamental-triad",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "strained-metaphor/exception",
+      "check": "strained-metaphor",
+      "expected": "accept",
+      "text": "The gateway routes requests to the authentication service.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The gateway routes requests to the authentication service.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "strained-metaphor/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 843.7599999999984,
+          "input_tokens": 6192,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "strained-metaphor/positive",
+      "check": "strained-metaphor",
+      "expected": "flag",
+      "text": "This gateway resets the bar while carrying the heavy lifting.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "This gateway resets the bar while carrying the heavy lifting.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "strained-metaphor/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "c5b3851638",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 61,
+              "text": "This gateway resets the bar while carrying the heavy lifting."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Rewrite the sentence to state concretely what the gateway does and for whom, replacing the metaphors 'resets the bar' and 'heavy lifting'."
+            },
+            "evidence": "The sentence uses two figurative phrases that do not name any function, actor, or observable result; no source material explains the gateway.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1935.5102000000006,
+          "input_tokens": 6198,
+          "output_tokens": 213
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "This gateway resets the bar while carrying the heavy lifting.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Rewrite the sentence to state concretely what the gateway does and for whom, replacing the metaphors 'resets the bar' and 'heavy lifting'.",
+              "evidence": "The sentence uses two figurative phrases that do not name any function, actor, or observable result; no source material explains the gateway.",
+              "check_id": "strained-metaphor",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "canned-empathy/exception",
+      "check": "canned-empathy",
+      "expected": "accept",
+      "text": "You said the delay was frustrating; the next update is due Friday.",
+      "context": {
+        "user_message": "The delay is frustrating. When is the next update?",
+        "source_material": "The next update is due Friday."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "You said the delay was frustrating; the next update is due Friday.",
+        "context": {
+          "user_message": "The delay is frustrating. When is the next update?",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "The next update is due Friday."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "canned-empathy/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1140.3120999999992,
+          "input_tokens": 6189,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "canned-empathy/positive",
+      "check": "canned-empathy",
+      "expected": "flag",
+      "text": "I know this must be incredibly overwhelming for you.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "I know this must be incredibly overwhelming for you.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "canned-empathy/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "e8f616d0a4",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 52,
+              "text": "I know this must be incredibly overwhelming for you."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Remove the assumed intensity of feeling; acknowledge only what the user expressed, or drop the sentence since the user expressed no emotion."
+            },
+            "evidence": "The user only asked for a writing review and expressed no feelings, so 'incredibly overwhelming' is assumed emotion.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1825.7088000000003,
+          "input_tokens": 6194,
+          "output_tokens": 204
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "I know this must be incredibly overwhelming for you.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Remove the assumed intensity of feeling; acknowledge only what the user expressed, or drop the sentence since the user expressed no emotion.",
+              "evidence": "The user only asked for a writing review and expressed no feelings, so 'incredibly overwhelming' is assumed emotion.",
+              "check_id": "canned-empathy",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "empty-balance/exception",
+      "check": "empty-balance",
+      "expected": "accept",
+      "text": "Caching lowers read latency but delays visibility of writes by up to ten seconds.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Caching lowers read latency but delays visibility of writes by up to ten seconds.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "empty-balance/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 675.1493999999984,
+          "input_tokens": 6204,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "empty-balance/positive",
+      "check": "empty-balance",
+      "expected": "flag",
+      "text": "While this brings benefits, it also presents challenges.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "While this brings benefits, it also presents challenges.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "empty-balance/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "79a4da45d5",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 56,
+              "text": "While this brings benefits, it also presents challenges."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Name the actual benefit and the actual challenge, with their conditions, instead of the generic benefits-and-challenges balance."
+            },
+            "evidence": "The draft balances unnamed benefits against unnamed challenges, leaving the reader unable to tell what the tradeoff is.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 2397.8781000000017,
+          "input_tokens": 6193,
+          "output_tokens": 197
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "While this brings benefits, it also presents challenges.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Name the actual benefit and the actual challenge, with their conditions, instead of the generic benefits-and-challenges balance.",
+              "evidence": "The draft balances unnamed benefits against unnamed challenges, leaving the reader unable to tell what the tradeoff is.",
+              "check_id": "empty-balance",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "manufactured-significance/exception",
+      "check": "manufactured-significance",
+      "expected": "accept",
+      "text": "The migration removes the last dependency on the retired server.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The migration removes the last dependency on the retired server.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "manufactured-significance/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 626.3021999999983,
+          "input_tokens": 6193,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "manufactured-significance/positive",
+      "check": "manufactured-significance",
+      "expected": "flag",
+      "text": "The renamed variable marks a pivotal moment in software history.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The renamed variable marks a pivotal moment in software history.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "manufactured-significance/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "9c84ff60ca",
+            "span": {
+              "segment_id": "s1",
+              "start": 21,
+              "end": 63,
+              "text": "marks a pivotal moment in software history"
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the significance claim with the concrete effect of the rename, or remove it, since no supporting basis is given."
+            },
+            "evidence": "The draft asserts pivotal historical importance for a variable rename with no supplied source or consequence.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1362.1587,
+          "input_tokens": 6196,
+          "output_tokens": 180
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "marks a pivotal moment in software history",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the significance claim with the concrete effect of the rename, or remove it, since no supporting basis is given.",
+              "evidence": "The draft asserts pivotal historical importance for a variable rename with no supplied source or consequence.",
+              "check_id": "manufactured-significance",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "promotional-tone/exception",
+      "check": "promotional-tone",
+      "expected": "accept",
+      "text": "The endpoint accepts JSON and returns a receipt identifier.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The endpoint accepts JSON and returns a receipt identifier.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "promotional-tone/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 828.729800000001,
+          "input_tokens": 6199,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "promotional-tone/positive",
+      "check": "promotional-tone",
+      "expected": "flag",
+      "text": "This groundbreaking endpoint offers a truly seamless experience.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "This groundbreaking endpoint offers a truly seamless experience.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "promotional-tone/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "c89d73a8f2",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 64,
+              "text": "This groundbreaking endpoint offers a truly seamless experience."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the promotional adjectives with the concrete properties of the endpoint, or state that no supporting detail is available."
+            },
+            "evidence": "'Groundbreaking' and 'truly seamless' are unsupported praise; no source material describes the endpoint's behavior.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1234.0829999999987,
+          "input_tokens": 6199,
+          "output_tokens": 201
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "This groundbreaking endpoint offers a truly seamless experience.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Replace the promotional adjectives with the concrete properties of the endpoint, or state that no supporting detail is available.",
+              "evidence": "'Groundbreaking' and 'truly seamless' are unsupported praise; no source material describes the endpoint's behavior.",
+              "check_id": "promotional-tone",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "abstract-cluster/exception",
+      "check": "abstract-cluster",
+      "expected": "accept",
+      "text": "The robust estimator limits the influence of outliers.",
+      "context": {
+        "audience": "Statisticians familiar with robust estimation."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The robust estimator limits the influence of outliers.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "audience": "Statisticians familiar with robust estimation."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "abstract-cluster/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 700.3474000000024,
+          "input_tokens": 6208,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "abstract-cluster/positive",
+      "check": "abstract-cluster",
+      "expected": "flag",
+      "text": "Our holistic synergy empowers transformative alignment across the landscape.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Our holistic synergy empowers transformative alignment across the landscape.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "abstract-cluster/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "dd282101aa",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 76,
+              "text": "Our holistic synergy empowers transformative alignment across the landscape."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the buzzword sentence with a concrete statement naming what is aligned, who acts, and the observable result."
+            },
+            "evidence": "The sentence stacks abstract terms (holistic, synergy, transformative, alignment, landscape) without naming actors, actions, or outcomes.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1391.7861000000012,
+          "input_tokens": 6200,
+          "output_tokens": 217
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Our holistic synergy empowers transformative alignment across the landscape.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the buzzword sentence with a concrete statement naming what is aligned, who acts, and the observable result.",
+              "evidence": "The sentence stacks abstract terms (holistic, synergy, transformative, alignment, landscape) without naming actors, actions, or outcomes.",
+              "check_id": "abstract-cluster",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "empty-benefit/exception",
+      "check": "empty-benefit",
+      "expected": "accept",
+      "text": "The new process removes one approval step, saving reviewers ten minutes per request.",
+      "context": {
+        "source_material": "The new process removes one approval step. Timed trials found that reviewers spend ten fewer minutes per request."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The new process removes one approval step, saving reviewers ten minutes per request.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "The new process removes one approval step. Timed trials found that reviewers spend ten fewer minutes per request."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "empty-benefit/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 714.773799999999,
+          "input_tokens": 6235,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "empty-benefit/positive",
+      "check": "empty-benefit",
+      "expected": "flag",
+      "text": "The new process unlocks value and drives impact.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The new process unlocks value and drives impact.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "empty-benefit/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "92bababcce",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 48,
+              "text": "The new process unlocks value and drives impact."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the abstract benefit claims with what the new process actually does and who gains from it, or state that the effect is not yet known."
+            },
+            "evidence": "The sentence claims value and impact without naming any observable change, beneficiary, or supporting detail.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1476.7107000000033,
+          "input_tokens": 6191,
+          "output_tokens": 186
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The new process unlocks value and drives impact.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Replace the abstract benefit claims with what the new process actually does and who gains from it, or state that the effect is not yet known.",
+              "evidence": "The sentence claims value and impact without naming any observable change, beneficiary, or supporting detail.",
+              "check_id": "abstract-cluster",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unsupported-causality/exception",
+      "check": "unsupported-causality",
+      "expected": "accept",
+      "text": "The estimate may rise because two regions have not reported.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The estimate may rise because two regions have not reported.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "unsupported-causality/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 712.3214999999982,
+          "input_tokens": 6193,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "unsupported-causality/positive",
+      "check": "unsupported-causality",
+      "expected": "flag",
+      "text": "The button is now blue, ensuring higher revenue.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The button is now blue, ensuring higher revenue.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "unsupported-causality/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "f7ce11728f",
+            "span": {
+              "segment_id": "s1",
+              "start": 24,
+              "end": 47,
+              "text": "ensuring higher revenue"
+            },
+            "category": "unsupported_claim",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "cite_or_soften_or_remove",
+              "text": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation."
+            },
+            "evidence": "The draft asserts a revenue outcome caused by the color change; no data or mechanism is supplied in the message or source material.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1259.9145999999964,
+          "input_tokens": 6194,
+          "output_tokens": 199
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "ensuring higher revenue",
+              "category": "unsupported_claim",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "cite_or_soften_or_remove",
+              "instruction": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation.",
+              "evidence": "The draft asserts a revenue outcome caused by the color change; no data or mechanism is supplied in the message or source material.",
+              "check_id": "unsupported-causality",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unattributed-authority/exception",
+      "check": "unattributed-authority",
+      "expected": "accept",
+      "text": "The supplied report's Table 2 lists a median latency of 20 ms.",
+      "context": {
+        "source_material": "Report A, Table 2: the median latency is 20 ms."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The supplied report's Table 2 lists a median latency of 20 ms.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "Report A, Table 2: the median latency is 20 ms."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "unattributed-authority/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 647.2942000000039,
+          "input_tokens": 6221,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "unattributed-authority/positive",
+      "check": "unattributed-authority",
+      "expected": "flag",
+      "text": "Experts agree that this design is the best.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Experts agree that this design is the best.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "unattributed-authority/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "4add0d51c2",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 43,
+              "text": "Experts agree that this design is the best."
+            },
+            "category": "unsupported_claim",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "cite_or_soften_or_remove",
+              "text": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation."
+            },
+            "evidence": "The draft invokes expert consensus and a 'best' superiority claim with no named source in the draft, user message, or source material.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1300.0134000000035,
+          "input_tokens": 6189,
+          "output_tokens": 202
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Experts agree that this design is the best.",
+              "category": "unsupported_claim",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "cite_or_soften_or_remove",
+              "instruction": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation.",
+              "evidence": "The draft invokes expert consensus and a 'best' superiority claim with no named source in the draft, user message, or source material.",
+              "check_id": "unattributed-authority",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unspecified-comparison/exception",
+      "check": "unspecified-comparison",
+      "expected": "accept",
+      "text": "Median latency fell from 40 ms to 20 ms on the same benchmark.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Median latency fell from 40 ms to 20 ms on the same benchmark.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "unspecified-comparison/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1226.8602000000028,
+          "input_tokens": 6203,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "unspecified-comparison/positive",
+      "check": "unspecified-comparison",
+      "expected": "flag",
+      "text": "The new version is much faster.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The new version is much faster.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "unspecified-comparison/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "e4d37fdd2a",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 31,
+              "text": "The new version is much faster."
+            },
+            "category": "unsupported_claim",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "cite_or_soften_or_remove",
+              "text": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation."
+            },
+            "evidence": "The draft asserts a speed improvement with no supplied benchmark, source material, or dimension of measurement.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1243.5567999999985,
+          "input_tokens": 6185,
+          "output_tokens": 195
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The new version is much faster.",
+              "category": "unsupported_claim",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "cite_or_soften_or_remove",
+              "instruction": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation.",
+              "evidence": "The draft asserts a speed improvement with no supplied benchmark, source material, or dimension of measurement.",
+              "check_id": null,
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "missing-actor/exception",
+      "check": "missing-actor",
+      "expected": "accept",
+      "text": "Legal sent the draft to Security; Security approved it.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Legal sent the draft to Security; Security approved it.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "missing-actor/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 691.7401000000027,
+          "input_tokens": 6195,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "missing-actor/positive",
+      "check": "missing-actor",
+      "expected": "flag",
+      "text": "They told them to change it before that happened.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "They told them to change it before that happened.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "missing-actor/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 861.100400000003,
+          "input_tokens": 6188,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "process-for-rationale/exception",
+      "check": "process-for-rationale",
+      "expected": "accept",
+      "text": "Legal and Security must approve the exception before release.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Legal and Security must approve the exception before release.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "process-for-rationale/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 722.532100000004,
+          "input_tokens": 6192,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "process-for-rationale/positive",
+      "check": "process-for-rationale",
+      "expected": "flag",
+      "text": "After extensive review, we aligned on option B.",
+      "context": {
+        "user_message": "Why did we choose option B?"
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "After extensive review, we aligned on option B.",
+        "context": {
+          "user_message": "Why did we choose option B?",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "process-for-rationale/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1296.6286999999938,
+          "input_tokens": 6168,
+          "output_tokens": 215
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "After extensive review, we aligned on option B.",
+              "category": "unsupported_claim",
+              "severity": "warn",
+              "confidence": 0.6,
+              "action": "cite_or_soften_or_remove",
+              "instruction": "Cite the review actually performed or remove 'extensive'; state that no source material was supplied and the reasons for choosing option B are unavailable.",
+              "evidence": "The draft asserts 'extensive review' though source_material is empty and no review details were supplied; the user asked for the reason, which the draft does not give.",
+              "check_id": null,
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "meaning-lost/exception",
+      "check": "meaning-lost",
+      "expected": "accept",
+      "text": "The vendor may terminate only after giving 30 days' written notice.",
+      "context": {
+        "original_text": "The vendor may terminate only after giving 30 days' written notice."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The vendor may terminate only after giving 30 days' written notice.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "original_text": "The vendor may terminate only after giving 30 days' written notice."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "meaning-lost/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 657.1391999999978,
+          "input_tokens": 6219,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "meaning-lost/positive",
+      "check": "meaning-lost",
+      "expected": "flag",
+      "text": "The vendor may terminate the agreement.",
+      "context": {
+        "original_text": "The vendor may terminate only after giving 30 days' written notice."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The vendor may terminate the agreement.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "original_text": "The vendor may terminate only after giving 30 days' written notice."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "meaning-lost/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "89e9e7775b",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 39,
+              "text": "The vendor may terminate the agreement."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.9,
+            "instruction": {
+              "action": "restructure",
+              "text": "Restore the condition from the original: the vendor may terminate only after giving 30 days' written notice."
+            },
+            "evidence": "The original limits termination to cases after 30 days' written notice; the draft drops this condition entirely.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1013.2917999999991,
+          "input_tokens": 6211,
+          "output_tokens": 175
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The vendor may terminate the agreement.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.9,
+              "action": "restructure",
+              "instruction": "Restore the condition from the original: the vendor may terminate only after giving 30 days' written notice.",
+              "evidence": "The original limits termination to cases after 30 days' written notice; the draft drops this condition entirely.",
+              "check_id": "meaning-lost",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "undefined-concept/exception",
+      "check": "undefined-concept",
+      "expected": "accept",
+      "text": "The retry loop resends failed requests up to three times.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The retry loop resends failed requests up to three times.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "undefined-concept/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 743.3965000000026,
+          "input_tokens": 6193,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "undefined-concept/positive",
+      "check": "undefined-concept",
+      "expected": "flag",
+      "text": "The same agentic loop handles everything.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The same agentic loop handles everything.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "undefined-concept/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 685.3070999999982,
+          "input_tokens": 6189,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "verbal-padding/exception",
+      "check": "verbal-padding",
+      "expected": "accept",
+      "text": "The queue is empty now.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The queue is empty now.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "verbal-padding/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1259.0292999999947,
+          "input_tokens": 6185,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "verbal-padding/positive",
+      "check": "verbal-padding",
+      "expected": "flag",
+      "text": "At this point in time, the queue is empty.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "At this point in time, the queue is empty.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "verbal-padding/positive",
+        "prior_findings": []
+      },
+      "local": [
+        {
+          "id": "97885cd763",
+          "span": {
+            "segment_id": "s1",
+            "start": 0,
+            "end": 21,
+            "text": "At this point in time"
+          },
+          "category": "filler",
+          "source": "rule",
+          "rule_id": "writing.filler.001",
+          "severity": "warn",
+          "confidence": 1,
+          "instruction": {
+            "action": "shorten",
+            "text": "Use 'now' or 'to' where it preserves the meaning; remove the verbal padding."
+          },
+          "evidence": null,
+          "profile_origin": "local/writing-review"
+        }
+      ],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1793.4630000000034,
+          "input_tokens": 6218,
+          "output_tokens": 197
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "At this point in time",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "shorten",
+              "instruction": "Replace the wordy opener 'At this point in time' with 'Now' or 'Currently' to shorten the sentence.",
+              "evidence": "'At this point in time' is verbal padding for 'now'; it adds no meaning. This duplicates the supplied local finding, so it is reported only for the shortening action.",
+              "check_id": "verbal-padding",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bureaucratic-circumlocution/exception",
+      "check": "bureaucratic-circumlocution",
+      "expected": "accept",
+      "text": "Legal must review the exception before release.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Legal must review the exception before release.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "bureaucratic-circumlocution/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 868.5032999999967,
+          "input_tokens": 6188,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "bureaucratic-circumlocution/positive",
+      "check": "bureaucratic-circumlocution",
+      "expected": "flag",
+      "text": "The implementation of the initiation of the review will be undertaken.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The implementation of the initiation of the review will be undertaken.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "bureaucratic-circumlocution/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "73ffa74fa4",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 70,
+              "text": "The implementation of the initiation of the review will be undertaken."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Rewrite as a direct sentence naming who starts the review and when, e.g. 'We will start the review.' Keep the future-tense commitment."
+            },
+            "evidence": "Nominalized chain 'implementation of the initiation' and passive 'will be undertaken' hide the actor and the action.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1338.8554000000004,
+          "input_tokens": 6196,
+          "output_tokens": 205
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The implementation of the initiation of the review will be undertaken.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Rewrite as a direct sentence naming who starts the review and when, e.g. 'We will start the review.' Keep the future-tense commitment.",
+              "evidence": "Nominalized chain 'implementation of the initiation' and passive 'will be undertaken' hide the actor and the action.",
+              "check_id": "noun-chain",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stacked-uncertainty/exception",
+      "check": "stacked-uncertainty",
+      "expected": "accept",
+      "text": "The estimate is preliminary because two regions have not reported.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The estimate is preliminary because two regions have not reported.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "stacked-uncertainty/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 799.1175999999978,
+          "input_tokens": 6195,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "stacked-uncertainty/positive",
+      "check": "stacked-uncertainty",
+      "expected": "flag",
+      "text": "The patch might possibly reduce latency.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The patch might possibly reduce latency.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "stacked-uncertainty/positive",
+        "prior_findings": []
+      },
+      "local": [
+        {
+          "id": "3754d34c3d",
+          "span": {
+            "segment_id": "s1",
+            "start": 10,
+            "end": 24,
+            "text": "might possibly"
+          },
+          "category": "hedge",
+          "source": "rule",
+          "rule_id": "writing.hedge.001",
+          "severity": "warn",
+          "confidence": 1,
+          "instruction": {
+            "action": "shorten",
+            "text": "Keep one accurate uncertainty statement and its reason; remove only the redundant hedge."
+          },
+          "evidence": null,
+          "profile_origin": "local/writing-review"
+        }
+      ],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1304.2132999999958,
+          "input_tokens": 6218,
+          "output_tokens": 189
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "might possibly",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Remove one of the two hedges so the sentence reads 'might reduce latency' or 'may reduce latency'.",
+              "evidence": "'might possibly' stacks two hedges expressing the same uncertainty; one accurate hedge keeps the warranted uncertainty.",
+              "check_id": "stacked-uncertainty",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "noun-chain/exception",
+      "check": "noun-chain",
+      "expected": "accept",
+      "text": "The database connection pool contains ten connections.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The database connection pool contains ten connections.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "noun-chain/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 922.9170000000013,
+          "input_tokens": 6190,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "noun-chain/positive",
+      "check": "noun-chain",
+      "expected": "flag",
+      "text": "The deployment readiness alignment enablement process begins tomorrow.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The deployment readiness alignment enablement process begins tomorrow.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "noun-chain/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "c10a1550e5",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 70,
+              "text": "The deployment readiness alignment enablement process begins tomorrow."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.6,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Rephrase the noun chain into plain actors and actions, naming what the process does and who it involves, without inventing details."
+            },
+            "evidence": "Four stacked abstract nouns ('readiness alignment enablement process') hide what the process actually does; the draft gives no source to recover it.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1344.9024999999965,
+          "input_tokens": 6199,
+          "output_tokens": 204
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The deployment readiness alignment enablement process begins tomorrow.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.6,
+              "action": "rephrase",
+              "instruction": "Rephrase the noun chain into plain actors and actions, naming what the process does and who it involves, without inventing details.",
+              "evidence": "Four stacked abstract nouns ('readiness alignment enablement process') hide what the process actually does; the draft gives no source to recover it.",
+              "check_id": "noun-chain",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "indirect-statement/exception",
+      "check": "indirect-statement",
+      "expected": "accept",
+      "text": "Participants reported that the revised warning felt less urgent.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Participants reported that the revised warning felt less urgent.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "indirect-statement/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 862.0198999999993,
+          "input_tokens": 6195,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "indirect-statement/positive",
+      "check": "indirect-statement",
+      "expected": "flag",
+      "text": "It reads as an increase in retries.",
+      "context": {
+        "user_message": "State what changed in the retry configuration.",
+        "source_material": "The maximum number of retries increased from two to three."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "It reads as an increase in retries.",
+        "context": {
+          "user_message": "State what changed in the retry configuration.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "The maximum number of retries increased from two to three."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "indirect-statement/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "68e94223dd",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 35,
+              "text": "It reads as an increase in retries."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "State the change directly: the maximum number of retries increased from two to three, dropping the hedged 'reads as' framing."
+            },
+            "evidence": "The source states the maximum retries increased from two to three; the draft hedges with 'reads as' and omits the actual values.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1226.0763000000006,
+          "input_tokens": 6183,
+          "output_tokens": 186
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "It reads as an increase in retries.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "State the change directly: the maximum number of retries increased from two to three, dropping the hedged 'reads as' framing.",
+              "evidence": "The source states the maximum retries increased from two to three; the draft hedges with 'reads as' and omits the actual values.",
+              "check_id": "indirect-statement",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audience-jargon/exception",
+      "check": "audience-jargon",
+      "expected": "accept",
+      "text": "The parser builds an abstract syntax tree for the compiler.",
+      "context": {
+        "audience": "Compiler engineers reading a compiler implementation note."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The parser builds an abstract syntax tree for the compiler.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "audience": "Compiler engineers reading a compiler implementation note."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "audience-jargon/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 797.9049000000014,
+          "input_tokens": 6215,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "audience-jargon/positive",
+      "check": "audience-jargon",
+      "expected": "flag",
+      "text": "We reified the orchestration substrate for your password reset.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "We reified the orchestration substrate for your password reset.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "audience-jargon/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "915730e8b5",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 63,
+              "text": "We reified the orchestration substrate for your password reset."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Rephrase in plain terms saying what was built or changed for the password reset flow, since 'reified' and 'orchestration substrate' obscure the actual work."
+            },
+            "evidence": "The sentence uses abstract jargon ('reified', 'orchestration substrate') with no explanation of what concrete system or change is meant for this user.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1574.6458000000057,
+          "input_tokens": 6194,
+          "output_tokens": 216
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "We reified the orchestration substrate for your password reset.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Rephrase in plain terms saying what was built or changed for the password reset flow, since 'reified' and 'orchestration substrate' obscure the actual work.",
+              "evidence": "The sentence uses abstract jargon ('reified', 'orchestration substrate') with no explanation of what concrete system or change is meant for this user.",
+              "check_id": "audience-jargon",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "overloaded-sentence/exception",
+      "check": "overloaded-sentence",
+      "expected": "accept",
+      "text": "If approval is delayed, keep the current version running until Security signs off.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "If approval is delayed, keep the current version running until Security signs off.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "overloaded-sentence/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 784.6847000000053,
+          "input_tokens": 6198,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "overloaded-sentence/positive",
+      "check": "overloaded-sentence",
+      "expected": "flag",
+      "text": "The change, which, if the condition that was not ruled out fails to hold, would not be disallowed, proceeds.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The change, which, if the condition that was not ruled out fails to hold, would not be disallowed, proceeds.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "overloaded-sentence/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1661.7952000000005,
+          "input_tokens": 6212,
+          "output_tokens": 226
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The change, which, if the condition that was not ruled out fails to hold, would not be disallowed, proceeds.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "restructure",
+              "instruction": "Split this sentence and state the condition and its outcome in plain order, keeping the 'not ruled out' qualification intact.",
+              "evidence": "The sentence nests a conditional and a double negative ('not ruled out', 'would not be disallowed') with a delayed main verb, making it hard to follow.",
+              "check_id": "overloaded-sentence",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generic-opening/exception",
+      "check": "generic-opening",
+      "expected": "accept",
+      "text": "This memo covers the two launch decisions due Friday.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "This memo covers the two launch decisions due Friday.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "generic-opening/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 831.0440999999992,
+          "input_tokens": 6194,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "generic-opening/positive",
+      "check": "generic-opening",
+      "expected": "flag",
+      "text": "In today's fast-paced world, change is everywhere.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "In today's fast-paced world, change is everywhere.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "generic-opening/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "32a639b1b4",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 50,
+              "text": "In today's fast-paced world, change is everywhere."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the generic scene-setting opener with a concrete statement about the specific change the writer means, or remove the sentence."
+            },
+            "evidence": "The draft opens with a generic claim about a 'fast-paced world' that delays any substantive point and gives no specific scope.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1265.560599999997,
+          "input_tokens": 6194,
+          "output_tokens": 194
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "In today's fast-paced world, change is everywhere.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Replace the generic scene-setting opener with a concrete statement about the specific change the writer means, or remove the sentence.",
+              "evidence": "The draft opens with a generic claim about a 'fast-paced world' that delays any substantive point and gives no specific scope.",
+              "check_id": "generic-opening",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "request-echo/exception",
+      "check": "request-echo",
+      "expected": "accept",
+      "text": "I interpret cache as the browser cache here because you mentioned a stale page.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "I interpret cache as the browser cache here because you mentioned a stale page.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "request-echo/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 874.8191000000079,
+          "input_tokens": 6201,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "request-echo/positive",
+      "check": "request-echo",
+      "expected": "flag",
+      "text": "You asked me to explain how the cache works.",
+      "context": {
+        "user_message": "Explain how the cache works."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "You asked me to explain how the cache works.",
+        "context": {
+          "user_message": "Explain how the cache works.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "request-echo/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "95b23329e1",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 44,
+              "text": "You asked me to explain how the cache works."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "restructure",
+              "text": "Remove the request echo and begin with the actual explanation of how the cache works."
+            },
+            "evidence": "The draft only restates the user's request and does not advance the answer; no premise correction or needed context is given.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1034.1842000000033,
+          "input_tokens": 6167,
+          "output_tokens": 166
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "You asked me to explain how the cache works.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "restructure",
+              "instruction": "Remove the request echo and begin with the actual explanation of how the cache works.",
+              "evidence": "The draft only restates the user's request and does not advance the answer; no premise correction or needed context is given.",
+              "check_id": "request-echo",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "self-announcement/exception",
+      "check": "self-announcement",
+      "expected": "accept",
+      "text": "This memo covers launch timing and excludes pricing, which is undecided.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "This memo covers launch timing and excludes pricing, which is undecided.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "self-announcement/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 832.9020000000019,
+          "input_tokens": 6200,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "self-announcement/positive",
+      "check": "self-announcement",
+      "expected": "flag",
+      "text": "Below is a polished and comprehensive rewrite.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Below is a polished and comprehensive rewrite.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "self-announcement/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1131.5415999999968,
+          "input_tokens": 6194,
+          "output_tokens": 181
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Below is a polished and comprehensive rewrite.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "remove",
+              "instruction": "Remove the self-announcement and begin directly with the rewritten text, since the draft contains no actual rewrite.",
+              "evidence": "The draft only announces a polished, comprehensive rewrite and supplies no rewritten content.",
+              "check_id": "self-announcement",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "repeated-point/exception",
+      "check": "repeated-point",
+      "expected": "accept",
+      "text": "The cache stores recent responses. This avoids repeated database reads.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The cache stores recent responses. This avoids repeated database reads.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "repeated-point/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 754.0699000000022,
+          "input_tokens": 6198,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "repeated-point/positive",
+      "check": "repeated-point",
+      "expected": "flag",
+      "text": "The cache stores recent responses. Recent responses are stored by the cache.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The cache stores recent responses. Recent responses are stored by the cache.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "repeated-point/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "7a5c338c85",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 76,
+              "text": "The cache stores recent responses. Recent responses are stored by the cache."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the two sentences with one connected statement saying the cache stores recent responses, dropping the repeated passive restatement."
+            },
+            "evidence": "The second sentence restates the first in passive voice with no new information, distinction, or implication.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 2660.1840000000084,
+          "input_tokens": 6200,
+          "output_tokens": 189
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The cache stores recent responses. Recent responses are stored by the cache.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "rephrase",
+              "instruction": "Replace the two sentences with one connected statement saying the cache stores recent responses, dropping the repeated passive restatement.",
+              "evidence": "The second sentence restates the first in passive voice with no new information, distinction, or implication.",
+              "check_id": "repeated-point",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stock-closing/exception",
+      "check": "stock-closing",
+      "expected": "accept",
+      "text": "Retry the failed request after the migration completes.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Retry the failed request after the migration completes.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "stock-closing/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 671.7812000000122,
+          "input_tokens": 6191,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "stock-closing/positive",
+      "check": "stock-closing",
+      "expected": "flag",
+      "text": "Together we can embrace a brighter future and unlock limitless potential.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Together we can embrace a brighter future and unlock limitless potential.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "stock-closing/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "d4993c931e",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 73,
+              "text": "Together we can embrace a brighter future and unlock limitless potential."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Replace the stock promotional slogan with a concrete statement of what the draft's actual subject achieves, or remove it."
+            },
+            "evidence": "The sentence is generic uplift with no specific actor, action, or outcome, and the draft has no other content to support it.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1215.4698999999964,
+          "input_tokens": 6199,
+          "output_tokens": 198
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Together we can embrace a brighter future and unlock limitless potential.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Replace the stock promotional slogan with a concrete statement of what the draft's actual subject achieves, or remove it.",
+              "evidence": "The sentence is generic uplift with no specific actor, action, or outcome, and the draft has no other content to support it.",
+              "check_id": "ornamental-triad",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fragmented-structure/exception",
+      "check": "fragmented-structure",
+      "expected": "accept",
+      "text": "## Request\nSend a JSON body.\n## Response\nRead the receipt identifier.\n## Errors\nRetry a timeout.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "## Request\nSend a JSON body.\n## Response\nRead the receipt identifier.\n## Errors\nRetry a timeout.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "fragmented-structure/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1266.4389000000083,
+          "input_tokens": 6223,
+          "output_tokens": 167
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Send a JSON body.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.3,
+              "action": "specify",
+              "instruction": "State which endpoint or request fields the JSON body needs, or say that this detail is not available.",
+              "evidence": "The draft gives no endpoint, fields, or content type for the JSON body, but the draft is a brief reference entry.",
+              "check_id": null,
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fragmented-structure/positive",
+      "check": "fragmented-structure",
+      "expected": "flag",
+      "text": "## Context\nWe added a cache.\n## Detail\nIt stores responses.\n## Result\nReads are faster.",
+      "context": {
+        "user_message": "Explain this cache change in a short connected paragraph.",
+        "source_material": "We added a cache. It stores responses. Benchmarking found faster reads."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "## Context\nWe added a cache.\n## Detail\nIt stores responses.\n## Result\nReads are faster.",
+        "context": {
+          "user_message": "Explain this cache change in a short connected paragraph.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "We added a cache. It stores responses. Benchmarking found faster reads."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "fragmented-structure/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1568.1790000000037,
+          "input_tokens": 6226,
+          "output_tokens": 218
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "## Context\nWe added a cache.\n## Detail\nIt stores responses.\n## Result\nReads are faster.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "restructure",
+              "instruction": "Replace the headings and fragments with one short connected paragraph, as the user requested, joining the cache addition, what it stores, and the benchmark result.",
+              "evidence": "User asked for a short connected paragraph, but the draft uses three headings with one-line fragments.",
+              "check_id": "fragmented-structure",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mechanical-labels/exception",
+      "check": "mechanical-labels",
+      "expected": "accept",
+      "text": "**Timeout:** Retry the request.\n**Unauthorized:** Check the credential.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "**Timeout:** Retry the request.\n**Unauthorized:** Check the credential.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "mechanical-labels/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1512.7533999999869,
+          "input_tokens": 6207,
+          "output_tokens": 200
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "**Timeout:** Retry the request.\n**Unauthorized:** Check the credential.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.55,
+              "action": "restructure",
+              "instruction": "Consider whether the bold label-and-explanation pairs need connecting; below confidence threshold, so no finding should be emitted.",
+              "evidence": "Two short bold-label items are distinct reference entries, which the rubric treats as valid.",
+              "check_id": "mechanical-labels",
+              "exception_applies": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mechanical-labels/positive",
+      "check": "mechanical-labels",
+      "expected": "flag",
+      "text": "**Clarity:** Be clear.\n**Simplicity:** Keep it simple.\n**Directness:** Be direct.",
+      "context": {},
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "**Clarity:** Be clear.\n**Simplicity:** Keep it simple.\n**Directness:** Be direct.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "mechanical-labels/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "1d1b9589c3",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 81,
+              "text": "**Clarity:** Be clear.\n**Simplicity:** Keep it simple.\n**Directness:** Be direct."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.7,
+            "instruction": {
+              "action": "restructure",
+              "text": "Connect the three bold label items into one short explanation of what clarity, simplicity and directness require, or give each a concrete action."
+            },
+            "evidence": "Three bold label-and-explanation items repeat one idea with no added detail on what the reader should do.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1377.5849000000017,
+          "input_tokens": 6219,
+          "output_tokens": 213
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "**Clarity:** Be clear.\n**Simplicity:** Keep it simple.\n**Directness:** Be direct.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.7,
+              "action": "restructure",
+              "instruction": "Connect the three bold label items into one short explanation of what clarity, simplicity and directness require, or give each a concrete action.",
+              "evidence": "Three bold label-and-explanation items repeat one idea with no added detail on what the reader should do.",
+              "check_id": "mechanical-labels",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "marketing/exception",
+      "check": "promotional-tone",
+      "expected": "accept",
+      "text": "Meet your new favorite notebook: bold colors, crisp pages, and room for every idea.",
+      "context": {
+        "user_message": "Write upbeat marketing copy for a notebook with colorful covers and crisp pages."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Meet your new favorite notebook: bold colors, crisp pages, and room for every idea.",
+        "context": {
+          "user_message": "Write upbeat marketing copy for a notebook with colorful covers and crisp pages.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "marketing/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 715.9514000000054,
+          "input_tokens": 6204,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "reference/exception",
+      "check": "mechanical-labels",
+      "expected": "accept",
+      "text": "**Timeout:** Retry the request.\n**Unauthorized:** Check the credential.\n**Not found:** Check the resource identifier.",
+      "context": {
+        "user_message": "Use bold labels followed by one short explanation for these three API errors."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "**Timeout:** Retry the request.\n**Unauthorized:** Check the credential.\n**Not found:** Check the resource identifier.",
+        "context": {
+          "user_message": "Use bold labels followed by one short explanation for these three API errors.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "reference/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 894.8230999999942,
+          "input_tokens": 6213,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "exhaustive/exception",
+      "check": "padded-enumeration",
+      "expected": "accept",
+      "text": "The required fields are name, street, city, province, postal code, country, email and telephone number.",
+      "context": {
+        "user_message": "List every required field: name, street, city, province, postal code, country, email and telephone number."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The required fields are name, street, city, province, postal code, country, email and telephone number.",
+        "context": {
+          "user_message": "List every required field: name, street, city, province, postal code, country, email and telephone number.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "exhaustive/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 769.2246000000014,
+          "input_tokens": 6197,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "technical/exception",
+      "check": "audience-jargon",
+      "expected": "accept",
+      "text": "The compiler lowers the abstract syntax tree to SSA form before register allocation.",
+      "context": {
+        "user_message": "Summarize the supplied compiler pipeline for compiler engineers.",
+        "audience": "Compiler engineers",
+        "source_material": "Pipeline: parse AST, lower to SSA, allocate registers."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The compiler lowers the abstract syntax tree to SSA form before register allocation.",
+        "context": {
+          "user_message": "Summarize the supplied compiler pipeline for compiler engineers.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "audience": "Compiler engineers",
+          "source_material": "Pipeline: parse AST, lower to SSA, allocate registers."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "technical/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1478.998499999987,
+          "input_tokens": 6226,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "uncertainty/exception",
+      "check": "stacked-uncertainty",
+      "expected": "accept",
+      "text": "The vendor may terminate only after giving 30 days' written notice.",
+      "context": {
+        "user_message": "Check this contract sentence for clarity; preserve its permission and notice condition."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The vendor may terminate only after giving 30 days' written notice.",
+        "context": {
+          "user_message": "Check this contract sentence for clarity; preserve its permission and notice condition.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "uncertainty/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1190.955099999992,
+          "input_tokens": 6191,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "separate-uncertainties/exception",
+      "check": "stacked-uncertainty",
+      "expected": "accept",
+      "text": "We may deploy Friday if testing passes; if deployed, the patch might reduce latency.",
+      "context": {
+        "user_message": "Explain both deployment uncertainty and uncertainty about the patch's effect."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "We may deploy Friday if testing passes; if deployed, the patch might reduce latency.",
+        "context": {
+          "user_message": "Explain both deployment uncertainty and uncertainty about the patch's effect.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "separate-uncertainties/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1316.693299999999,
+          "input_tokens": 6200,
+          "output_tokens": 200
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "We may deploy Friday if testing passes; if deployed, the patch might reduce latency.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.55,
+              "action": "rephrase",
+              "instruction": "Explain separately why deployment is uncertain and why the patch's latency effect is uncertain, since the user asked for both.",
+              "evidence": "The draft gives two uncertain statements in one terse line without explaining the basis for either uncertainty.",
+              "check_id": "undefined-concept",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "explicit-empathy/exception",
+      "check": "canned-empathy",
+      "expected": "accept",
+      "text": "That delay sounds frustrating. Your replacement arrives Friday.",
+      "context": {
+        "user_message": "I am frustrated that my replacement has been delayed. When does it arrive?",
+        "source_material": "Replacement delivery date: Friday."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "That delay sounds frustrating. Your replacement arrives Friday.",
+        "context": {
+          "user_message": "I am frustrated that my replacement has been delayed. When does it arrive?",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "Replacement delivery date: Friday."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "explicit-empathy/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 762.0062999999936,
+          "input_tokens": 6205,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "genuine-contrast/exception",
+      "check": "inflated-contrast",
+      "expected": "accept",
+      "text": "The change affects not only reads but also writes.",
+      "context": {
+        "user_message": "Clarify that both reads and writes are affected, correcting the earlier claim that only reads change."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The change affects not only reads but also writes.",
+        "context": {
+          "user_message": "Clarify that both reads and writes are affected, correcting the earlier claim that only reads change.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "genuine-contrast/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 763.4400000000023,
+          "input_tokens": 6188,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "grounded-significance/exception",
+      "check": "manufactured-significance",
+      "expected": "accept",
+      "text": "Retiring the old server removes our last dependency on the unsupported runtime.",
+      "context": {
+        "source_material": "Only the old server uses the unsupported runtime. All other servers were migrated."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Retiring the old server removes our last dependency on the unsupported runtime.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "Only the old server uses the unsupported runtime. All other servers were migrated."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "grounded-significance/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1380.170299999998,
+          "input_tokens": 6226,
+          "output_tokens": 210
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Retiring the old server removes our last dependency on the unsupported runtime.",
+              "category": "unsupported_claim",
+              "severity": "warn",
+              "confidence": 0.35,
+              "action": "cite_or_soften_or_remove",
+              "instruction": "Confirm the old server is the only remaining user of the runtime; the source supports that, so keep the claim tied to that fact.",
+              "evidence": "Source says only the old server uses the unsupported runtime and all other servers were migrated, which supports the draft's claim.",
+              "check_id": null,
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "requested-omission/exception",
+      "check": "meaning-lost",
+      "expected": "accept",
+      "text": "Restart the service after installing the patch.",
+      "context": {
+        "user_message": "Remove the obsolete staging-only condition. The restart now applies everywhere.",
+        "original_text": "Restart the service after installing the patch, but only in staging."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Restart the service after installing the patch.",
+        "context": {
+          "user_message": "Remove the obsolete staging-only condition. The restart now applies everywhere.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "original_text": "Restart the service after installing the patch, but only in staging."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "requested-omission/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 767.2519000000029,
+          "input_tokens": 6201,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "missing-original/exception",
+      "check": "meaning-lost",
+      "expected": "accept",
+      "text": "Restart the service after installing the patch.",
+      "context": {
+        "user_message": "Check this instruction for clarity."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Restart the service after installing the patch.",
+        "context": {
+          "user_message": "Check this instruction for clarity.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "missing-original/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1986.1612000000023,
+          "input_tokens": 6168,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "quoted-source/exception",
+      "check": "promotional-tone",
+      "expected": "accept",
+      "text": "> Our groundbreaking platform unlocks limitless potential.\n\nThose are the supplier's words; the test results follow.",
+      "context": {
+        "user_message": "Preserve the supplier quotation exactly."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "> Our groundbreaking platform unlocks limitless potential.\n\nThose are the supplier's words; the test results follow.",
+        "context": {
+          "user_message": "Preserve the supplier quotation exactly.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "quoted-source/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1379.2240999999922,
+          "input_tokens": 6201,
+          "output_tokens": 175
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Our groundbreaking platform unlocks limitless potential.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.3,
+              "action": "rephrase",
+              "instruction": "Keep the quoted supplier sentence unchanged; no edit is needed.",
+              "evidence": "The sentence is the user's requested quotation attributed to the supplier, so promotional wording is not flagged.",
+              "check_id": null,
+              "exception_applies": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inline-code/exception",
+      "check": "stacked-uncertainty",
+      "expected": "accept",
+      "text": "The fixture contains the string `might possibly`.",
+      "context": {
+        "user_message": "Explain what literal string the fixture contains."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The fixture contains the string `might possibly`.",
+        "context": {
+          "user_message": "Explain what literal string the fixture contains.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "inline-code/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 650.713499999998,
+          "input_tokens": 6174,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "useful-scope/exception",
+      "check": "self-announcement",
+      "expected": "accept",
+      "text": "This memo covers the two launch decisions due Friday and excludes pricing, which is still undecided.",
+      "context": {
+        "user_message": "Open the memo by stating its scope and the Friday deadline. Pricing is undecided and outside scope."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "This memo covers the two launch decisions due Friday and excludes pricing, which is still undecided.",
+        "context": {
+          "user_message": "Open the memo by stating its scope and the Friday deadline. Pricing is undecided and outside scope.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "useful-scope/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 691.8905999999988,
+          "input_tokens": 6210,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "real-rationale/exception",
+      "check": "process-for-rationale",
+      "expected": "accept",
+      "text": "We chose option B because it keeps customer data in the required region. Legal must approve the exception before release.",
+      "context": {
+        "source_material": "Option B keeps customer data in the required region. Release requires Legal approval."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "We chose option B because it keeps customer data in the required region. Legal must approve the exception before release.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "source_material": "Option B keeps customer data in the required region. Release requires Legal approval."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "real-rationale/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1131.0283000000054,
+          "input_tokens": 6231,
+          "output_tokens": 192
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "We chose option B because it keeps customer data in the required region.",
+              "category": "unsupported_claim",
+              "severity": "warn",
+              "confidence": 0.3,
+              "action": "cite_or_soften_or_remove",
+              "instruction": "Cite a source you actually have, restate this as expectation or opinion, or remove it. Do not invent a citation.",
+              "evidence": "Source says Option B keeps data in the required region but does not say it was chosen for that reason.",
+              "check_id": null,
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "requested-triad/exception",
+      "check": "ornamental-triad",
+      "expected": "accept",
+      "text": "The request must include a name, an address and a signature.",
+      "context": {
+        "user_message": "List the three required items: name, address, signature."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The request must include a name, an address and a signature.",
+        "context": {
+          "user_message": "List the three required items: name, address, signature.",
+          "style_constraints": "",
+          "mode": "interactive"
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "requested-triad/exception",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 802.6096000000107,
+          "input_tokens": 6172,
+          "output_tokens": 32
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": []
+        }
+      ]
+    },
+    {
+      "id": "number-loss/positive",
+      "check": "meaning-lost",
+      "expected": "flag",
+      "text": "The client retries failed requests.",
+      "context": {
+        "original_text": "The client retries failed requests at most three times, except authentication failures."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "The client retries failed requests.",
+        "context": {
+          "user_message": "Review this draft for clear, accurate writing. Preserve its meaning and necessary qualifications.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "original_text": "The client retries failed requests at most three times, except authentication failures."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "number-loss/positive",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "7e56545a46",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 35,
+              "text": "The client retries failed requests."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.9,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Restore the limit of at most three retries and the exception for authentication failures from the original text."
+            },
+            "evidence": "The original limits retries to three attempts except authentication failures; the draft drops both the limit and the exception.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1190.7284999999974,
+          "input_tokens": 6206,
+          "output_tokens": 169
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "The client retries failed requests.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.9,
+              "action": "rephrase",
+              "instruction": "Restore the limit of at most three retries and the exception for authentication failures from the original text.",
+              "evidence": "The original limits retries to three attempts except authentication failures; the draft drops both the limit and the exception.",
+              "check_id": "meaning-lost",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audience-jargon/positive-extra",
+      "check": "audience-jargon",
+      "expected": "flag",
+      "text": "Your credential rotation invalidated the authentication artifact.",
+      "context": {
+        "user_message": "Explain to a nontechnical customer why they need to sign in again after changing their password.",
+        "audience": "Nontechnical customer",
+        "source_material": "Changing the password ends existing sign-in sessions."
+      },
+      "request": {
+        "schema": "prosegate.review/1",
+        "text": "Your credential rotation invalidated the authentication artifact.",
+        "context": {
+          "user_message": "Explain to a nontechnical customer why they need to sign in again after changing their password.",
+          "style_constraints": "",
+          "mode": "interactive",
+          "audience": "Nontechnical customer",
+          "source_material": "Changing the password ends existing sign-in sessions."
+        },
+        "profile_id": "local/writing-review",
+        "pass": 1,
+        "stages": [
+          "rules",
+          "reviewer"
+        ],
+        "session_id": "live-eval",
+        "turn_id": "audience-jargon/positive-extra",
+        "prior_findings": []
+      },
+      "local": [],
+      "outcome": {
+        "findings": [
+          {
+            "id": "779c8dfa10",
+            "span": {
+              "segment_id": "s1",
+              "start": 0,
+              "end": 65,
+              "text": "Your credential rotation invalidated the authentication artifact."
+            },
+            "category": "register",
+            "source": "reviewer",
+            "rule_id": null,
+            "severity": "warn",
+            "confidence": 0.8,
+            "instruction": {
+              "action": "rephrase",
+              "text": "Rewrite in plain words for a nontechnical customer: say that changing the password ends existing sign-in sessions, so they must sign in again."
+            },
+            "evidence": "Draft uses jargon ('credential rotation', 'authentication artifact') for a nontechnical audience; source says changing the password ends existing sign-in sessions.",
+            "profile_origin": "local/writing-review"
+          }
+        ],
+        "stats": {
+          "model": "claude-haiku-5-5",
+          "latency_ms": 1202.3747999999905,
+          "input_tokens": 6215,
+          "output_tokens": 218
+        },
+        "span_misses": 0,
+        "error": null,
+        "skipped": null
+      },
+      "raw": [
+        {
+          "findings": [
+            {
+              "span_text": "Your credential rotation invalidated the authentication artifact.",
+              "category": "register",
+              "severity": "warn",
+              "confidence": 0.8,
+              "action": "rephrase",
+              "instruction": "Rewrite in plain words for a nontechnical customer: say that changing the password ends existing sign-in sessions, so they must sign in again.",
+              "evidence": "Draft uses jargon ('credential rotation', 'authentication artifact') for a nontechnical audience; source says changing the password ends existing sign-in sessions.",
+              "check_id": "audience-jargon",
+              "exception_applies": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

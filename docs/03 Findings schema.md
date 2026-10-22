@@ -18,6 +18,9 @@ export interface ReviewRequest {
     user_message: string;           // last user message, trimmed to 2,000 chars
     style_constraints: string;      // system-prompt / CLAUDE.md style lines, trimmed to 1,500 chars; '' if none
     mode: 'interactive' | 'headless';
+    audience?: string;             // optional audience context, at most 500 UTF-16 code units
+    original_text?: string;        // original for meaning-preservation review, at most 20,000
+    source_material?: string;      // evidence supplied by the caller, at most 20,000
   };
   profile_id: string;               // resolved profile (04), e.g. 'org-default/pr-description'
   pass: 1 | 2;
@@ -94,9 +97,16 @@ export type Action =
 | `repetition` | rule | A sentence that restates an earlier one in the same turn | warn |
 | `vague_claim` | reviewer | An assertion the user's question made specific that the answer left generic | block |
 | `unsupported_claim` | reviewer | A factual claim presented as settled with no basis in the turn or the context | block |
-| `register` | reviewer | Length, tone or format mismatched to the profile or the user's ask | warn |
+| `register` | reviewer | Clarity, meaning preservation, length, tone or format mismatched to the writing rubric, profile or user's ask | warn |
 
 Profiles may raise or lower severity per category or per rule (04). `info` findings never appear in `feedback_text`; they exist for telemetry and the UI.
+
+The optional request context fields are additive within `prosegate.review/1`.
+They are untrusted data supplied to the explicit reviewer, not executable
+instructions. The `reviewer_prompt/2` contextual writing catalog uses the existing
+categories; catalog findings are capped at `warn` regardless of provider/category
+severity. Original text is required for meaning-loss findings. See
+[contextual writing review](WRITING-REVIEW.md) for field limits and exceptions.
 
 ## Instruction forks
 

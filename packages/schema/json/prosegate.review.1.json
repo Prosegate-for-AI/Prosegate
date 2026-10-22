@@ -26,6 +26,18 @@
             "interactive",
             "headless"
           ]
+        },
+        "audience": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "original_text": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "source_material": {
+          "type": "string",
+          "maxLength": 20000
         }
       },
       "required": [

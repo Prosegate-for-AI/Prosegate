@@ -92,6 +92,14 @@
     "core.vocab.005": {
       "precision": null,
       "fp_rate": null
+    },
+    "writing.filler.001": {
+      "precision": null,
+      "fp_rate": null
+    },
+    "writing.hedge.001": {
+      "precision": null,
+      "fp_rate": null
     }
   }
 }

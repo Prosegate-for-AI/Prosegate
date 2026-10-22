@@ -1,0 +1,9 @@
+{"schema":"prosegate.eval-spend/1","cap_usd":0.017533000000000465,"pricing":[{"id":"claude-haiku-5-5","provider":"anthropic","family":"claude","generation":"5.5","input_usd_per_million":0.1,"output_usd_per_million":0.5,"pricing_checked_on":"2026-10-22","max_output_tokens":2048}]}
+{"event":"reserve","model":"claude-haiku-5-5","usd":0.003787}
+{"event":"usage","model":"claude-haiku-5-5","input_tokens":6794,"output_tokens":32,"usd":0.0006954000000000001}
+{"event":"reserve","model":"claude-haiku-5-5","usd":0.003786}
+{"event":"usage","model":"claude-haiku-5-5","input_tokens":6796,"output_tokens":195,"usd":0.0007771}
+{"event":"reserve","model":"claude-haiku-5-5","usd":0.003786}
+{"event":"usage","model":"claude-haiku-5-5","input_tokens":6790,"output_tokens":167,"usd":0.0007625}
+{"event":"reserve","model":"claude-haiku-5-5","usd":0.003797}
+{"event":"usage","model":"claude-haiku-5-5","input_tokens":6828,"output_tokens":220,"usd":0.0007928000000000001}

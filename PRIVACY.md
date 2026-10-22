@@ -21,7 +21,10 @@ turn text with a warning. Treat these files and local backups as sensitive data.
 
 The explicit BYOK review command sends your draft, up to 2,000 characters of the
 last user message, style constraints and register requirements directly to the
-selected AI provider using your key. Code segments are replaced with placeholders.
+selected AI provider using your key. Optional audience context (up to 500 UTF-16
+code units), original draft and source material (up to 20,000 each), and selected
+local findings are included when supplied. Code segments in the candidate draft
+are replaced with placeholders; original text and source material are sent verbatim.
 Prosegate does not relay these requests. The provider's data terms and your
 contract apply. A request setting is not a guarantee of zero provider retention.
 Automatic paid review in hooks and MCP is not enabled in this preview.

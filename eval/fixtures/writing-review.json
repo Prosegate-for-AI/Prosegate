@@ -1,0 +1,172 @@
+[
+  [
+    "inflated-contrast",
+    "This is not just a cache; it is a revolution.",
+    "The bug is in the parser, not the tokenizer."
+  ],
+  [
+    "slogan-fragments",
+    "One team. One vision. Limitless possibilities.",
+    "Stop. The cable is live."
+  ],
+  [
+    "ornamental-triad",
+    "The system is powerful, transformative and revolutionary.",
+    "The request requires a name, address and signature."
+  ],
+  [
+    "negative-parallelism",
+    "Not a tool. Not a platform. Not a product. A movement.",
+    "Do not log passwords. Do not store tokens in URLs."
+  ],
+  [
+    "punctuation-rhythm",
+    "The result: clarity; the goal: momentum; the future: limitless.",
+    "The old request cached failures; the new request retries them."
+  ],
+  [
+    "padded-enumeration",
+    "We deliver value, impact, excellence, success, progress and possibility.",
+    "Required fields are name, address, city, postal code and country."
+  ],
+  [
+    "strained-metaphor",
+    "This gateway resets the bar while carrying the heavy lifting.",
+    "The gateway routes requests to the authentication service."
+  ],
+  [
+    "canned-empathy",
+    "I know this must be incredibly overwhelming for you.",
+    "You said the delay was frustrating; the next update is due Friday."
+  ],
+  [
+    "empty-balance",
+    "While this brings benefits, it also presents challenges.",
+    "Caching lowers read latency but delays visibility of writes by up to ten seconds."
+  ],
+  [
+    "manufactured-significance",
+    "The renamed variable marks a pivotal moment in software history.",
+    "The migration removes the last dependency on the retired server."
+  ],
+  [
+    "promotional-tone",
+    "This groundbreaking endpoint offers a truly seamless experience.",
+    "The endpoint accepts JSON and returns a receipt identifier."
+  ],
+  [
+    "abstract-cluster",
+    "Our holistic synergy empowers transformative alignment across the landscape.",
+    "The robust estimator limits the influence of outliers."
+  ],
+  [
+    "empty-benefit",
+    "The new process unlocks value and drives impact.",
+    "The new process removes one approval step, saving reviewers ten minutes per request."
+  ],
+  [
+    "unsupported-causality",
+    "The button is now blue, ensuring higher revenue.",
+    "The estimate may rise because two regions have not reported."
+  ],
+  [
+    "unattributed-authority",
+    "Experts agree that this design is the best.",
+    "The supplied report's Table 2 lists a median latency of 20 ms."
+  ],
+  [
+    "unspecified-comparison",
+    "The new version is much faster.",
+    "Median latency fell from 40 ms to 20 ms on the same benchmark."
+  ],
+  [
+    "missing-actor",
+    "They told them to change it before that happened.",
+    "Legal sent the draft to Security; Security approved it."
+  ],
+  [
+    "process-for-rationale",
+    "After extensive review, we aligned on option B.",
+    "Legal and Security must approve the exception before release."
+  ],
+  [
+    "meaning-lost",
+    "The vendor may terminate the agreement.",
+    "The vendor may terminate only after giving 30 days' written notice."
+  ],
+  [
+    "undefined-concept",
+    "The same agentic loop handles everything.",
+    "The retry loop resends failed requests up to three times."
+  ],
+  [
+    "verbal-padding",
+    "At this point in time, the queue is empty.",
+    "The queue is empty now."
+  ],
+  [
+    "bureaucratic-circumlocution",
+    "The implementation of the initiation of the review will be undertaken.",
+    "Legal must review the exception before release."
+  ],
+  [
+    "stacked-uncertainty",
+    "The patch might possibly reduce latency.",
+    "The estimate is preliminary because two regions have not reported."
+  ],
+  [
+    "noun-chain",
+    "The deployment readiness alignment enablement process begins tomorrow.",
+    "The database connection pool contains ten connections."
+  ],
+  [
+    "indirect-statement",
+    "It reads as an increase in retries.",
+    "Participants reported that the revised warning felt less urgent."
+  ],
+  [
+    "audience-jargon",
+    "We reified the orchestration substrate for your password reset.",
+    "The parser builds an abstract syntax tree for the compiler."
+  ],
+  [
+    "overloaded-sentence",
+    "The change, which, if the condition that was not ruled out fails to hold, would not be disallowed, proceeds.",
+    "If approval is delayed, keep the current version running until Security signs off."
+  ],
+  [
+    "generic-opening",
+    "In today's fast-paced world, change is everywhere.",
+    "This memo covers the two launch decisions due Friday."
+  ],
+  [
+    "request-echo",
+    "You asked me to explain how the cache works.",
+    "I interpret cache as the browser cache here because you mentioned a stale page."
+  ],
+  [
+    "self-announcement",
+    "Below is a polished and comprehensive rewrite.",
+    "This memo covers launch timing and excludes pricing, which is undecided."
+  ],
+  [
+    "repeated-point",
+    "The cache stores recent responses. Recent responses are stored by the cache.",
+    "The cache stores recent responses. This avoids repeated database reads."
+  ],
+  [
+    "stock-closing",
+    "Together we can embrace a brighter future and unlock limitless potential.",
+    "Retry the failed request after the migration completes."
+  ],
+  [
+    "fragmented-structure",
+    "## Context\nWe added a cache.\n## Detail\nIt stores responses.\n## Result\nReads are faster.",
+    "## Request\nSend a JSON body.\n## Response\nRead the receipt identifier.\n## Errors\nRetry a timeout."
+  ],
+  [
+    "mechanical-labels",
+    "**Clarity:** Be clear.\n**Simplicity:** Keep it simple.\n**Directness:** Be direct.",
+    "**Timeout:** Retry the request.\n**Unauthorized:** Check the credential."
+  ]
+]
